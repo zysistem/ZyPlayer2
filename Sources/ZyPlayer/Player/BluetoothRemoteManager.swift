@@ -6,9 +6,9 @@ import MediaPlayer
 
 /// Google Chromecast / Bluetooth Kumanda (Huayu RC-BT1846 vb.) Donanım ve HID Sürücüsü.
 ///
-/// macOS varsayılanda Bluetooth Android/Chromecast kumandalarını sıradan HID aygıtı olarak görür.
-/// IOHIDManager aracılığıyla ham HID raporları dinlenerek kumandanın D-Pad (Yön tuşları),
-/// OK / Select tuşu, Back (Geri), Home, Play/Pause ve Medya tuşları doğrudan yakalanır.
+/// Kumanda macOS tarafından Bluetooth Klavye olarak algılanır.
+/// Hem video oynatıcı (Player) modunda hem de Ana Menü / Arayüz gezinmesinde
+/// D-Pad (Yön tuşları), OK (Enter/Space), Geri (Back/Escape) ve Medya tuşlarını destekler.
 final class BluetoothRemoteManager: @unchecked Sendable {
     static let shared = BluetoothRemoteManager()
 
@@ -18,16 +18,25 @@ final class BluetoothRemoteManager: @unchecked Sendable {
 
     weak var activePlayer: PlayerModel?
     var onClosePlayer: (() -> Void)?
+    var onGlobalBack: (() -> Void)?
+    var onGlobalSearch: (() -> Void)?
 
     private init() {}
 
-    func start(player: PlayerModel, onClose: @escaping () -> Void) {
+    func startGlobal(onGlobalBack: @escaping () -> Void, onGlobalSearch: @escaping () -> Void) {
+        self.onGlobalBack = onGlobalBack
+        self.onGlobalSearch = onGlobalSearch
+
+        if hidManager == nil {
+            setupIOHIDManager()
+            setupNSEventMonitors()
+            setupMPRemoteCommandCenter()
+        }
+    }
+
+    func setPlayer(_ player: PlayerModel?, onClose: (() -> Void)?) {
         self.activePlayer = player
         self.onClosePlayer = onClose
-
-        setupIOHIDManager()
-        setupNSEventMonitors()
-        setupMPRemoteCommandCenter()
     }
 
     func stop() {
@@ -62,7 +71,6 @@ final class BluetoothRemoteManager: @unchecked Sendable {
 
         let context = Unmanaged.passUnretained(self).toOpaque()
 
-        // Input Value Callback
         IOHIDManagerRegisterInputValueCallback(manager, { context, result, sender, value in
             guard let context = context else { return }
             let this = Unmanaged<BluetoothRemoteManager>.fromOpaque(context).takeUnretainedValue()
@@ -83,52 +91,41 @@ final class BluetoothRemoteManager: @unchecked Sendable {
         guard integerValue > 0 else { return }
 
         DispatchQueue.main.async { [weak self] in
-            guard let self, let player = self.activePlayer else { return }
+            guard let self else { return }
 
-            // ── Consumer Control (Medya / Kumanda Tuşları) Page 0x0C ──
-            if usagePage == 0x0C {
-                switch usage {
-                case 0xCD: // Play / Pause Toggle
-                    player.togglePause()
-                case 0xB0: // Play
-                    if player.isPaused { player.togglePause() }
-                case 0xB1: // Pause
-                    if !player.isPaused { player.togglePause() }
-                case 0xB5: // Scan Next / Next Track
-                    player.seek(by: 30)
-                case 0xB6: // Scan Previous / Previous Track
-                    player.seek(by: -30)
-                case 0xB7: // Stop
-                    self.onClosePlayer?()
-                case 0xE9: // Volume Increment
-                    player.setVolume(min(100, player.volume + 5))
-                case 0xEA: // Volume Decrement
-                    player.setVolume(max(0, player.volume - 5))
-                case 0xE2: // Mute
-                    player.setVolume(player.volume > 0 ? 0 : 100)
-                case 0x221, 0x223: // AC Search / Home / Spotlight (Siyah tuş)
-                    player.togglePause()
-                case 0x224: // AC Back
-                    self.onClosePlayer?()
-                default:
-                    break
+            if let player = self.activePlayer {
+                // ── Player Açıkken Oynatıcı Kontrolleri ──
+                if usagePage == 0x0C {
+                    switch usage {
+                    case 0xCD, 0xB0, 0xB1: player.togglePause()
+                    case 0xB5, 0x8B: player.seek(by: 10)
+                    case 0xB6, 0x8C: player.seek(by: -10)
+                    case 0xB7, 0x224: self.onClosePlayer?()
+                    case 0xE9, 0x89: player.setVolume(min(100, player.volume + 5))
+                    case 0xEA, 0x8A: player.setVolume(max(0, player.volume - 5))
+                    case 0xE2: player.setVolume(player.volume > 0 ? 0 : 100)
+                    case 0x221, 0x223: player.togglePause()
+                    default: break
+                    }
+                } else if usagePage == 0x01 {
+                    switch usage {
+                    case 0x89: player.setVolume(min(100, player.volume + 5))
+                    case 0x8A: player.setVolume(max(0, player.volume - 5))
+                    case 0x8B: player.seek(by: 10)
+                    case 0x8C: player.seek(by: -10)
+                    case 0x8D: player.togglePause()
+                    default: break
+                    }
                 }
-            }
-            // ── Generic Desktop Page 0x01 (D-Pad Yön Tuşları vb.) ──
-            else if usagePage == 0x01 {
-                switch usage {
-                case 0x89: // D-Pad Up
-                    player.setVolume(min(100, player.volume + 5))
-                case 0x8A: // D-Pad Down
-                    player.setVolume(max(0, player.volume - 5))
-                case 0x8B: // D-Pad Right
-                    player.seek(by: 10)
-                case 0x8C: // D-Pad Left
-                    player.seek(by: -10)
-                case 0x8D: // D-Pad Select / OK
-                    player.togglePause()
-                default:
-                    break
+            } else {
+                // ── Player Kapalıyken Ana Menü / Arayüz Kontrolleri ──
+                if usagePage == 0x0C {
+                    switch usage {
+                    case 0x224, 0xB7: self.onGlobalBack?()
+                    case 0x221, 0x223: self.onGlobalSearch?()
+                    case 0xCD, 0xB0, 0x8D: self.simulateSelectClick()
+                    default: break
+                    }
                 }
             }
         }
@@ -137,7 +134,9 @@ final class BluetoothRemoteManager: @unchecked Sendable {
     // MARK: - 2. NSEvent Monitoring (Klavye, D-Pad ve Medya Kısayolları)
     private func setupNSEventMonitors() {
         let handler: (NSEvent) -> NSEvent? = { [weak self] event in
-            guard let self, let player = self.activePlayer else { return event }
+            guard let self else { return event }
+
+            let isPlayerOpen = (self.activePlayer != nil)
 
             // System Defined (Medya Tuşları)
             if event.type == .systemDefined && event.subtype.rawValue == 8 {
@@ -146,54 +145,67 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                 let keyDown = (((keyFlags & 0xFF00) >> 8) & 0x1) == 0
 
                 if keyDown {
-                    switch keyCode {
-                    case 16, 0, 100: // Play/Pause
-                        player.togglePause()
-                        return nil
-                    case 17: // Next
-                        player.seek(by: 30)
-                        return nil
-                    case 18: // Previous
-                        player.seek(by: -30)
-                        return nil
-                    case 19, 9: // Fast Forward
-                        player.seek(by: 10)
-                        return nil
-                    case 20, 10: // Rewind
-                        player.seek(by: -10)
-                        return nil
-                    default:
-                        break
+                    if let player = self.activePlayer {
+                        switch keyCode {
+                        case 16, 0, 100: player.togglePause(); return nil
+                        case 17, 19, 9: player.seek(by: 10); return nil
+                        case 18, 20, 10: player.seek(by: -10); return nil
+                        default: break
+                        }
+                    } else {
+                        if keyCode == 16 || keyCode == 0 {
+                            self.simulateSelectClick()
+                            return nil
+                        }
                     }
                 }
             }
 
             // Normal Klavye Olayları (.keyDown)
             if event.type == .keyDown {
-                // Metin kutusu aktifse karıştırma
-                if self.isTypingContext() { return event }
+                if isPlayerOpen {
+                    // ── Player Modu ──
+                    switch event.keyCode {
+                    case 36, 76, 49, 65: // OK / Enter / Space
+                        self.activePlayer?.togglePause()
+                        return nil
+                    case 123: // Sol (Geri sar)
+                        self.activePlayer?.seek(by: -10)
+                        return nil
+                    case 124: // Sağ (İleri sar)
+                        self.activePlayer?.seek(by: 10)
+                        return nil
+                    case 126: // Yukarı (Ses +)
+                        if let p = self.activePlayer { p.setVolume(min(100, p.volume + 5)) }
+                        return nil
+                    case 125: // Aşağı (Ses -)
+                        if let p = self.activePlayer { p.setVolume(max(0, p.volume - 5)) }
+                        return nil
+                    case 53, 51, 115, 117: // Back / Esc / Home
+                        self.onClosePlayer?()
+                        return nil
+                    default:
+                        break
+                    }
+                } else {
+                    // ── Ana Menü / Arayüz Modu ──
+                    // Metin yazılıyorsa sadece yön ve geri tuşlarına müdahale et
+                    let typing = self.isTypingContext()
 
-                switch event.keyCode {
-                case 36, 76, 49, 65: // Return, Keypad Enter, Space, Numpad Enter (OK Tuşu)
-                    player.togglePause()
-                    return nil
-                case 123: // Sol Ok (Rewind)
-                    player.seek(by: -10)
-                    return nil
-                case 124: // Sağ Ok (Fast Forward)
-                    player.seek(by: 10)
-                    return nil
-                case 126: // Yukarı Ok (Ses +)
-                    player.setVolume(min(100, player.volume + 5))
-                    return nil
-                case 125: // Aşağı Ok (Ses -)
-                    player.setVolume(max(0, player.volume - 5))
-                    return nil
-                case 53, 51, 115, 117: // Esc, Backspace, Home, End (Geri Tuşu)
-                    self.onClosePlayer?()
-                    return nil
-                default:
-                    break
+                    switch event.keyCode {
+                    case 53, 51, 115, 117: // Geri / Escape / Backspace / Home
+                        if !typing {
+                            self.onGlobalBack?()
+                            return nil
+                        }
+                    case 36, 76, 65: // Return / Enter (OK Tuşu)
+                        if !typing {
+                            self.simulateSelectClick()
+                            return nil
+                        }
+                    default:
+                        break
+                    }
                 }
             }
 
@@ -218,39 +230,40 @@ final class BluetoothRemoteManager: @unchecked Sendable {
 
         center.togglePlayPauseCommand.isEnabled = true
         center.togglePlayPauseCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.activePlayer?.togglePause() }
+            Task { @MainActor in
+                if let player = self?.activePlayer {
+                    player.togglePause()
+                } else {
+                    self?.simulateSelectClick()
+                }
+            }
             return .success
         }
 
         center.playCommand.isEnabled = true
         center.playCommand.addTarget { [weak self] _ in
-            Task { @MainActor in if self?.activePlayer?.isPaused == true { self?.activePlayer?.togglePause() } }
+            Task { @MainActor in self?.activePlayer?.togglePause() }
             return .success
         }
 
         center.pauseCommand.isEnabled = true
         center.pauseCommand.addTarget { [weak self] _ in
-            Task { @MainActor in if self?.activePlayer?.isPaused == false { self?.activePlayer?.togglePause() } }
-            return .success
-        }
-
-        center.nextTrackCommand.isEnabled = true
-        center.nextTrackCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.activePlayer?.seek(by: 30) }
-            return .success
-        }
-
-        center.previousTrackCommand.isEnabled = true
-        center.previousTrackCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.activePlayer?.seek(by: -30) }
+            Task { @MainActor in self?.activePlayer?.togglePause() }
             return .success
         }
     }
 
-    private func isTypingContext() -> Bool {
-        // Oynatıcı açıkken hiçbir klavye/kumanda tuşunu engelleme
-        if activePlayer != nil { return false }
+    /// OK / Select tuşuna basıldığında odaktaki elemana tıklama simülasyonu
+    private func simulateSelectClick() {
+        guard let window = NSApp.keyWindow else { return }
+        if let responder = window.firstResponder as? NSButton {
+            responder.performClick(nil)
+        } else if let responder = window.firstResponder as? NSControl {
+            window.makeFirstResponder(responder)
+        }
+    }
 
+    private func isTypingContext() -> Bool {
         guard let window = NSApp.keyWindow else { return false }
         if window.sheets.isEmpty == false { return true }
         guard let responder = window.firstResponder else { return false }
@@ -259,3 +272,4 @@ final class BluetoothRemoteManager: @unchecked Sendable {
         return false
     }
 }
+

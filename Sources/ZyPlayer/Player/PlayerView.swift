@@ -166,11 +166,11 @@ struct PlayerView: View {
             // Kayıtlı çeviri aranırken hangi motorun çevirisi yeğlensin.
             model.restoreEngineHint = settings.translationEngine
             revealControls()
-            BluetoothRemoteManager.shared.start(player: model, onClose: onClose)
+            BluetoothRemoteManager.shared.setPlayer(model, onClose: onClose)
         }
         .onDisappear {
             hideTask?.cancel()
-            BluetoothRemoteManager.shared.stop()
+            BluetoothRemoteManager.shared.setPlayer(nil, onClose: nil)
             NSCursor.unhide()
         }
     }

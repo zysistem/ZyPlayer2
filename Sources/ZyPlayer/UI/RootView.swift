@@ -118,7 +118,7 @@ struct RootView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 NSApp.keyWindow?.makeFirstResponder(nil)
             }
-            keyMonitor.start {
+            let handleBack = {
                 if player.currentURL != nil {
                     // Player handles its own Escape
                 } else if streamStore.activeDetails != nil {
@@ -133,6 +133,11 @@ struct RootView: View {
                     showSubtitleSearch = false
                 }
             }
+            BluetoothRemoteManager.shared.startGlobal(
+                onGlobalBack: handleBack,
+                onGlobalSearch: { searchText = "" }
+            )
+            keyMonitor.start(onEscape: handleBack)
         }
         .onDisappear {
             keyMonitor.stop()
