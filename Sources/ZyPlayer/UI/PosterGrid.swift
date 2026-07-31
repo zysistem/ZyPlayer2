@@ -27,8 +27,12 @@ struct PosterCard: View {
     @State private var isHovering = false
     @FocusState private var isFocusState: Bool
 
+    private var isGamepadFocused: Bool {
+        GamepadManager.shared.isConnected && (isFocused || isFocusState)
+    }
+
     private var isHighlighted: Bool {
-        isHovering || isFocused || isFocusState
+        isHovering || isGamepadFocused
     }
 
     var body: some View {

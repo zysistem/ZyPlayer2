@@ -182,19 +182,25 @@ final class GamepadManager: @unchecked Sendable {
         }
     }
 
+    private var lastDPadTime: Date = .distantPast
+
     private func handleDPad(x: Float, y: Float) {
+        let now = Date()
+        guard now.timeIntervalSince(lastDPadTime) > 0.18 else { return }
+        
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            
             if let player = self.activePlayer {
-                if x > 0.5 { player.seek(by: 10) }
-                else if x < -0.5 { player.seek(by: -10) }
-                else if y > 0.5 { player.setVolume(min(100, player.volume + 5)) }
-                else if y < -0.5 { player.setVolume(max(0, player.volume - 5)) }
+                if x > 0.5 { self.lastDPadTime = now; player.seek(by: 10) }
+                else if x < -0.5 { self.lastDPadTime = now; player.seek(by: -10) }
+                else if y > 0.5 { self.lastDPadTime = now; player.setVolume(min(100, player.volume + 5)) }
+                else if y < -0.5 { self.lastDPadTime = now; player.setVolume(max(0, player.volume - 5)) }
             } else {
-                if x > 0.5 { self.postKeyEvent(keyCode: 124) }
-                else if x < -0.5 { self.postKeyEvent(keyCode: 123) }
-                else if y > 0.5 { self.postKeyEvent(keyCode: 126) }
-                else if y < -0.5 { self.postKeyEvent(keyCode: 125) }
+                if x > 0.5 { self.lastDPadTime = now; self.postKeyEvent(keyCode: 124) }      // Sağ Ok
+                else if x < -0.5 { self.lastDPadTime = now; self.postKeyEvent(keyCode: 123) } // Sol Ok
+                else if y > 0.5 { self.lastDPadTime = now; self.postKeyEvent(keyCode: 126) }  // Yukarı Ok
+                else if y < -0.5 { self.lastDPadTime = now; self.postKeyEvent(keyCode: 125) } // Aşağı Ok
             }
         }
     }
@@ -202,10 +208,10 @@ final class GamepadManager: @unchecked Sendable {
     private func postKeyEvent(keyCode: CGKeyCode) {
         guard let src = CGEventSource(stateID: .hidSystemState) else { return }
         if let down = CGEvent(keyboardEventSource: src, virtualKey: keyCode, keyDown: true) {
-            down.post(tap: .cghidEventTap)
+            down.post(tap: .cgAnnotatedSessionEventTap)
         }
         if let up = CGEvent(keyboardEventSource: src, virtualKey: keyCode, keyDown: false) {
-            up.post(tap: .cghidEventTap)
+            up.post(tap: .cgAnnotatedSessionEventTap)
         }
     }
 

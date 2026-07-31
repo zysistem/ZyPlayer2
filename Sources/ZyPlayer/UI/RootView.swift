@@ -889,24 +889,28 @@ private struct SidebarRowView: View {
     let onSelect: () -> Void
     @FocusState private var isFocused: Bool
 
+    private var isGamepadFocused: Bool {
+        GamepadManager.shared.isConnected && isFocused
+    }
+
     var body: some View {
         Button(action: onSelect) {
             Label(item.title, systemImage: item.symbol)
-                .font(.system(size: 13, weight: (isSelected || isFocused) ? .semibold : .medium))
-                .foregroundStyle((isSelected || isFocused) ? AnyShapeStyle(Color.cyan) : AnyShapeStyle(.primary))
+                .font(.system(size: 13, weight: (isSelected || isGamepadFocused) ? .semibold : .medium))
+                .foregroundStyle(isGamepadFocused ? AnyShapeStyle(Color.cyan) : (isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.primary)))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(isFocused ? Color.cyan.opacity(0.25) : (isSelected ? Color.white.opacity(0.12) : Color.clear))
+                        .fill(isGamepadFocused ? Color.cyan.opacity(0.3) : (isSelected ? Color.white.opacity(0.12) : Color.clear))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(isFocused ? Color.cyan : Color.clear, lineWidth: 2)
+                        .strokeBorder(isGamepadFocused ? Color.cyan : Color.clear, lineWidth: 2)
                 )
-                .scaleEffect(isFocused ? 1.04 : 1.0)
-                .animation(.easeOut(duration: 0.12), value: isFocused)
+                .scaleEffect(isGamepadFocused ? 1.04 : 1.0)
+                .animation(.easeOut(duration: 0.12), value: isGamepadFocused)
         }
         .buttonStyle(.plain)
         .focusable()
