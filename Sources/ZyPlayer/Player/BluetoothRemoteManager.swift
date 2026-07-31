@@ -30,11 +30,33 @@ final class BluetoothRemoteManager: @unchecked Sendable {
         self.onGlobalBack = onGlobalBack
         self.onGlobalSearch = onGlobalSearch
 
+        checkAccessibilityPermission()
+
         if hidManager == nil {
             setupGameController()
             setupIOHIDManager()
             setupNSEventMonitors()
             setupMPRemoteCommandCenter()
+        }
+    }
+
+    /// macOS Erişilebilirlik (Accessibility) ve Giriş İzleme (Input Monitoring) iznini kontrol eder ve gerekirse sistem diyalogunu açar.
+    func checkAccessibilityPermission() {
+        let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+        let isTrusted = AXIsProcessTrustedWithOptions(options)
+        if !isTrusted {
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "Bluetooth Kumanda İzni Gerekli"
+                alert.informativeText = "Kumanda tuşlarının (D-Pad, Play/Pause, OK vb.) algılanabilmesi için macOS Gizlilik ve Güvenlik ayarlarından 'Erişilebilirlik' ve 'Giriş İzleme' izinlerinin ZyPlayer için açık olması gerekmektedir."
+                alert.addButton(withTitle: "Sistem Ayarlarını Aç")
+                alert.addButton(withTitle: "Daha Sonra")
+                if alert.runModal() == .alertFirstButtonReturn {
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
         }
     }
 
