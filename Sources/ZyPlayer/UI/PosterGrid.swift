@@ -31,6 +31,17 @@ struct PosterCard: View {
         GamepadManager.shared.isConnected && (isFocused || isFocusState)
     }
 
+    private var strokeColor: Color {
+        if isGamepadFocused {
+            return Color.cyan
+        }
+        return isHovering ? .white.opacity(0.8) : .white.opacity(0.08)
+    }
+
+    private var strokeWidth: CGFloat {
+        isGamepadFocused ? 3.5 : (isHovering ? 1.5 : 1)
+    }
+
     private var isHighlighted: Bool {
         isHovering || isGamepadFocused
     }
@@ -43,12 +54,9 @@ struct PosterCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .strokeBorder(
-                                isHighlighted ? Color.cyan : .white.opacity(0.08),
-                                lineWidth: isHighlighted ? 3.5 : 1
-                            )
+                            .strokeBorder(strokeColor, lineWidth: strokeWidth)
                     )
-                    .shadow(color: isHighlighted ? .cyan.opacity(0.7) : .black.opacity(0), radius: isHighlighted ? 16 : 0)
+                    .shadow(color: isGamepadFocused ? .cyan.opacity(0.7) : .black.opacity(0), radius: isGamepadFocused ? 16 : 0)
 
                 if progress > 0.01 && !isFinished {
                     GeometryReader { geo in
@@ -89,8 +97,8 @@ struct PosterCard: View {
             }
 
             Text(title)
-                .font(.system(size: 12, weight: isHighlighted ? .bold : .medium))
-                .foregroundStyle(isHighlighted ? .cyan : .primary)
+                .font(.system(size: 12, weight: isGamepadFocused ? .bold : .medium))
+                .foregroundStyle(isGamepadFocused ? AnyShapeStyle(Color.cyan) : AnyShapeStyle(.primary))
                 .lineLimit(1)
             if !subtitle.isEmpty {
                 Text(subtitle)
@@ -99,7 +107,7 @@ struct PosterCard: View {
                     .lineLimit(1)
             }
         }
-        .scaleEffect(isHighlighted ? 1.07 : 1.0)
+        .scaleEffect(isGamepadFocused ? 1.07 : (isHovering ? 1.03 : 1.0))
         .shadow(color: .black.opacity(isHighlighted ? 0.6 : 0), radius: 14, y: 6)
         .animation(.easeOut(duration: 0.15), value: isHighlighted)
         .focusable()

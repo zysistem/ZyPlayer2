@@ -205,13 +205,35 @@ final class GamepadManager: @unchecked Sendable {
         }
     }
 
-    private func postKeyEvent(keyCode: CGKeyCode) {
-        guard let src = CGEventSource(stateID: .hidSystemState) else { return }
-        if let down = CGEvent(keyboardEventSource: src, virtualKey: keyCode, keyDown: true) {
-            down.post(tap: .cgAnnotatedSessionEventTap)
+    private func postKeyEvent(keyCode: UInt16) {
+        guard let window = NSApp.keyWindow else { return }
+        if let down = NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: window.windowNumber,
+            context: nil,
+            characters: "",
+            charactersIgnoringModifiers: "",
+            isARepeat: false,
+            keyCode: keyCode
+        ) {
+            window.sendEvent(down)
         }
-        if let up = CGEvent(keyboardEventSource: src, virtualKey: keyCode, keyDown: false) {
-            up.post(tap: .cgAnnotatedSessionEventTap)
+        if let up = NSEvent.keyEvent(
+            with: .keyUp,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: window.windowNumber,
+            context: nil,
+            characters: "",
+            charactersIgnoringModifiers: "",
+            isARepeat: false,
+            keyCode: keyCode
+        ) {
+            window.sendEvent(up)
         }
     }
 
