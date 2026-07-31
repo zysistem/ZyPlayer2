@@ -119,11 +119,21 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                 }
             } else {
                 // ── Player Kapalıyken Ana Menü / Arayüz Kontrolleri ──
+                // Ham HID kumanda tuşlarını macOS klavye yön ve seçim tuşlarına çevir
                 if usagePage == 0x0C {
                     switch usage {
                     case 0x224, 0xB7: self.onGlobalBack?()
                     case 0x221, 0x223: self.onGlobalSearch?()
-                    case 0xCD, 0xB0, 0x8D: self.simulateSelectClick()
+                    case 0xCD, 0xB0, 0x8D: self.postKeyEvent(keyCode: 36) // Return / OK
+                    default: break
+                    }
+                } else if usagePage == 0x01 {
+                    switch usage {
+                    case 0x89: self.postKeyEvent(keyCode: 126) // Yukarı Ok
+                    case 0x8A: self.postKeyEvent(keyCode: 125) // Aşağı Ok
+                    case 0x8B: self.postKeyEvent(keyCode: 124) // Sağ Ok
+                    case 0x8C: self.postKeyEvent(keyCode: 123) // Sol Ok
+                    case 0x8D: self.postKeyEvent(keyCode: 36)  // Return / OK
                     default: break
                     }
                 }
@@ -164,15 +174,15 @@ final class BluetoothRemoteManager: @unchecked Sendable {
             // Normal Klavye Olayları (.keyDown)
             if event.type == .keyDown {
                 if isPlayerOpen {
-                    // ── Player Modu ──
+                    // ── Player Modu: Oynatıcıyı kumandayla kontrol et ──
                     switch event.keyCode {
-                    case 36, 76, 49, 65: // OK / Enter / Space
+                    case 36, 76, 49, 65: // OK / Enter / Space / Numpad Enter
                         self.activePlayer?.togglePause()
                         return nil
-                    case 123: // Sol (Geri sar)
+                    case 123: // Sol (10sn geri sar)
                         self.activePlayer?.seek(by: -10)
                         return nil
-                    case 124: // Sağ (İleri sar)
+                    case 124: // Sağ (10sn ileri sar)
                         self.activePlayer?.seek(by: 10)
                         return nil
                     case 126: // Yukarı (Ses +)
@@ -189,22 +199,19 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                     }
                 } else {
                     // ── Ana Menü / Arayüz Modu ──
-                    // Metin yazılıyorsa sadece yön ve geri tuşlarına müdahale et
+                    // macOS native klavye / kumanda gezinmesine izin ver (return event)
                     let typing = self.isTypingContext()
 
-                    switch event.keyCode {
-                    case 53, 51, 115, 117: // Geri / Escape / Backspace / Home
-                        if !typing {
+                    if !typing {
+                        switch event.keyCode {
+                        case 53, 51: // Geri / Escape / Backspace
                             self.onGlobalBack?()
                             return nil
+                        default:
+                            // Yön tuşları (123, 124, 125, 126) ve Enter (36, 49) tuşlarını ENGELLEME
+                            // Bırak macOS ve SwiftUI kendi focus/gezinme altyapısı çalıştırsın!
+                            return event
                         }
-                    case 36, 76, 65: // Return / Enter (OK Tuşu)
-                        if !typing {
-                            self.simulateSelectClick()
-                            return nil
-                        }
-                    default:
-                        break
                     }
                 }
             }
@@ -260,6 +267,17 @@ final class BluetoothRemoteManager: @unchecked Sendable {
             responder.performClick(nil)
         } else if let responder = window.firstResponder as? NSControl {
             window.makeFirstResponder(responder)
+        }
+    }
+
+    /// Klavyeden basılmış gibi sistem geneli CGEvent tuş olayı üretir
+    private func postKeyEvent(keyCode: CGKeyCode) {
+        guard let src = CGEventSource(stateID: .hidSystemState) else { return }
+        if let down = CGEvent(keyboardEventSource: src, virtualKey: keyCode, keyDown: true) {
+            down.post(tap: .cghidEventTap)
+        }
+        if let up = CGEvent(keyboardEventSource: src, virtualKey: keyCode, keyDown: false) {
+            up.post(tap: .cghidEventTap)
         }
     }
 
