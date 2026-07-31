@@ -115,6 +115,9 @@ struct RootView: View {
         .preferredColorScheme(settings.colorScheme)
         .onAppear {
             isFullscreen = NSApp.keyWindow?.styleMask.contains(.fullScreen) ?? false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NSApp.keyWindow?.makeFirstResponder(nil)
+            }
             keyMonitor.start {
                 if player.currentURL != nil {
                     // Player handles its own Escape

@@ -248,6 +248,9 @@ final class BluetoothRemoteManager: @unchecked Sendable {
     }
 
     private func isTypingContext() -> Bool {
+        // Oynatıcı açıkken hiçbir klavye/kumanda tuşunu engelleme
+        if activePlayer != nil { return false }
+
         guard let window = NSApp.keyWindow else { return false }
         if window.sheets.isEmpty == false { return true }
         guard let responder = window.firstResponder else { return false }
