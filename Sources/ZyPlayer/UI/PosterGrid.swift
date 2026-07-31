@@ -23,12 +23,13 @@ struct PosterCard: View {
     /// does not show through it.
     var isRemovable: Bool = false
     var isFocused: Bool = false
+    var isGamepadSelected: Bool = false
 
     @State private var isHovering = false
     @FocusState private var isFocusState: Bool
 
     private var isGamepadFocused: Bool {
-        GamepadManager.shared.isConnected && (isFocused || isFocusState)
+        GamepadManager.shared.isConnected && (isGamepadSelected || isFocused || isFocusState)
     }
 
     private var strokeColor: Color {
@@ -227,18 +228,29 @@ struct PosterBadge {
 /// Responsive poster grid used by Movies, Shows and search results.
 struct PosterGrid<Item: Identifiable, Content: View>: View {
     let items: [Item]
-    @ViewBuilder let content: (Item) -> Content
+    var selectedIndex: Int = -1
+    @ViewBuilder let content: (Item, Bool) -> Content
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 10)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 14), count: 5)
 
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 22) {
-                ForEach(items) { item in
-                    content(item)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 22) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                        content(item, index == selectedIndex)
+                            .id(index)
+                    }
+                }
+                .padding(20)
+            }
+            .onChange(of: selectedIndex) { _, newIndex in
+                if newIndex >= 0 {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        proxy.scrollTo(newIndex, anchor: .center)
+                    }
                 }
             }
-            .padding(20)
         }
     }
 }

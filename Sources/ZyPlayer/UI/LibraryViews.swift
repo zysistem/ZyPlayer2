@@ -205,13 +205,14 @@ struct SectionBlock<Content: View>: View {
 struct MoviesView: View {
     let library: LibraryStore
     let actions: LibraryActions
+    var selectedIndex: Int = -1
 
     var body: some View {
         if library.movies.isEmpty {
             EmptyLibraryView(title: "Filmler")
         } else {
-            PosterGrid(items: library.movies) { item in
-                MediaCard(item: item, state: library.state(for: item), actions: actions)
+            PosterGrid(items: library.movies, selectedIndex: selectedIndex) { item, isGamepadSelected in
+                MediaCard(item: item, state: library.state(for: item), actions: actions, isGamepadSelected: isGamepadSelected)
             }
         }
     }
@@ -220,14 +221,16 @@ struct MoviesView: View {
 struct ShowsView: View {
     let library: LibraryStore
     let actions: LibraryActions
+    var selectedIndex: Int = -1
 
     var body: some View {
         if library.shows.isEmpty {
             EmptyLibraryView(title: "Diziler")
         } else {
-            PosterGrid(items: library.shows) { series in
+            PosterGrid(items: library.shows, selectedIndex: selectedIndex) { series, isGamepadSelected in
                 SeriesCard(series: series, actions: actions,
-                           isWatched: library.isSeriesFullyWatched(seriesKey: series.id))
+                           isWatched: library.isSeriesFullyWatched(seriesKey: series.id),
+                           isGamepadSelected: isGamepadSelected)
             }
         }
     }
@@ -312,13 +315,11 @@ struct MediaCard: View {
     let actions: LibraryActions
     var library: LibraryStore? = nil
     var badge: PosterBadge?
-    /// Set by Continue Watching, which is the only row a card can be dropped from.
     var onRemove: (() -> Void)?
-    /// Continue Watching passes these for a series episode, so the card shows the
-    /// show poster and title and opens the series page rather than the episode.
     var posterOverride: String?
     var titleOverride: String?
     var onSelectOverride: (() -> Void)?
+    var isGamepadSelected: Bool = false
 
     @State private var isHovering = false
     @FocusState private var isFocused: Bool
@@ -341,12 +342,11 @@ struct MediaCard: View {
                     posterFileName: posterOverride ?? item.posterFileName,
                     badge: badge,
                     isRemovable: onRemove != nil,
-                    isFocused: isFocused
+                    isFocused: isFocused,
+                    isGamepadSelected: isGamepadSelected
                 )
             }
             .buttonStyle(.plain)
-            // Without this, SwiftUI focuses the first card at launch and rings it blue.
-            .focusEffectDisabled()
             .focused($isFocused)
 
             if let onRemove, (isHovering || isFocused) {
@@ -389,9 +389,8 @@ struct SeriesCard: View {
     let actions: LibraryActions
     var library: LibraryStore? = nil
     var badge: PosterBadge?
-    /// Passed by the caller (which has the library) so the card can show a
-    /// "watched" tick without reaching for the store itself.
     var isWatched: Bool = false
+    var isGamepadSelected: Bool = false
 
     @FocusState private var isFocused: Bool
 
@@ -407,11 +406,11 @@ struct SeriesCard: View {
                 watchlisted: listed,
                 posterFileName: series.meta?.posterFileName,
                 badge: badge,
-                isFocused: isFocused
+                isFocused: isFocused,
+                isGamepadSelected: isGamepadSelected
             )
         }
         .buttonStyle(.plain)
-        .focusEffectDisabled()
         .focused($isFocused)
         .contextMenu {
             Button(isWatched ? "İzlemedim olarak işaretle" : "Tümünü izledim") {

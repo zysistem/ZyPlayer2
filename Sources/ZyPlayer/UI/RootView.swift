@@ -239,7 +239,18 @@ struct RootView: View {
                 if focusZone == .sidebar {
                     selectFromSidebar(selection)
                 } else if focusZone == .content {
-                    BluetoothRemoteManager.shared.simulateSelectClick()
+                    switch selection {
+                    case .movies:
+                        if focusedPosterIndex >= 0 && focusedPosterIndex < library.movies.count {
+                            actions.selectItem(library.movies[focusedPosterIndex])
+                        }
+                    case .shows:
+                        if focusedPosterIndex >= 0 && focusedPosterIndex < library.shows.count {
+                            actions.selectSeries(library.shows[focusedPosterIndex])
+                        }
+                    default:
+                        BluetoothRemoteManager.shared.simulateSelectClick()
+                    }
                 }
             }
             GamepadManager.shared.onShoulderLeft = {
@@ -506,8 +517,8 @@ struct RootView: View {
                                  resume: resumeStore,
                                  onOpenStream: { route = .stream($0) }
                              )
-            case .movies:    MoviesView(library: library, actions: actions)
-            case .shows:     ShowsView(library: library, actions: actions)
+            case .movies:    MoviesView(library: library, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
+            case .shows:     ShowsView(library: library, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .favorites: FavoritesView(library: library, actions: actions, stream: streamStore,
                                            onSelectStream: { route = .stream($0) })
             case .appleTV:   AppleTVView(library: library, appleTV: appleTV, actions: actions)

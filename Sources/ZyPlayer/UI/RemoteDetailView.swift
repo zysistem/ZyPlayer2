@@ -385,9 +385,9 @@ struct RemoteCard: View {
     let title: RemoteTitle
     let isOwned: Bool
     var library: LibraryStore? = nil
-    /// Bollywood ızgarası bunu doldurur; başka yerlerde nil kalır.
     var imdbRating: Double? = nil
     let onSelect: () -> Void
+    var isGamepadSelected: Bool = false
 
     @FocusState private var isFocused: Bool
 
@@ -399,11 +399,11 @@ struct RemoteCard: View {
                 posterURL: title.posterURL,
                 badge: isOwned ? .inLibrary : nil,
                 imdbRating: imdbRating,
-                isFocused: isFocused
+                isFocused: isFocused,
+                isGamepadSelected: isGamepadSelected
             )
         }
         .buttonStyle(.plain)
-        .focusEffectDisabled()
         .focused($isFocused)
         .contextMenu {
             Button("Aç") { onSelect() }
