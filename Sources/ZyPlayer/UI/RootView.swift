@@ -41,6 +41,12 @@ struct RootView: View {
     @Bindable var providers: StreamingProviderStore
     @Bindable var settings: AppSettings
 
+    enum GamepadFocusZone {
+        case sidebar
+        case content
+    }
+
+    @State private var focusZone: GamepadFocusZone = .sidebar
     @State private var selection: SidebarItem = .home
     @State private var searchText = ""
     @State private var route: DetailRoute?
@@ -77,9 +83,13 @@ struct RootView: View {
                 )
             } else {
                 NavigationSplitView {
-                    Sidebar(selection: $selection, scheme: settings.colorScheme,
-                            onSelect: selectFromSidebar)
-                        .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 320)
+                    Sidebar(
+                        selection: $selection,
+                        isSidebarActive: focusZone == .sidebar,
+                        scheme: settings.colorScheme,
+                        onSelect: selectFromSidebar
+                    )
+                    .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 320)
                 } detail: {
                     detailPane
                         .background(AppTheme.background(settings.colorScheme).ignoresSafeArea())
@@ -170,19 +180,39 @@ struct RootView: View {
             
             let sidebarItems = SidebarItem.allCases
             GamepadManager.shared.onNavigateDown = {
-                if let idx = sidebarItems.firstIndex(of: selection), idx < sidebarItems.count - 1 {
-                    selection = sidebarItems[idx + 1]
-                    selectFromSidebar(selection)
+                if focusZone == .sidebar {
+                    if let idx = sidebarItems.firstIndex(of: selection), idx < sidebarItems.count - 1 {
+                        selection = sidebarItems[idx + 1]
+                        selectFromSidebar(selection)
+                    }
                 }
             }
             GamepadManager.shared.onNavigateUp = {
-                if let idx = sidebarItems.firstIndex(of: selection), idx > 0 {
-                    selection = sidebarItems[idx - 1]
-                    selectFromSidebar(selection)
+                if focusZone == .sidebar {
+                    if let idx = sidebarItems.firstIndex(of: selection), idx > 0 {
+                        selection = sidebarItems[idx - 1]
+                        selectFromSidebar(selection)
+                    }
+                }
+            }
+            GamepadManager.shared.onNavigateRight = {
+                if focusZone == .sidebar {
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        focusZone = .content
+                    }
+                }
+            }
+            GamepadManager.shared.onNavigateLeft = {
+                if focusZone == .content {
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        focusZone = .sidebar
+                    }
                 }
             }
             GamepadManager.shared.onSelectKey = {
-                selectFromSidebar(selection)
+                if focusZone == .sidebar {
+                    selectFromSidebar(selection)
+                }
             }
             keyMonitor.start(onEscape: handleBack)
         }
@@ -865,20 +895,11 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
 
 struct Sidebar: View {
     @Binding var selection: SidebarItem
-    /// The sidebar paints its own gradient, so it needs the resolved scheme
-    /// rather than the environment's (which the window overrides).
+    var isSidebarActive: Bool = true
     var scheme: ColorScheme = .dark
-    /// Fires on every click, including one on the row that is already selected.
-    /// `List` selection alone cannot do that, and clicking "Ana Ekran" while a
-    /// detail screen is open has to come back out of it.
     var onSelect: (SidebarItem) -> Void = { _ in }
 
     var body: some View {
-        // No `selection:` binding on purpose. `List` selection is backed by an
-        // AppKit table, which swallows the click on the row that is already
-        // selected — so clicking "Ana Ekran" while a detail screen was open did
-        // nothing, and a tap gesture layered on top never saw the click either.
-        // Plain buttons always report, and the highlight is drawn here instead.
         ScrollView {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach([SidebarItem.home, .movies, .shows, .favorites, .appleTV, .bollywood]) { item in
@@ -896,18 +917,24 @@ struct Sidebar: View {
     }
 
     private func row(_ item: SidebarItem) -> some View {
-        SidebarRowView(item: item, isSelected: selection == item, onSelect: { onSelect(item) })
+        SidebarRowView(
+            item: item,
+            isSelected: selection == item,
+            isSidebarActive: isSidebarActive,
+            onSelect: { onSelect(item) }
+        )
     }
 }
 
 private struct SidebarRowView: View {
     let item: SidebarItem
     let isSelected: Bool
+    let isSidebarActive: Bool
     let onSelect: () -> Void
     @FocusState private var isFocused: Bool
 
     private var isGamepadFocused: Bool {
-        GamepadManager.shared.isConnected && isFocused
+        GamepadManager.shared.isConnected && isSidebarActive && (isSelected || isFocused)
     }
 
     var body: some View {
