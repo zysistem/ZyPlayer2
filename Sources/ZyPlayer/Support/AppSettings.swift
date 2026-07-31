@@ -183,8 +183,8 @@ struct SettingsData: Codable {
         let legacy = try? decoder.container(keyedBy: LegacyKeys.self)
         let series = ((try? legacy?.decodeIfPresent(String.self, forKey: .seriesTorrentAPIBase))
                       ?? nil) ?? ""
-        if stored.isEmpty || stored.localizedCaseInsensitiveContains("yts") || stored == "https://torrentio.strem.fun" {
-            torrentAPIBase = series.isEmpty ? TorrentioClient.defaultBase : series
+        if stored.isEmpty || stored.localizedCaseInsensitiveContains("yts") || stored.contains("torrentio.strem.fun") {
+            torrentAPIBase = TorrentioClient.defaultBase
         } else {
             torrentAPIBase = stored
         }

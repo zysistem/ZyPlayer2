@@ -90,17 +90,17 @@ struct TorrentioClient {
 
     var base: String
 
-    static let defaultBase = "https://torrentio.strem.fun/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg"
+    static let defaultBase = "https://stremio.torrentio.strem.fun"
 
-    /// Bölge engellemesini aşmak için otomatik olarak denenen yedek public
-    /// Torrentio ve alternatif Stremio torrent mirror'ları (Tam sağlayıcı yapılandırmalı).
+    /// Türkiye ISP engellerine karşı 1 numaralı çalışan mirror ile başlayan ve
+    /// sırayla denenen halka açık Torrentio / Stremio sunucuları.
     private static let fallbackMirrors = [
-        "https://torrentio.strem.fun/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg",
-        "https://stremio.torrentio.strem.fun/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg",
-        "https://torrentio.stremio.strem.fun/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg",
-        "https://torrentio.elfhosted.com/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg",
-        "https://torrentio.superstrem.io/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg",
-        "https://torrentio.run/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg"
+        "https://stremio.torrentio.strem.fun",
+        "https://torrentio.stremio.strem.fun",
+        "https://torrentio.elfhosted.com",
+        "https://torrentio.run",
+        "https://torrentio.superstrem.io",
+        "https://torrentio.strem.fun"
     ]
 
     /// Trackers to search, in the addon's own configuration syntax. Its full set
@@ -120,8 +120,7 @@ struct TorrentioClient {
         for suffix in ["/configure", "/manifest.json"] where trimmed.hasSuffix(suffix) {
             trimmed = String(trimmed.dropLast(suffix.count))
         }
-        if trimmed.contains("providers=") { return trimmed }
-        return trimmed + "/providers=" + Self.providers.joined(separator: ",")
+        return trimmed
     }
 
     /// Trackers added to every magnet. An addon hands over an info hash and
@@ -143,9 +142,10 @@ struct TorrentioClient {
         let trimmedBase = base.trimmingCharacters(in: .whitespacesAndNewlines)
         let isCustomBase = !trimmedBase.isEmpty
             && trimmedBase.lowercased() != Self.defaultBase.lowercased()
+            && trimmedBase.lowercased() != "https://torrentio.strem.fun"
 
         if isCustomBase {
-            if let customResults = try? await fetchStreams(from: configuredBase, imdbID: imdbID, season: season, episode: episode, timeout: 8), !customResults.isEmpty {
+            if let customResults = try? await fetchStreams(from: configuredBase, imdbID: imdbID, season: season, episode: episode, timeout: 5), !customResults.isEmpty {
                 return customResults
             }
         }
@@ -157,12 +157,11 @@ struct TorrentioClient {
             do {
                 let results = try await fetchStreams(from: mirrorBase, imdbID: imdbID,
                                                     season: season, episode: episode,
-                                                    timeout: 6)
+                                                    timeout: 4)
                 if !results.isEmpty {
                     return results
                 }
             } catch {
-                // DNS çözülemedi veya sunucu bulunamadı hatasını sessizce yut, diğer mirror'a geç
                 continue
             }
         }
