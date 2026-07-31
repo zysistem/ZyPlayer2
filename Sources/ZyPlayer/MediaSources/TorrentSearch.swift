@@ -90,23 +90,23 @@ struct TorrentioClient {
 
     var base: String
 
-    static let defaultBase = "https://torrentio.strem.fun/lite"
+    static let defaultBase = "https://torrentio.strem.fun/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg"
 
     /// Bölge engellemesini aşmak için otomatik olarak denenen yedek public
-    /// Torrentio ve alternatif Stremio torrent mirror'ları (Lite endpoint'li).
+    /// Torrentio ve alternatif Stremio torrent mirror'ları (Tam sağlayıcı yapılandırmalı).
     private static let fallbackMirrors = [
-        "https://torrentio.strem.fun/lite",
-        "https://stremio.torrentio.strem.fun/lite",
-        "https://torrentio.stremio.strem.fun/lite",
-        "https://torrentio.elfhosted.com/lite",
-        "https://torrentio.superstrem.io/lite",
-        "https://torrentio.run/lite"
+        "https://torrentio.strem.fun/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg",
+        "https://stremio.torrentio.strem.fun/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg",
+        "https://torrentio.stremio.strem.fun/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg",
+        "https://torrentio.elfhosted.com/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg",
+        "https://torrentio.superstrem.io/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg",
+        "https://torrentio.run/providers=yts,eztv,thepiratebay,torrentgalaxy,1337x,rarbg"
     ]
 
     /// Trackers to search, in the addon's own configuration syntax. Its full set
     /// includes regional and anime-only indexes whose releases are noise here.
     private static let providers = [
-        "eztv", "thepiratebay", "torrentgalaxy", "yts", "rarbg", "1337x"
+        "yts", "eztv", "thepiratebay", "torrentgalaxy", "1337x", "rarbg"
     ]
 
     /// Only these are offered. A 720p or an unlabelled release is not worth a
@@ -114,16 +114,13 @@ struct TorrentioClient {
     private static let acceptedQualityRanks: Set<Int> = [0, 1]
 
     /// The base with the provider selection appended.
-    ///
-    /// An address copied from the addon's own `/configure` page or `/manifest.json`
-    /// carries its settings in the path, so that is left untouched.
     private var configuredBase: String {
         var trimmed = base.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         for suffix in ["/configure", "/manifest.json"] where trimmed.hasSuffix(suffix) {
             trimmed = String(trimmed.dropLast(suffix.count))
         }
-        if trimmed.contains("=") || trimmed.hasSuffix("/lite") { return trimmed }
+        if trimmed.contains("providers=") { return trimmed }
         return trimmed + "/providers=" + Self.providers.joined(separator: ",")
     }
 
@@ -143,8 +140,6 @@ struct TorrentioClient {
     /// yanıt döner. Eğer tüm mirror'lar başarısız olursa doğrudan YTS API'ye
     /// (YIFY Official API) başvurur.
     func streams(imdbID: String, season: Int?, episode: Int?) async throws -> [TorrentOption] {
-        // Kullanıcı kendi adresini girdiyse doğrudan kullan — yedek instance
-        // listesini pas geç.
         let trimmedBase = base.trimmingCharacters(in: .whitespacesAndNewlines)
         let isCustomBase = !trimmedBase.isEmpty
             && trimmedBase.lowercased() != Self.defaultBase.lowercased()
@@ -154,17 +149,14 @@ struct TorrentioClient {
                                          season: season, episode: episode)
         }
 
-        // Varsayılan adres için bölge engeline karşı yedek instance'ları dene.
-        let providerConfig = "/providers=" + Self.providers.joined(separator: ",")
         var lastError: Error = ClientError.badBase
 
         for mirror in Self.fallbackMirrors {
             let mirrorBase = mirror.trimmingCharacters(in: .whitespacesAndNewlines)
                 .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            let fullBase = mirrorBase + providerConfig
 
             do {
-                let results = try await fetchStreams(from: fullBase, imdbID: imdbID,
+                let results = try await fetchStreams(from: mirrorBase, imdbID: imdbID,
                                                     season: season, episode: episode,
                                                     timeout: 8)
                 if !results.isEmpty {
