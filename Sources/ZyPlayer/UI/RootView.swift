@@ -997,22 +997,30 @@ private struct SidebarRowView: View {
 
     var body: some View {
         Button(action: onSelect) {
-            Label(item.title, systemImage: item.symbol)
-                .font(.system(size: 13, weight: (isSelected || isGamepadFocused) ? .semibold : .medium))
-                .foregroundStyle(isGamepadFocused ? AnyShapeStyle(Color.cyan) : (isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.primary)))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(isGamepadFocused ? Color.cyan.opacity(0.3) : (isSelected ? Color.white.opacity(0.12) : Color.clear))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(isGamepadFocused ? Color.cyan : Color.clear, lineWidth: 2)
-                )
-                .scaleEffect(isGamepadFocused ? 1.04 : 1.0)
-                .animation(.easeOut(duration: 0.12), value: isGamepadFocused)
+            HStack(spacing: 10) {
+                Image(systemName: item.symbol)
+                    .font(.system(size: 14))
+                    .frame(width: 20)
+
+                Text(item.title)
+                    .font(.system(size: 13, weight: (isSelected || isGamepadFocused) ? .semibold : .medium))
+
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(isGamepadFocused ? AnyShapeStyle(Color.cyan) : (isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.primary)))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isGamepadFocused ? Color.cyan.opacity(0.3) : (isSelected ? Color.white.opacity(0.12) : Color.clear))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(isGamepadFocused ? Color.cyan : Color.clear, lineWidth: 2)
+            )
+            .scaleEffect(isGamepadFocused ? 1.04 : 1.0)
+            .animation(.easeOut(duration: 0.12), value: isGamepadFocused)
         }
         .buttonStyle(.plain)
         .focusable()
