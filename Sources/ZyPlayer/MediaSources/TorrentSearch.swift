@@ -90,24 +90,20 @@ struct TorrentioClient {
 
     var base: String
 
-    static let defaultBase = "https://zysistem.net/server"
+    static let defaultBase = "https://torrentio.strem.fun/lite/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy"
 
-    /// Kullanıcının kendi sunucusu (zysistem.net/server) ile başlayan ve
-    /// sırayla denenen halka açık Torrentio / Stremio sunucuları.
+    /// Bölge engellemesini aşmak için sırayla denenen Torrentio Lite ve mirror sunucuları.
     private static let fallbackMirrors = [
-        "https://zysistem.net/server",
-        "https://comet.elfhosted.com",
-        "https://stremio.torrentio.strem.fun",
-        "https://torrentio.stremio.strem.fun",
-        "https://torrentio.elfhosted.com",
-        "https://torrentio.run",
-        "https://torrentio.strem.fun"
+        "https://torrentio.strem.fun/lite/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy",
+        "https://stremio.torrentio.strem.fun/lite/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy",
+        "https://torrentio.stremio.strem.fun/lite/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy",
+        "https://torrentio.elfhosted.com/lite/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy",
+        "https://torrentio.run/lite/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy"
     ]
 
-    /// Trackers to search, in the addon's own configuration syntax. Its full set
-    /// includes regional and anime-only indexes whose releases are noise here.
+    /// Seçili 7 ana provider (YTS, EZTV, RARBG, 1337x, ThePirateBay, KickassTorrents, TorrentGalaxy)
     private static let providers = [
-        "yts", "eztv", "thepiratebay", "torrentgalaxy", "1337x", "rarbg"
+        "yts", "eztv", "rarbg", "1337x", "thepiratebay", "kickasstorrents", "torrentgalaxy"
     ]
 
     /// Only these are offered. A 720p or an unlabelled release is not worth a
@@ -121,7 +117,8 @@ struct TorrentioClient {
         for suffix in ["/configure", "/manifest.json"] where trimmed.hasSuffix(suffix) {
             trimmed = String(trimmed.dropLast(suffix.count))
         }
-        return trimmed
+        if trimmed.contains("=") { return trimmed }
+        return trimmed + "/providers=" + Self.providers.joined(separator: ",")
     }
 
     /// Trackers added to every magnet. An addon hands over an info hash and
