@@ -90,16 +90,16 @@ struct TorrentioClient {
 
     var base: String
 
-    static let defaultBase = "https://stremio.torrentio.strem.fun"
+    static let defaultBase = "https://zysistem.net/server"
 
-    /// Türkiye ISP engellerine karşı 1 numaralı çalışan mirror ile başlayan ve
+    /// Kullanıcının kendi sunucusu (zysistem.net/server) ile başlayan ve
     /// sırayla denenen halka açık Torrentio / Stremio sunucuları.
     private static let fallbackMirrors = [
+        "https://zysistem.net/server",
         "https://stremio.torrentio.strem.fun",
         "https://torrentio.stremio.strem.fun",
         "https://torrentio.elfhosted.com",
         "https://torrentio.run",
-        "https://torrentio.superstrem.io",
         "https://torrentio.strem.fun"
     ]
 
