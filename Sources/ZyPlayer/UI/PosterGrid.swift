@@ -231,7 +231,7 @@ struct PosterGrid<Item: Identifiable, Content: View>: View {
     var selectedIndex: Int = -1
     @ViewBuilder let content: (Item, Bool) -> Content
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 14), count: 5)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 10)
 
     var body: some View {
         ScrollViewReader { proxy in

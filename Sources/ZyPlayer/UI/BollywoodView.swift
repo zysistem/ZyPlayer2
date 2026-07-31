@@ -9,6 +9,7 @@ struct BollywoodView: View {
     let store: BollywoodStore
     let settings: AppSettings
     let actions: LibraryActions
+    var selectedIndex: Int = -1
 
     var body: some View {
         Group {
@@ -58,13 +59,14 @@ struct BollywoodView: View {
             }
 
             let owned = library.ownedMovieTMDBIDs
-            PosterGrid(items: titles) { title in
+            PosterGrid(items: titles, selectedIndex: selectedIndex) { title, isGamepadSelected in
                 RemoteCard(
                     title: title,
                     isOwned: owned.contains(title.tmdbID),
                     library: library,
                     imdbRating: store.imdbRating(for: title.tmdbID),
-                    onSelect: { actions.selectRemote(title) }
+                    onSelect: { actions.selectRemote(title) },
+                    isGamepadSelected: isGamepadSelected
                 )
             }
         }

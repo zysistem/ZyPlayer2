@@ -5,6 +5,7 @@ struct AppleTVView: View {
     let library: LibraryStore
     let appleTV: AppleTVStore
     let actions: LibraryActions
+    var selectedIndex: Int = -1
 
     private enum Tab: String, CaseIterable, Identifiable {
         case movies, shows
@@ -58,12 +59,13 @@ struct AppleTVView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            PosterGrid(items: titles) { title in
+            PosterGrid(items: titles, selectedIndex: selectedIndex) { title, isGamepadSelected in
                 RemoteCard(
                     title: title,
                     isOwned: owned.contains(title.tmdbID),
                     library: library,
-                    onSelect: { actions.selectRemote(title) }
+                    onSelect: { actions.selectRemote(title) },
+                    isGamepadSelected: isGamepadSelected
                 )
             }
         }

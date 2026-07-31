@@ -188,7 +188,7 @@ struct RootView: View {
                     }
                 } else if focusZone == .content {
                     withAnimation(.easeOut(duration: 0.12)) {
-                        focusedPosterIndex += 4
+                        focusedPosterIndex += 10
                     }
                 }
             }
@@ -199,9 +199,9 @@ struct RootView: View {
                         selectFromSidebar(selection)
                     }
                 } else if focusZone == .content {
-                    if focusedPosterIndex >= 4 {
+                    if focusedPosterIndex >= 10 {
                         withAnimation(.easeOut(duration: 0.12)) {
-                            focusedPosterIndex -= 4
+                            focusedPosterIndex -= 10
                         }
                     } else {
                         withAnimation(.easeOut(duration: 0.15)) {
@@ -224,7 +224,7 @@ struct RootView: View {
             }
             GamepadManager.shared.onNavigateLeft = {
                 if focusZone == .content {
-                    if focusedPosterIndex % 4 == 0 || focusedPosterIndex == 0 {
+                    if focusedPosterIndex % 10 == 0 || focusedPosterIndex == 0 {
                         withAnimation(.easeOut(duration: 0.15)) {
                             focusZone = .sidebar
                         }
@@ -247,6 +247,14 @@ struct RootView: View {
                     case .shows:
                         if focusedPosterIndex >= 0 && focusedPosterIndex < library.shows.count {
                             actions.selectSeries(library.shows[focusedPosterIndex])
+                        }
+                    case .appleTV:
+                        if focusedPosterIndex >= 0 && focusedPosterIndex < appleTV.movies.count {
+                            actions.selectRemote(appleTV.movies[focusedPosterIndex])
+                        }
+                    case .bollywood:
+                        if focusedPosterIndex >= 0 && focusedPosterIndex < bollywood.all.count {
+                            actions.selectRemote(bollywood.all[focusedPosterIndex])
                         }
                     default:
                         BluetoothRemoteManager.shared.simulateSelectClick()
@@ -521,9 +529,9 @@ struct RootView: View {
             case .shows:     ShowsView(library: library, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .favorites: FavoritesView(library: library, actions: actions, stream: streamStore,
                                            onSelectStream: { route = .stream($0) })
-            case .appleTV:   AppleTVView(library: library, appleTV: appleTV, actions: actions)
+            case .appleTV:   AppleTVView(library: library, appleTV: appleTV, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .bollywood: BollywoodView(library: library, store: bollywood,
-                                           settings: settings, actions: actions)
+                                           settings: settings, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .downloads: DownloadsView(library: library, torrents: torrents, settings: settings,
                                            resume: resumeStore, onResume: resumeTorrent)
             case .settings:  SettingsView(library: library, smb: smb, drive: drive,
