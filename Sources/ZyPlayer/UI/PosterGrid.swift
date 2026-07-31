@@ -25,9 +25,10 @@ struct PosterCard: View {
     var isFocused: Bool = false
 
     @State private var isHovering = false
+    @FocusState private var isFocusState: Bool
 
     private var isHighlighted: Bool {
-        isHovering || isFocused
+        isHovering || isFocused || isFocusState
     }
 
     var body: some View {
@@ -35,21 +36,22 @@ struct PosterCard: View {
             ZStack(alignment: .bottom) {
                 artwork
                     .aspectRatio(2.0 / 3.0, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: 10)
                             .strokeBorder(
-                                .white.opacity(isHighlighted ? 0.95 : 0.08),
-                                lineWidth: isHighlighted ? 2 : 1
+                                isHighlighted ? Color.cyan : .white.opacity(0.08),
+                                lineWidth: isHighlighted ? 3.5 : 1
                             )
                     )
+                    .shadow(color: isHighlighted ? .cyan.opacity(0.7) : .black.opacity(0), radius: isHighlighted ? 16 : 0)
 
                 if progress > 0.01 && !isFinished {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Rectangle().fill(.black.opacity(0.5))
                             Rectangle()
-                                .fill(.white)
+                                .fill(isHighlighted ? Color.cyan : .white)
                                 .frame(width: geo.size.width * progress)
                         }
                     }
@@ -83,7 +85,8 @@ struct PosterCard: View {
             }
 
             Text(title)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 12, weight: isHighlighted ? .bold : .medium))
+                .foregroundStyle(isHighlighted ? .cyan : .primary)
                 .lineLimit(1)
             if !subtitle.isEmpty {
                 Text(subtitle)
@@ -92,11 +95,11 @@ struct PosterCard: View {
                     .lineLimit(1)
             }
         }
-        // A slight lift plus the white outline is the whole hover treatment;
-        // anything stronger fights the poster art.
-        .scaleEffect(isHighlighted ? 1.04 : 1)
-        .shadow(color: .black.opacity(isHighlighted ? 0.45 : 0), radius: 12, y: 5)
-        .animation(.easeOut(duration: 0.14), value: isHighlighted)
+        .scaleEffect(isHighlighted ? 1.07 : 1.0)
+        .shadow(color: .black.opacity(isHighlighted ? 0.6 : 0), radius: 14, y: 6)
+        .animation(.easeOut(duration: 0.15), value: isHighlighted)
+        .focusable()
+        .focused($isFocusState)
         .onHover { isHovering = $0 }
     }
 
