@@ -6,6 +6,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static weak var player: PlayerModel?
     static weak var streamer: TorrentStreamer?
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        if let iconImage = NSImage(named: "AppIcon") {
+            NSApp.applicationIconImage = iconImage
+        }
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first(where: { MediaTypes.isVideo($0) }) ?? urls.first else { return }
         Self.player?.open(url)
