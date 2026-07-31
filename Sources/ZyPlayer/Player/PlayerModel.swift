@@ -809,9 +809,10 @@ final class PlayerModel {
         // birleştirmek başlamayı gereksiz geciktiriyor. Tek parça (progressive)
         // bir akış gözle görülür farkla daha çabuk açılıyor; yoksa mpv normal
         // sırasına düşüyor.
+        // En az 1080p zorunlu: 1080p'nin altındaki akışlar hiçbir zaman seçilmez.
         core.loadFile(url, options: [
             "ytdl": "yes",
-            "ytdl-format": "best[height<=?1080][ext=mp4]/best[height<=?1080]/best"
+            "ytdl-format": "best[height>=1080][ext=mp4]/best[height>=1080]"
         ])
         core.play()
     }
