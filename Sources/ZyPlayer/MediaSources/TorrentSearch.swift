@@ -167,13 +167,19 @@ struct TorrentioClient {
             }
         }
 
-        // 2. Torrentio Cloudflare 522 veriyorsa veya engelliyse, The Pirate Bay (apibay.org) doğrudan REST API'ye başvur!
+        // 2. EZTV (eztvx.to) resmi API'sini dene
+        let eztvResults = await fetchEZTVStreams(imdbID: imdbID)
+        if !eztvResults.isEmpty {
+            return eztvResults
+        }
+
+        // 3. The Pirate Bay (apibay.org) doğrudan REST API'ye başvur!
         let pbResults = await fetchPirateBayStreams(imdbID: imdbID, title: title)
         if !pbResults.isEmpty {
             return pbResults
         }
 
-        // 3. Film isteklerinde YTS API'sini de dene
+        // 4. Film isteklerinde YTS API'sini de dene
         if season == nil {
             if let ytsResults = await fetchYTSStreams(imdbID: imdbID, title: title, year: year), !ytsResults.isEmpty {
                 return ytsResults
@@ -340,6 +346,67 @@ struct TorrentioClient {
         }
 
         return results.sorted { ($0.qualityRank, -$0.seeds) < ($1.qualityRank, -$1.seeds) }
+    }
+
+    /// eztvx.to resmi API'si üzerinden dizi ve film torrent akışlarını çeker.
+    private func fetchEZTVStreams(imdbID: String) async -> [TorrentOption] {
+        let numericID = imdbID.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)
+        guard !numericID.isEmpty else { return [] }
+
+        let endpoints = [
+            "https://eztvx.to/api/get-torrents?imdb_id=\(numericID)",
+            "https://eztv.re/api/get-torrents?imdb_id=\(numericID)",
+            "https://eztv.wf/api/get-torrents?imdb_id=\(numericID)"
+        ]
+
+        let trackersQuery = Self.trackers.map { "tr=" + $0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)! }.joined(separator: "&")
+
+        struct EZTVResponse: Decodable {
+            let torrents: [EZTVItem]?
+            struct EZTVItem: Decodable {
+                let hash: String?
+                let title: String?
+                let size_bytes: String?
+                let seeds: Int?
+                let leechers: Int?
+            }
+        }
+
+        for urlString in endpoints {
+            guard let url = URL(string: urlString) else { continue }
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 5
+
+            guard let (data, response) = try? await URLSession.shared.data(for: request),
+                  let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                  let decoded = try? JSONDecoder().decode(EZTVResponse.self, from: data),
+                  let items = decoded.torrents, !items.isEmpty else { continue }
+
+            let options = items.prefix(20).compactMap { item -> TorrentOption? in
+                guard let hash = item.hash, !hash.isEmpty else { return nil }
+                let bytes = Int64(item.size_bytes ?? "0") ?? 0
+                let formattedSize = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+                let seeds = item.seeds ?? 0
+                let itemTitle = item.title ?? "EZTV Release"
+                let magnet = "magnet:?xt=urn:btih:\(hash)&dn=\(itemTitle.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Video")&\(trackersQuery)"
+                let quality = Self.quality(inferredFrom: itemTitle)
+
+                return TorrentOption(
+                    id: hash,
+                    quality: quality,
+                    detail: "\(formattedSize) · 👤 \(seeds) · EZTV",
+                    seeds: seeds,
+                    peers: item.leechers ?? 0,
+                    provider: "EZTV",
+                    link: magnet,
+                    fileIndex: nil
+                )
+            }
+            if !options.isEmpty {
+                return options.sorted { ($0.qualityRank, -$0.seeds) < ($1.qualityRank, -$1.seeds) }
+            }
+        }
+        return []
     }
 
     /// 4K and 1080p only, and no telesyncs — including the ones that call

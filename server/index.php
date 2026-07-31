@@ -90,28 +90,37 @@ function fetchEZTV($imdbId) {
     $numericId = preg_replace('/[^\d]/', '', $imdbId);
     if (empty($numericId)) return [];
 
-    $json = httpGet("https://eztv.re/api/get-torrents?imdb_id=" . $numericId);
-    if (!$json) return [];
+    $urls = [
+        "https://eztvx.to/api/get-torrents?imdb_id=" . $numericId,
+        "https://eztv.re/api/get-torrents?imdb_id=" . $numericId,
+        "https://eztv.wf/api/get-torrents?imdb_id=" . $numericId
+    ];
 
-    $data = json_decode($json, true);
-    $torrents = $data['torrents'] ?? [];
-    if (!is_array($torrents)) return [];
+    foreach ($urls as $url) {
+        $json = httpGet($url);
+        if (!$json) continue;
 
-    $streams = [];
-    foreach (array_slice($torrents, 0, 15) as $item) {
-        if (!isset($item['hash']) || empty($item['hash'])) continue;
+        $data = json_decode($json, true);
+        $torrents = $data['torrents'] ?? [];
+        if (!is_array($torrents) || empty($torrents)) continue;
 
-        $sizeMB = round((int)($item['size_bytes'] ?? 0) / (1024 * 1024), 1);
-        $seeds = (int)($item['seeds'] ?? 0);
+        $streams = [];
+        foreach (array_slice($torrents, 0, 20) as $item) {
+            if (!isset($item['hash']) || empty($item['hash'])) continue;
 
-        $streams[] = [
-            "name" => "ZyPlayer\nTV",
-            "title" => ($item['title'] ?? 'EZTV') . "\n💾 {$sizeMB} MB  👤 {$seeds}  ⚙️ EZTV",
-            "infoHash" => strtolower($item['hash']),
-            "fileIdx" => 0
-        ];
+            $sizeMB = round((int)($item['size_bytes'] ?? 0) / (1024 * 1024), 1);
+            $seeds = (int)($item['seeds'] ?? 0);
+
+            $streams[] = [
+                "name" => "ZyPlayer\nTV",
+                "title" => ($item['title'] ?? 'EZTV') . "\n💾 {$sizeMB} MB  👤 {$seeds}  ⚙️ EZTV",
+                "infoHash" => strtolower($item['hash']),
+                "fileIdx" => 0
+            ];
+        }
+        if (!empty($streams)) return $streams;
     }
-    return $streams;
+    return [];
 }
 
 $yts = fetchYTS($imdbId);
