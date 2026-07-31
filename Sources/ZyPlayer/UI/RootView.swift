@@ -112,7 +112,32 @@ struct RootView: View {
                 StreamEpisodePicker(details: details, store: streamStore, resume: resumeStore)
             }
         }
-        .preferredColorScheme(settings.colorScheme)
+        .overlay(alignment: .top) {
+            if GamepadManager.shared.showConnectionToast {
+                HStack(spacing: 8) {
+                    Image(systemName: "gamecontroller.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.cyan)
+                    Text(GamepadManager.shared.toastMessage)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(.cyan.opacity(0.4), lineWidth: 1))
+                .shadow(color: .black.opacity(0.3), radius: 12, y: 4)
+                .padding(.top, 40)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if GamepadManager.shared.isConnected && player.currentURL == nil {
+                GamepadLegendHUD()
+                    .padding(20)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            }
+        }
         .onAppear {
             isFullscreen = NSApp.keyWindow?.styleMask.contains(.fullScreen) ?? false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -134,6 +159,10 @@ struct RootView: View {
                 }
             }
             BluetoothRemoteManager.shared.startGlobal(
+                onGlobalBack: handleBack,
+                onGlobalSearch: { searchText = "" }
+            )
+            GamepadManager.shared.start(
                 onGlobalBack: handleBack,
                 onGlobalSearch: { searchText = "" }
             )
@@ -980,16 +1009,45 @@ private struct WindowConfigurator: NSViewRepresentable {
     }
 }
 
+/// PlayStation / Gamepad bağlandığında gösterilen ikonlar ve kılavuz çubuğu.
+struct GamepadLegendHUD: View {
+    var body: some View {
+        HStack(spacing: 14) {
+            badge(icon: "multiply", color: .blue, text: "Seç / Oynat")
+            badge(icon: "circle", color: .red, text: "Geri")
+            badge(icon: "triangle", color: .green, text: "Arama")
+            badge(icon: "square", color: .pink, text: "Altyazı")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(.white.opacity(0.15), lineWidth: 1))
+        .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+    }
+
+    private func badge(icon: String, color: Color, text: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(color)
+                .frame(width: 18, height: 18)
+                .background(.white.opacity(0.12), in: Circle())
+            Text(text)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.9))
+        }
+    }
+}
+
 final class RootKeyMonitor {
     private var monitor: Any?
 
     func start(onEscape: @escaping () -> Void) {
         stop()
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
-            // Escape is keyCode 53
             if event.keyCode == 53 {
                 onEscape()
-                return nil // consumed
+                return nil
             }
             return event
         }

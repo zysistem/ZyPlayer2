@@ -167,10 +167,12 @@ struct PlayerView: View {
             model.restoreEngineHint = settings.translationEngine
             revealControls()
             BluetoothRemoteManager.shared.setPlayer(model, onClose: onClose)
+            GamepadManager.shared.setPlayer(model, onClose: onClose)
         }
         .onDisappear {
             hideTask?.cancel()
             BluetoothRemoteManager.shared.setPlayer(nil, onClose: nil)
+            GamepadManager.shared.setPlayer(nil, onClose: nil)
             NSCursor.unhide()
         }
     }
