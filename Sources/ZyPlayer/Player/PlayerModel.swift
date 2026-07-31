@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import AppKit
+import MediaPlayer
 
 /// Observable playback state the UI binds to. Owns the mpv engine and keeps a
 /// display-rate mirror of its properties.
@@ -834,9 +835,28 @@ final class PlayerModel {
         subtitleTracks = []
         selectedAudioID = nil
         selectedSubtitleID = nil
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
-    func togglePause() { core.togglePause() }
+    func togglePause() {
+        core.togglePause()
+        updateNowPlayingInfo()
+    }
+
+    func updateNowPlayingInfo() {
+        guard currentURL != nil else {
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            return
+        }
+
+        var info: [String: Any] = [:]
+        info[MPMediaItemPropertyTitle] = currentTitle.isEmpty ? "ZyPlayer Video" : currentTitle
+        info[MPMediaItemPropertyPlaybackDuration] = duration
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = position
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPaused ? 0.0 : 1.0
+
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
 
     func seek(by seconds: Double) {
         core.seek(by: seconds)

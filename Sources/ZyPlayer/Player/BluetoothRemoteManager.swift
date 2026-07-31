@@ -101,7 +101,7 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                     case 125: // Aşağı Ok (Ses Azalt)
                         if let p = self.activePlayer { p.setVolume(max(0, p.volume - 5)) }
                         return nil
-                    case 53, 51, 115, 117: // Escape, Backspace, Home, End (Kapat / Geri)
+                    case 53, 51, 115, 117, 2: // Escape, Backspace, Home, End, 'd' (Karabiner ac_back)
                         self.onClosePlayer?()
                         return nil
                     case 3: // 'f' tuşu (Tam Ekran)
@@ -116,14 +116,16 @@ final class BluetoothRemoteManager: @unchecked Sendable {
 
                     if !typing {
                         switch event.keyCode {
-                        case 53, 51, 115: // Escape, Backspace, Home (Geri Dön)
+                        case 53, 51, 115, 2: // Escape, Backspace, Home, 'd' (Karabiner ac_back -> Geri Dön)
                             self.onGlobalBack?()
+                            return nil
+                        case 3: // 'f' (Karabiner ac_search -> Arama)
+                            self.onGlobalSearch?()
                             return nil
                         case 36, 76, 65: // Return / Enter (OK Seçim Tuşu)
                             self.simulateSelectClick()
                             return nil
                         default:
-                            // Yön tuşları (123, 124, 125, 126) ve Tab tuşlarını engelleme, SwiftUI gezinmesine bırak
                             return event
                         }
                     }
