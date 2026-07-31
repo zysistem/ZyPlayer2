@@ -26,6 +26,8 @@ final class GamepadManager: @unchecked Sendable {
     var onNavigateLeft: (() -> Void)?
     var onNavigateRight: (() -> Void)?
     var onSelectKey: (() -> Void)?
+    var onShoulderLeft: (() -> Void)?  // L1 / L2 -> Sol Sidebar
+    var onShoulderRight: (() -> Void)? // R1 / R2 -> Sağ İçerik Alanı
 
     private init() {}
 
@@ -108,14 +110,20 @@ final class GamepadManager: @unchecked Sendable {
                 if pressed { self?.handleTriangleButton() }
             }
 
-            // L1 (Left Shoulder) -> 10sn Geri Sar
+            // L1 (Left Shoulder) & L2 (Left Trigger) -> Sol Menü veya 10sn Geri Sar
             extended.leftShoulder.valueChangedHandler = { [weak self] _, _, pressed in
                 if pressed { self?.handleL1Button() }
             }
+            extended.leftTrigger.valueChangedHandler = { [weak self] _, value, _ in
+                if value > 0.5 { self?.handleL1Button() }
+            }
 
-            // R1 (Right Shoulder) -> 10sn İleri Sar
+            // R1 (Right Shoulder) & R2 (Right Trigger) -> Sağ İçerik veya 10sn İleri Sar
             extended.rightShoulder.valueChangedHandler = { [weak self] _, _, pressed in
                 if pressed { self?.handleR1Button() }
+            }
+            extended.rightTrigger.valueChangedHandler = { [weak self] _, value, _ in
+                if value > 0.5 { self?.handleR1Button() }
             }
 
             // 🎯 PS5 Sol D-Pad Buton Dinleyicileri (Yukarı, Aşağı, Sol, Sağ)
@@ -193,13 +201,23 @@ final class GamepadManager: @unchecked Sendable {
 
     private func handleL1Button() {
         DispatchQueue.main.async { [weak self] in
-            self?.activePlayer?.seek(by: -10)
+            guard let self else { return }
+            if let player = self.activePlayer {
+                player.seek(by: -10)
+            } else {
+                self.onShoulderLeft?()
+            }
         }
     }
 
     private func handleR1Button() {
         DispatchQueue.main.async { [weak self] in
-            self?.activePlayer?.seek(by: 10)
+            guard let self else { return }
+            if let player = self.activePlayer {
+                player.seek(by: 10)
+            } else {
+                self.onShoulderRight?()
+            }
         }
     }
 

@@ -242,6 +242,17 @@ struct RootView: View {
                     BluetoothRemoteManager.shared.simulateSelectClick()
                 }
             }
+            GamepadManager.shared.onShoulderLeft = {
+                withAnimation(.spring(duration: 0.2)) {
+                    focusZone = .sidebar
+                }
+            }
+            GamepadManager.shared.onShoulderRight = {
+                withAnimation(.spring(duration: 0.2)) {
+                    focusZone = .content
+                    focusedPosterIndex = 0
+                }
+            }
             keyMonitor.start(onEscape: handleBack)
         }
         .onDisappear {
@@ -1105,17 +1116,32 @@ private struct WindowConfigurator: NSViewRepresentable {
 /// PlayStation / Gamepad bağlandığında gösterilen ikonlar ve kılavuz çubuğu.
 struct GamepadLegendHUD: View {
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
+            shoulderBadge(text: "L1", label: "Sol Menü")
+            shoulderBadge(text: "R1", label: "İçerik")
             badge(icon: "multiply", color: .blue, text: "Seç / Oynat")
             badge(icon: "circle", color: .red, text: "Geri")
             badge(icon: "triangle", color: .green, text: "Arama")
-            badge(icon: "square", color: .pink, text: "Altyazı")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(.ultraThinMaterial, in: Capsule())
         .overlay(Capsule().strokeBorder(.white.opacity(0.15), lineWidth: 1))
         .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+    }
+
+    private func shoulderBadge(text: String, label: String) -> some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .font(.system(size: 9, weight: .black))
+                .foregroundStyle(.black)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(Color.cyan, in: RoundedRectangle(cornerRadius: 4))
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.9))
+        }
     }
 
     private func badge(icon: String, color: Color, text: String) -> some View {
