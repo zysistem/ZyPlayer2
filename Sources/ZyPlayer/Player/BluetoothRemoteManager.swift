@@ -81,6 +81,8 @@ final class BluetoothRemoteManager: @unchecked Sendable {
 
             // 2. Normal Klavye / Kumanda Olayları (.keyDown)
             if event.type == .keyDown {
+                print("🎮 [ZyPlayer Kumanda] Basılan Tuş -> KeyCode: \(event.keyCode), Char: \(event.characters ?? ""), Modifier: \(event.modifierFlags)")
+
                 if isPlayerOpen {
                     // ── PLAYER (OYNATICI) MODU ──
                     switch event.keyCode {
