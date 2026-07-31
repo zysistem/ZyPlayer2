@@ -166,7 +166,13 @@ struct PlayerView: View {
             // Kayıtlı çeviri aranırken hangi motorun çevirisi yeğlensin.
             model.restoreEngineHint = settings.translationEngine
             revealControls()
-            playerKeyMonitor.start(model: model, onClose: onClose, onKeyInteraction: revealControls)
+            playerKeyMonitor.start(
+                model: model,
+                onClose: onClose,
+                onKeyInteraction: revealControls,
+                onPreviousEpisode: onPreviousEpisode,
+                onNextEpisode: onNextEpisode
+            )
         }
         .onDisappear {
             hideTask?.cancel()
@@ -801,12 +807,57 @@ struct GlassMenuStyle: MenuStyle {
 /// a menu or the drag grip, and never gets it back — which made space and the
 /// arrow keys work only some of the time. A monitor sees the keys regardless of
 /// which subview holds focus.
+///
+/// Bluetooth remote desteği: macOS'un .systemDefined olayları aracılığıyla
+/// gelen medya tuşları (Play/Pause, Next, Previous, Rewind, Fast-Forward)
+/// da yakalanır. Huayu RC-BT1846 ve benzeri Chromecast kumandalar bu
+/// mekanizmayla çalışır.
 final class PlayerKeyMonitor {
     private var monitor: Any?
 
-    func start(model: PlayerModel, onClose: @escaping () -> Void, onKeyInteraction: @escaping () -> Void) {
+    func start(
+        model: PlayerModel,
+        onClose: @escaping () -> Void,
+        onKeyInteraction: @escaping () -> Void,
+        onPreviousEpisode: (() -> Void)? = nil,
+        onNextEpisode: (() -> Void)? = nil
+    ) {
         stop()
-        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+        // .systemDefined: Bluetooth kumandaların medya tuşları (Play/Pause,
+        // Next, Previous, Rewind) bu olay tipiyle gelir.
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .systemDefined]) { event in
+
+            // ── Bluetooth / medya tuşu olayları ──────────────────────────────
+            // NX_SUBTYPE_AUX_CONTROL_BUTTONS = 8
+            if event.type == .systemDefined && event.subtype.rawValue == 8 {
+                let keyCode  = Int32(event.data1) >> 16 & 0xFF
+                // keyDown: repeat bit clear + key-down flag
+                let keyDown  = ((event.data1) >> 8) & 1 == 0
+                guard keyDown else { return event }
+                onKeyInteraction()
+                switch keyCode {
+                case 16: // NX_KEYTYPE_PLAY — Play/Pause tuşu
+                    model.togglePause()
+                    return nil
+                case 17: // NX_KEYTYPE_NEXT — İleri sarma / sonraki bölüm
+                    if let next = onNextEpisode { next() } else { model.seek(by: 30) }
+                    return nil
+                case 18: // NX_KEYTYPE_PREVIOUS — Geri sarma / önceki bölüm
+                    if let prev = onPreviousEpisode { prev() } else { model.seek(by: -30) }
+                    return nil
+                case 19: // NX_KEYTYPE_FAST — Hızlı ileri
+                    model.seek(by: 30)
+                    return nil
+                case 20: // NX_KEYTYPE_REWIND — Hızlı geri
+                    model.seek(by: -30)
+                    return nil
+                default:
+                    break
+                }
+                return event
+            }
+
+            // ── Normal klavye / HID tuşu olayları ────────────────────────────
             // Never steal keys from a text field — the subtitle search sheet and
             // the settings fields need them.
             if Self.isTypingContext() { return event }
@@ -818,21 +869,34 @@ final class PlayerKeyMonitor {
             onKeyInteraction()
 
             switch event.keyCode {
-            case 49: model.togglePause()                    // space
-            case 123: model.seek(by: -5)                    // ←
-            case 124: model.seek(by: 5)                     // →
-            case 126: model.setVolume(model.volume + 5)     // ↑
-            case 125: model.setVolume(model.volume - 5)     // ↓
-            case 3: model.toggleFullscreen()                // f
-            case 53: onClose()                              // esc
+            case 49:        model.togglePause()             // space
+            case 36, 76:    model.togglePause()             // return / keypad-enter (OK butonu)
+
+            // Yön tuşları: 10 saniyelik adım kumanda kullanımı için daha doğal.
+            case 123:       model.seek(by: -10)             // ←
+            case 124:       model.seek(by: 10)              // →
+
+            // Yukarı/aşağı: ses seviyesi.
+            case 126:       model.setVolume(model.volume + 5)   // ↑
+            case 125:       model.setVolume(model.volume - 5)   // ↓
+
+            case 3:         model.toggleFullscreen()        // f
+
+            // Geri tuşları: Escape ve Delete ile kapat.
+            case 53:        onClose()                       // esc
+            case 51:        onClose()                       // backspace / back butonu
+
+            // Home tuşu (kumandanın ev butonu) → player'dan çık.
+            case 115:       onClose()                       // home
+
             case 1:                                         // s
                 model.selectSubtitle(
                     model.selectedSubtitleID == nil ? model.subtitleTracks.first : nil
                 )
-            // mpv's own sync keys, so muscle memory carries over.
-            case 6: model.shiftSubtitleDelay(by: -0.1)      // z — altyazıyı geri al
-            case 7: model.shiftSubtitleDelay(by: 0.1)       // x — altyazıyı ileri al
-            case 8: model.resetSubtitleDelay()              // c — sıfırla
+            // mpv'nin kendi senkron tuşları, kas hafızası devreye girsin.
+            case 6:         model.shiftSubtitleDelay(by: -0.1)  // z — altyazıyı geri al
+            case 7:         model.shiftSubtitleDelay(by: 0.1)   // x — altyazıyı ileri al
+            case 8:         model.resetSubtitleDelay()          // c — sıfırla
             default:
                 return event
             }
