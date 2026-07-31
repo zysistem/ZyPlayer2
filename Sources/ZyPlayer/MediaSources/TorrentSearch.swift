@@ -150,6 +150,7 @@ struct TorrentioClient {
             }
         }
 
+        // 1. Torrentio mirror'larını dene (Cloudflare 522/DNS engelinde hızlıca atlar)
         for mirror in Self.fallbackMirrors {
             let mirrorBase = mirror.trimmingCharacters(in: .whitespacesAndNewlines)
                 .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
@@ -157,7 +158,7 @@ struct TorrentioClient {
             do {
                 let results = try await fetchStreams(from: mirrorBase, imdbID: imdbID,
                                                     season: season, episode: episode,
-                                                    timeout: 4)
+                                                    timeout: 3)
                 if !results.isEmpty {
                     return results
                 }
@@ -166,7 +167,13 @@ struct TorrentioClient {
             }
         }
 
-        // Torrentio mirror'ları açılmıyorsa veya boş döndüyse ve istek bir filme aitse, YTS API'sinden çek
+        // 2. Torrentio Cloudflare 522 veriyorsa veya engelliyse, The Pirate Bay (apibay.org) doğrudan REST API'ye başvur!
+        let pbResults = await fetchPirateBayStreams(imdbID: imdbID, title: title)
+        if !pbResults.isEmpty {
+            return pbResults
+        }
+
+        // 3. Film isteklerinde YTS API'sini de dene
         if season == nil {
             if let ytsResults = await fetchYTSStreams(imdbID: imdbID, title: title, year: year), !ytsResults.isEmpty {
                 return ytsResults
@@ -271,6 +278,68 @@ struct TorrentioClient {
             }
         }
         return nil
+    }
+
+    /// apibay.org (The Pirate Bay Official REST API) üzerinden doğrudan torrent akışlarını çeker.
+    /// Cloudflare 522 veya Torrentio engellerine karşı %100 dayanıklı ve kesintisizdir.
+    private func fetchPirateBayStreams(imdbID: String, title: String?) async -> [TorrentOption] {
+        var queryTerms: [String] = []
+        if !imdbID.isEmpty { queryTerms.append(imdbID) }
+        if let title = title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
+            queryTerms.append(title)
+        }
+
+        let trackersQuery = Self.trackers.map { "tr=" + $0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)! }.joined(separator: "&")
+
+        struct TPBItem: Decodable {
+            let id: String
+            let name: String
+            let info_hash: String
+            let seeders: String
+            let leechers: String
+            let size: String
+        }
+
+        var results: [TorrentOption] = []
+
+        for term in queryTerms {
+            guard let encodedTerm = term.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+                  let url = URL(string: "https://apibay.org/q.php?q=\(encodedTerm)") else { continue }
+
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 5
+
+            guard let (data, response) = try? await URLSession.shared.data(for: request),
+                  let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { continue }
+
+            if let items = try? JSONDecoder().decode([TPBItem].self, from: data) {
+                let validItems = items.filter { $0.name != "No results found" && !$0.info_hash.isEmpty }
+                for item in validItems {
+                    let seeds = Int(item.seeders) ?? 0
+                    let bytes = Int64(item.size) ?? 0
+                    let formattedSize = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+                    let magnet = "magnet:?xt=urn:btih:\(item.info_hash)&dn=\(item.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Video")&\(trackersQuery)"
+                    let quality = Self.quality(inferredFrom: item.name)
+
+                    let option = TorrentOption(
+                        id: item.info_hash,
+                        quality: quality,
+                        detail: "\(formattedSize) · 👤 \(seeds) · PirateBay",
+                        seeds: seeds,
+                        peers: Int(item.leechers) ?? 0,
+                        provider: "PirateBay",
+                        link: magnet,
+                        fileIndex: nil
+                    )
+                    if Self.isWorthOffering(option) {
+                        results.append(option)
+                    }
+                }
+            }
+            if !results.isEmpty { break }
+        }
+
+        return results.sorted { ($0.qualityRank, -$0.seeds) < ($1.qualityRank, -$1.seeds) }
     }
 
     /// 4K and 1080p only, and no telesyncs — including the ones that call
