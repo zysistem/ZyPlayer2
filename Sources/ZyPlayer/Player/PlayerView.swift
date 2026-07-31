@@ -800,20 +800,12 @@ struct GlassMenuStyle: MenuStyle {
     }
 }
 
-/// Routes playback keys with a local event monitor rather than first-responder
-/// handling.
-///
-/// A responder-based view loses focus the moment the user touches the scrubber,
-/// a menu or the drag grip, and never gets it back — which made space and the
-/// arrow keys work only some of the time. A monitor sees the keys regardless of
-/// which subview holds focus.
-///
-/// Bluetooth remote desteği: macOS'un .systemDefined olayları aracılığıyla
-/// gelen medya tuşları (Play/Pause, Next, Previous, Rewind, Fast-Forward)
-/// da yakalanır. Huayu RC-BT1846 ve benzeri Chromecast kumandalar bu
-/// mekanizmayla çalışır.
+import MediaPlayer
+
+/// Routes playback keys with a local event monitor and MPRemoteCommandCenter for Bluetooth remotes.
 final class PlayerKeyMonitor {
     private var monitor: Any?
+    private var systemMonitor: Any?
 
     func start(
         model: PlayerModel,
@@ -823,100 +815,198 @@ final class PlayerKeyMonitor {
         onNextEpisode: (() -> Void)? = nil
     ) {
         stop()
-        // .systemDefined: Bluetooth kumandaların medya tuşları (Play/Pause,
-        // Next, Previous, Rewind) bu olay tipiyle gelir.
+
+        // 1. Hardware Bluetooth Media Remote commands via macOS MPRemoteCommandCenter
+        setupRemoteCommandCenter(
+            model: model,
+            onPreviousEpisode: onPreviousEpisode,
+            onNextEpisode: onNextEpisode
+        )
+
+        // 2. Local Key Event Monitor for Keyboard / HID Remote Events
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .systemDefined]) { event in
-
-            // ── Bluetooth / medya tuşu olayları ──────────────────────────────
-            // NX_SUBTYPE_AUX_CONTROL_BUTTONS = 8
-            if event.type == .systemDefined && event.subtype.rawValue == 8 {
-                let keyCode  = Int32(event.data1) >> 16 & 0xFF
-                // keyDown: repeat bit clear + key-down flag
-                let keyDown  = ((event.data1) >> 8) & 1 == 0
-                guard keyDown else { return event }
-                onKeyInteraction()
-                switch keyCode {
-                case 16: // NX_KEYTYPE_PLAY — Play/Pause tuşu
-                    model.togglePause()
-                    return nil
-                case 17: // NX_KEYTYPE_NEXT — İleri sarma / sonraki bölüm
-                    if let next = onNextEpisode { next() } else { model.seek(by: 30) }
-                    return nil
-                case 18: // NX_KEYTYPE_PREVIOUS — Geri sarma / önceki bölüm
-                    if let prev = onPreviousEpisode { prev() } else { model.seek(by: -30) }
-                    return nil
-                case 19: // NX_KEYTYPE_FAST — Hızlı ileri
-                    model.seek(by: 30)
-                    return nil
-                case 20: // NX_KEYTYPE_REWIND — Hızlı geri
-                    model.seek(by: -30)
-                    return nil
-                default:
-                    break
-                }
-                return event
-            }
-
-            // ── Normal klavye / HID tuşu olayları ────────────────────────────
-            // Never steal keys from a text field — the subtitle search sheet and
-            // the settings fields need them.
-            if Self.isTypingContext() { return event }
-            // Leave menu shortcuts (⌘O, ⌘,) alone.
-            if event.modifierFlags.intersection([.command, .control, .option]).isEmpty == false {
-                return event
-            }
-
             onKeyInteraction()
 
+            // ── Bluetooth / Medya Tuşları (.systemDefined) ──
+            if event.type == .systemDefined {
+                let subtype = event.subtype.rawValue
+                if subtype == 8 { // Aux control buttons (Media keys)
+                    let keyCode = Int32(event.data1) >> 16 & 0xFF
+                    let keyFlags = (event.data1 & 0x0000FFFF)
+                    let keyDown = (((keyFlags & 0xFF00) >> 8) & 0x1) == 0
+
+                    if keyDown {
+                        switch keyCode {
+                        case 16, 0, 100: // Play/Pause (Toggle)
+                            model.togglePause()
+                            return nil
+                        case 17: // Next
+                            if let next = onNextEpisode { next() } else { model.seek(by: 30) }
+                            return nil
+                        case 18: // Previous
+                            if let prev = onPreviousEpisode { prev() } else { model.seek(by: -30) }
+                            return nil
+                        case 19, 9: // Fast Forward / Fast
+                            model.seek(by: 10)
+                            return nil
+                        case 20, 10: // Rewind
+                            model.seek(by: -10)
+                            return nil
+                        case 7: // Mute
+                            model.setVolume(model.volume > 0 ? 0 : 100)
+                            return nil
+                        default:
+                            break
+                        }
+                    }
+                }
+            }
+
+            // Typing context / Text fields check
+            if Self.isTypingContext() { return event }
+
+            // Skip when standard command shortcuts are used (except standalone keys)
+            if !event.modifierFlags.intersection([.command, .control, .option]).isEmpty {
+                return event
+            }
+
             switch event.keyCode {
-            case 49:        model.togglePause()             // space
-            case 36, 76:    model.togglePause()             // return / keypad-enter (OK butonu)
+            // OK / Select / Play-Pause Button
+            case 36, 76, 49, 65: // Return, Keypad Enter, Space, Numpad Enter
+                model.togglePause()
+                return nil
 
-            // Yön tuşları: 10 saniyelik adım kumanda kullanımı için daha doğal.
-            case 123:       model.seek(by: -10)             // ←
-            case 124:       model.seek(by: 10)              // →
+            // Directional D-Pad (Sol / Sağ)
+            case 123: // Left Arrow
+                model.seek(by: -10)
+                return nil
+            case 124: // Right Arrow
+                model.seek(by: 10)
+                return nil
 
-            // Yukarı/aşağı: ses seviyesi.
-            case 126:       model.setVolume(model.volume + 5)   // ↑
-            case 125:       model.setVolume(model.volume - 5)   // ↓
+            // Directional D-Pad (Yukarı / Aşağı -> Ses)
+            case 126: // Up Arrow
+                model.setVolume(min(100, model.volume + 5))
+                return nil
+            case 125: // Down Arrow
+                model.setVolume(max(0, model.volume - 5))
+                return nil
 
-            case 3:         model.toggleFullscreen()        // f
+            // Fullscreen
+            case 3: // 'f' key
+                model.toggleFullscreen()
+                return nil
 
-            // Geri tuşları: Escape ve Delete ile kapat.
-            case 53:        onClose()                       // esc
-            case 51:        onClose()                       // backspace / back butonu
+            // Back / Exit / Escape / Home
+            case 53, 51, 115, 117: // Esc, Backspace/Delete, Home, End
+                onClose()
+                return nil
 
-            // Home tuşu (kumandanın ev butonu) → player'dan çık.
-            case 115:       onClose()                       // home
-
-            case 1:                                         // s
+            // Subtitle toggle & sync
+            case 1: // 's' key
                 model.selectSubtitle(
                     model.selectedSubtitleID == nil ? model.subtitleTracks.first : nil
                 )
-            // mpv'nin kendi senkron tuşları, kas hafızası devreye girsin.
-            case 6:         model.shiftSubtitleDelay(by: -0.1)  // z — altyazıyı geri al
-            case 7:         model.shiftSubtitleDelay(by: 0.1)   // x — altyazıyı ileri al
-            case 8:         model.resetSubtitleDelay()          // c — sıfırla
+                return nil
+            case 6: // 'z'
+                model.shiftSubtitleDelay(by: -0.1)
+                return nil
+            case 7: // 'x'
+                model.shiftSubtitleDelay(by: 0.1)
+                return nil
+            case 8: // 'c'
+                model.resetSubtitleDelay()
+                return nil
+
             default:
                 return event
             }
-            return nil    // consumed
+        }
+    }
+
+    private func setupRemoteCommandCenter(
+        model: PlayerModel,
+        onPreviousEpisode: (() -> Void)?,
+        onNextEpisode: (() -> Void)?
+    ) {
+        let center = MPRemoteCommandCenter.shared()
+
+        center.togglePlayPauseCommand.removeTarget(nil)
+        center.playCommand.removeTarget(nil)
+        center.pauseCommand.removeTarget(nil)
+        center.nextTrackCommand.removeTarget(nil)
+        center.previousTrackCommand.removeTarget(nil)
+        center.skipForwardCommand.removeTarget(nil)
+        center.skipBackwardCommand.removeTarget(nil)
+
+        center.togglePlayPauseCommand.isEnabled = true
+        center.togglePlayPauseCommand.addTarget { _ in
+            Task { @MainActor in model.togglePause() }
+            return .success
+        }
+
+        center.playCommand.isEnabled = true
+        center.playCommand.addTarget { _ in
+            Task { @MainActor in if model.isPaused { model.togglePause() } }
+            return .success
+        }
+
+        center.pauseCommand.isEnabled = true
+        center.pauseCommand.addTarget { _ in
+            Task { @MainActor in if !model.isPaused { model.togglePause() } }
+            return .success
+        }
+
+        center.nextTrackCommand.isEnabled = true
+        center.nextTrackCommand.addTarget { _ in
+            Task { @MainActor in
+                if let next = onNextEpisode { next() } else { model.seek(by: 30) }
+            }
+            return .success
+        }
+
+        center.previousTrackCommand.isEnabled = true
+        center.previousTrackCommand.addTarget { _ in
+            Task { @MainActor in
+                if let prev = onPreviousEpisode { prev() } else { model.seek(by: -30) }
+            }
+            return .success
+        }
+
+        center.skipForwardCommand.preferredIntervals = [10]
+        center.skipForwardCommand.isEnabled = true
+        center.skipForwardCommand.addTarget { _ in
+            Task { @MainActor in model.seek(by: 10) }
+            return .success
+        }
+
+        center.skipBackwardCommand.preferredIntervals = [10]
+        center.skipBackwardCommand.isEnabled = true
+        center.skipBackwardCommand.addTarget { _ in
+            Task { @MainActor in model.seek(by: -10) }
+            return .success
         }
     }
 
     func stop() {
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
+
+        let center = MPRemoteCommandCenter.shared()
+        center.togglePlayPauseCommand.removeTarget(nil)
+        center.playCommand.removeTarget(nil)
+        center.pauseCommand.removeTarget(nil)
+        center.nextTrackCommand.removeTarget(nil)
+        center.previousTrackCommand.removeTarget(nil)
+        center.skipForwardCommand.removeTarget(nil)
+        center.skipBackwardCommand.removeTarget(nil)
     }
 
-    /// True when a text field (or its field editor) is first responder, or a
-    /// sheet is up.
     private static func isTypingContext() -> Bool {
         guard let window = NSApp.keyWindow else { return false }
         if window.sheets.isEmpty == false { return true }
         guard let responder = window.firstResponder else { return false }
         if responder is NSTextView || responder is NSTextField { return true }
-        // The field editor reports the text view; check its delegate too.
         if let textView = responder as? NSTextView, textView.isFieldEditor { return true }
         return false
     }
