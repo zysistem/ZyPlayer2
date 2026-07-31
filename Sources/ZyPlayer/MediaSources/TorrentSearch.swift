@@ -96,6 +96,7 @@ struct TorrentioClient {
     /// sırayla denenen halka açık Torrentio / Stremio sunucuları.
     private static let fallbackMirrors = [
         "https://zysistem.net/server",
+        "https://comet.elfhosted.com",
         "https://stremio.torrentio.strem.fun",
         "https://torrentio.stremio.strem.fun",
         "https://torrentio.elfhosted.com",
@@ -428,16 +429,30 @@ struct TorrentioClient {
         struct Stream: Decodable {
             var name: String?
             var title: String?
+            var description: String?
             var infoHash: String?
+            var url: String?
             var fileIdx: Int?
         }
     }
 
     private static func option(from stream: StreamResponse.Stream) -> TorrentOption? {
-        guard let hash = stream.infoHash, !hash.isEmpty else { return nil }
+        let link: String
+        let id: String
 
-        let title = stream.title ?? ""
-        let lines = title.split(separator: "\n").map(String.init)
+        if let hash = stream.infoHash, !hash.isEmpty {
+            id = hash
+            let releaseName = (stream.title ?? "").split(separator: "\n").first.map(String.init) ?? ""
+            link = magnet(hash: hash, name: releaseName)
+        } else if let streamURL = stream.url, !streamURL.isEmpty {
+            id = streamURL
+            link = streamURL
+        } else {
+            return nil
+        }
+
+        let rawTitle = stream.title ?? stream.description ?? stream.name ?? "Stremio Stream"
+        let lines = rawTitle.split(separator: "\n").map(String.init)
         let releaseName = lines.first ?? ""
 
         let quality = (stream.name ?? "")
@@ -448,23 +463,22 @@ struct TorrentioClient {
             .trimmingCharacters(in: .whitespaces)
             ?? Self.quality(inferredFrom: releaseName)
 
-        let seeds = Int(first(match: "👤\\s*([0-9]+)", in: title) ?? "") ?? 0
-        let size = first(match: "💾\\s*([0-9.,]+\\s*[KMGT]?B)", in: title) ?? ""
-        let provider = first(match: "⚙️\\s*([^\\s\n]+)", in: title)
+        let seeds = Int(first(match: "👤\\s*([0-9]+)", in: rawTitle) ?? "") ?? 0
+        let size = first(match: "💾\\s*([0-9.,]+\\s*[KMGT]?B)", in: rawTitle) ?? ""
+        let provider = first(match: "⚙️\\s*([^\\s\n]+)", in: rawTitle)
 
         var parts: [String] = []
         if !releaseName.isEmpty { parts.append(releaseName) }
         if !size.isEmpty { parts.append(size) }
 
         return TorrentOption(
-            id: hash,
+            id: id,
             quality: quality.isEmpty ? Self.quality(inferredFrom: releaseName) : quality,
             detail: parts.joined(separator: " · "),
             seeds: seeds,
-            // The protocol reports watchers, not leechers; there is no peer count.
             peers: 0,
             provider: provider,
-            link: magnet(hash: hash, name: releaseName),
+            link: link,
             fileIndex: stream.fileIdx
         )
     }
