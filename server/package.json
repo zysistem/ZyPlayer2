@@ -1,0 +1,13 @@
+{
+  "name": "zyplayer-torrent-server",
+  "version": "1.0.0",
+  "description": "ZyPlayer Self-Hosted Torrent Provider Server",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  }
+}
