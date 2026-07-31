@@ -1,0 +1,737 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0236F5D14735ABBC25A28455 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FD3E2DFFE68414148F4E381 /* AppSettings.swift */; };
+		024188B239A6DFD59873B548 /* SMBShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = F175BB903E3C4EDBC5576688 /* SMBShare.swift */; };
+		027AE1BEEF27C8389A428C93 /* TMDBClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE1237F2BBDCFC05972C4A2 /* TMDBClient.swift */; };
+		07537C88D2811F88144E298E /* StreamRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6C528C68403C8D149107FB1 /* StreamRegistry.swift */; };
+		089D985856AB0B1EEFCE005A /* StreamingProviderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BACE7B4A5552A4E51CECFF74 /* StreamingProviderStore.swift */; };
+		1386F79D3DA1E5C5971D508B /* LibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2457DD1AAF13A09AB5F2F6A6 /* LibraryStore.swift */; };
+		17C56D7C14F8B6A20E6A3C61 /* SubtitleStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0751D5968748550F613C1F88 /* SubtitleStyle.swift */; };
+		189AB6C4E1A75D6A7A532FB7 /* MediaModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35019645E5A4DFFFBEC79284 /* MediaModels.swift */; };
+		251F5ECE76A0D04820EC3161 /* TorrentEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40FD3E2AB53B9F702817F9E6 /* TorrentEngine.swift */; };
+		26D6E9569A85F175D2A9DDC9 /* FilenameParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B15CB9CDAD64D9FD987AC0E5 /* FilenameParser.swift */; };
+		29B9791EB501B63E84984167 /* AppleTVView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2275E2A0F77EE9F97F836328 /* AppleTVView.swift */; };
+		2E7539F21B993ED78B7192EC /* StreamingShelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD647D3BD6F03D2F61CC8170 /* StreamingShelves.swift */; };
+		30B17B19DB7B76C8C5EEC4D2 /* PowerAssertion.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF6A93C296FC019D7D80D4A6 /* PowerAssertion.swift */; };
+		31631D4F5523EFEF05E95B85 /* MPVGLView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E09491C644E4453F7207441B /* MPVGLView.swift */; };
+		33B3D2BBF6943AEFB3360544 /* OpenSubtitlesHash.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12921A4926595DE0D95E846F /* OpenSubtitlesHash.swift */; };
+		38CE0F0EA204B4207F6DBC14 /* SubtitleTranslation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6C6119A71A034A4651F86D5 /* SubtitleTranslation.swift */; };
+		3A8B99FF98F29C2D39634E16 /* IMDbID.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA5A0711AE976ED842AF7E91 /* IMDbID.swift */; };
+		3C13148E4533B2BAD431C9B9 /* MetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107297AA174541F1FF0505C6 /* MetadataService.swift */; };
+		3D2205266208694D47EE59D0 /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D5301410FE25E896ECE2E4 /* DetailView.swift */; };
+		3F899B66345BF0E825B61E76 /* TorrentPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4494905006B6546FFF7DBBF1 /* TorrentPickerView.swift */; };
+		3F8DE6B49475FB441FA1490C /* SubtitlePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F0937596E06D629C2FFE31 /* SubtitlePreview.swift */; };
+		3FAE35E8B7CCA2EE2DA01276 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B38AD8C0CBCE25A0B3D0C6CB /* PlayerView.swift */; };
+		410F3E8F7B2D87DD41E33F84 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFDE9F11281381575C40527D /* Keychain.swift */; };
+		4B12FCA28D775502DD398450 /* GoogleDriveSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B3568E1587FDDFD2C6BBFB4 /* GoogleDriveSettingsView.swift */; };
+		4B9ACFCA056CF19D1DAADE83 /* StremioSubtitleClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD9AE80A806079CF589ECF5C /* StremioSubtitleClient.swift */; };
+		4D1F3B9020E5E1F796AC4EE5 /* SubtitleAddon.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C513E989F046CF8221AC2D /* SubtitleAddon.swift */; };
+		547F26EC6B55F4E09D86EAD6 /* PosterGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73E907F3FE63DACDC896F388 /* PosterGrid.swift */; };
+		5609B57FEDF571EB121F9EF3 /* CategoryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A24CD6490B9E8913EE1E1C /* CategoryViews.swift */; };
+		56E763DD482775DF34F97B22 /* TorrentSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58A4DDE12BA9BADD848EEC5F /* TorrentSearch.swift */; };
+		5B2D96C4EFE552C2B666AA74 /* MatchPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F463C1984F9D48215E353A09 /* MatchPickerView.swift */; };
+		607E818A3FB12CD465CC3C99 /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C0225881ABC74B7F585B0A /* DownloadsView.swift */; };
+		60F15086CC148166B98C505C /* TorrentStream in Resources */ = {isa = PBXBuildFile; fileRef = F68F826FEA9BFEC33ABC7A50 /* TorrentStream */; };
+		627C1E69E00908B056A8105F /* MediaTrack.swift in Sources */ = {isa = PBXBuildFile; fileRef = D303CC5542C0BEFC7D8A12B4 /* MediaTrack.swift */; };
+		63FBBC646AD46F479B5FE71A /* LibraryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CE826177C9F9775EBF5A460 /* LibraryScanner.swift */; };
+		64BAB00BFEB20F1102960150 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 86C353680C78B8CFEF6703E1 /* AppIcon.icns */; };
+		696FB3982A8E01B3C78E8D2C /* RemoteDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB6C27FFBBF8BAC03A8D5C9C /* RemoteDetailView.swift */; };
+		6FCA2ED777C9D9D71569047E /* StreamModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED78B38A12A01F8A80A8EF16 /* StreamModels.swift */; };
+		711A4189003EE8473F30641C /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60C5C0A206F7AAA72301DE54 /* RootView.swift */; };
+		7282E57197D1B09C8D1CE743 /* YouTubeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50B23BF3D16A8682FEFC7EB3 /* YouTubeStore.swift */; };
+		74D68463F4739C412B4C6268 /* WebFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F71FBE8A7DCFD87F939CA66 /* WebFetcher.swift */; };
+		77A1D84CC59513050B06C971 /* TranslatedSubtitleCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28913DBDFD6C8BF1FDC03C3D /* TranslatedSubtitleCache.swift */; };
+		7B1322A0BCFBE55ECA3417A2 /* BollywoodStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A55BC2436C24F2044B1C668 /* BollywoodStore.swift */; };
+		7DDF79A972A6C4B6ACDAD264 /* SMBSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF2A53E12F4731EC197C9684 /* SMBSettingsView.swift */; };
+		880629B197DDAE4BD2E48CEA /* StreamProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5182396E453E4A29DBB9909F /* StreamProvider.swift */; };
+		8C15D6892D3F8BB4B164C1BB /* PlaybackResumeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19071F1C106F47B7C69E03F3 /* PlaybackResumeStore.swift */; };
+		8D894E186591E2F60A74439D /* StreamDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D74AB70B669E1000817395 /* StreamDetailView.swift */; };
+		937EB942119082A901706CCD /* StreamImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8625FBEACF2508D7B83D8ACC /* StreamImageLoader.swift */; };
+		95877089DDF0E37C5204857F /* GoogleDriveAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33311B8F8D50EFCC56D9B5CE /* GoogleDriveAuth.swift */; };
+		99A7F99CEDE021EC957CA1E2 /* DizipalProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA3CCF5F860BB62E0B6B5CA1 /* DizipalProvider.swift */; };
+		A3329B14F83BD2075C124AEB /* PlayerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD95EA3976B9ED1B7761DD7C /* PlayerModel.swift */; };
+		A42ADA1D16C3267165489774 /* TorrentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C04B1F9FD823384918B91C0 /* TorrentStore.swift */; };
+		A43F2B59711FD61A4C830E17 /* ZyStreamStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1229717F84943F6857B48D68 /* ZyStreamStore.swift */; };
+		A7AD6ADD2393003DECE11CFB /* ZyStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033B091E03A51B441F007F30 /* ZyStreamView.swift */; };
+		AA913B72F0845E5EB2977A6A /* YouTubeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77E8C8F6B0223C9A4D59DC86 /* YouTubeCard.swift */; };
+		ACE551F4576213EE0754137A /* PeopleViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 476AF8E4538B8FC70B84AD9F /* PeopleViews.swift */; };
+		ADCBA4CD7356FBE6FD79B7BD /* YouTubeSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB18694D13D6C0785F83A464 /* YouTubeSearch.swift */; };
+		AF2F41104C9767B408D0F961 /* AppleTVStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1F0B1725043BCA382454B9E /* AppleTVStore.swift */; };
+		AF566079D951739C3FC12512 /* MPVCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE672A89777FE719AEA31619 /* MPVCore.swift */; };
+		B4AF564E43F76FB953C09C92 /* CinemaStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0858A1F8A95153B23771ED18 /* CinemaStore.swift */; };
+		B653E335E16B4EAB41C6016E /* BollywoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2182ECAFB9BDF21D08177799 /* BollywoodView.swift */; };
+		B723EB1406FAC45C73723AC5 /* GoogleDriveClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF1BC6744A7F9D85B6C0E7F /* GoogleDriveClient.swift */; };
+		BD1FFD8794184A71512F1014 /* StreamLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F1A058DBE636CB89E35C023 /* StreamLookup.swift */; };
+		BE3A3728DE9195804D96E483 /* LibraryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD284AA5CF2F1696D92B59A /* LibraryViews.swift */; };
+		C94E675A8CDED7653D32478E /* HdFilmCehennemiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1E44F3F65ECC48778DC2ACB /* HdFilmCehennemiProvider.swift */; };
+		CA4E0811D80904C2AB653935 /* SubtitleSearchPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94EF9C8FC833C6010F39028 /* SubtitleSearchPanel.swift */; };
+		CC585B3E916C7879DC1A2896 /* IMDbRatingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D060E422BEA97AC849B0EE5 /* IMDbRatingStore.swift */; };
+		CD3FB76B445DD43AB32CD4B5 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59ACD9120F1FF949FAF4881B /* Theme.swift */; };
+		CDB4ADC9B12E6B76948CAAFE /* GoogleDriveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEB04CFDDE103EDEC1BA0E80 /* GoogleDriveStore.swift */; };
+		CEB3D54389940486D655F44F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D436A8D35EC84AF6652070BC /* SettingsView.swift */; };
+		CF142A859D172F199E4D29B7 /* LocalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7461948CFBAE0244D14B9B39 /* LocalStore.swift */; };
+		CFF502482EF5679764FF55FA /* DriveFolderPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5D0AD762528ACE2AFF4508D /* DriveFolderPicker.swift */; };
+		D4D36DB58291DE30F3769430 /* OpenSubtitlesClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7FFE279126CF05A9C0F608 /* OpenSubtitlesClient.swift */; };
+		D652FCE77B656D7F617A7DC5 /* StreamResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B578293A8A138D9F57C232E9 /* StreamResolver.swift */; };
+		D8D0D14DCE842F55DDA21849 /* StreamPageRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24DBC5F11BFA55AEBA268B0E /* StreamPageRenderer.swift */; };
+		DBFCB58BA30B78EE266DC386 /* SMBMounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E115145FB7577588A3EAFE07 /* SMBMounter.swift */; };
+		DF9936A6DBCF9A2E4F024CBF /* ArtworkCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAA05673F84542AC68B812F /* ArtworkCache.swift */; };
+		DFFCD1194E837083960876B3 /* TorrentStreamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335ACF55C40A0C7BC687B30D /* TorrentStreamer.swift */; };
+		E4EAF2F2769AF8EB3FBF2B40 /* SubtitleMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A818D3814D47FEC1076B762 /* SubtitleMemory.swift */; };
+		E7F1B5E976A7368A56A8EA7A /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AB4F5DCA3BA5BB95B3652BC /* AboutView.swift */; };
+		E81FA3BEAB92482779EB199C /* ZyPlayerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A24D62661513397EB0F86F6 /* ZyPlayerApp.swift */; };
+		F7498692799870BA175DFCCB /* SMBStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 266211324B9197A372DFF512 /* SMBStore.swift */; };
+		FA018D1BDEF2E81748C6891A /* RemoteTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE32A7968BFA241E3516787D /* RemoteTitle.swift */; };
+		FB406A88A177B7B0C0BBA59A /* People.swift in Sources */ = {isa = PBXBuildFile; fileRef = C208D2CFD3819A0630379FDB /* People.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		033B091E03A51B441F007F30 /* ZyStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZyStreamView.swift; sourceTree = "<group>"; };
+		0751D5968748550F613C1F88 /* SubtitleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleStyle.swift; sourceTree = "<group>"; };
+		0858A1F8A95153B23771ED18 /* CinemaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaStore.swift; sourceTree = "<group>"; };
+		0B752A2B3008C7A90C40603F /* ZyPlayer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ZyPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0EAA05673F84542AC68B812F /* ArtworkCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkCache.swift; sourceTree = "<group>"; };
+		0FD3E2DFFE68414148F4E381 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		107297AA174541F1FF0505C6 /* MetadataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataService.swift; sourceTree = "<group>"; };
+		1229717F84943F6857B48D68 /* ZyStreamStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZyStreamStore.swift; sourceTree = "<group>"; };
+		12921A4926595DE0D95E846F /* OpenSubtitlesHash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenSubtitlesHash.swift; sourceTree = "<group>"; };
+		19071F1C106F47B7C69E03F3 /* PlaybackResumeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackResumeStore.swift; sourceTree = "<group>"; };
+		1B3568E1587FDDFD2C6BBFB4 /* GoogleDriveSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleDriveSettingsView.swift; sourceTree = "<group>"; };
+		1C04B1F9FD823384918B91C0 /* TorrentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentStore.swift; sourceTree = "<group>"; };
+		2182ECAFB9BDF21D08177799 /* BollywoodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BollywoodView.swift; sourceTree = "<group>"; };
+		2275E2A0F77EE9F97F836328 /* AppleTVView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTVView.swift; sourceTree = "<group>"; };
+		2457DD1AAF13A09AB5F2F6A6 /* LibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStore.swift; sourceTree = "<group>"; };
+		24DBC5F11BFA55AEBA268B0E /* StreamPageRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamPageRenderer.swift; sourceTree = "<group>"; };
+		266211324B9197A372DFF512 /* SMBStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMBStore.swift; sourceTree = "<group>"; };
+		28913DBDFD6C8BF1FDC03C3D /* TranslatedSubtitleCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslatedSubtitleCache.swift; sourceTree = "<group>"; };
+		2F71FBE8A7DCFD87F939CA66 /* WebFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebFetcher.swift; sourceTree = "<group>"; };
+		33311B8F8D50EFCC56D9B5CE /* GoogleDriveAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleDriveAuth.swift; sourceTree = "<group>"; };
+		335ACF55C40A0C7BC687B30D /* TorrentStreamer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentStreamer.swift; sourceTree = "<group>"; };
+		35019645E5A4DFFFBEC79284 /* MediaModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaModels.swift; sourceTree = "<group>"; };
+		3D060E422BEA97AC849B0EE5 /* IMDbRatingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMDbRatingStore.swift; sourceTree = "<group>"; };
+		3F1A058DBE636CB89E35C023 /* StreamLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamLookup.swift; sourceTree = "<group>"; };
+		40FD3E2AB53B9F702817F9E6 /* TorrentEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentEngine.swift; sourceTree = "<group>"; };
+		4494905006B6546FFF7DBBF1 /* TorrentPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentPickerView.swift; sourceTree = "<group>"; };
+		476AF8E4538B8FC70B84AD9F /* PeopleViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeopleViews.swift; sourceTree = "<group>"; };
+		4B7FFE279126CF05A9C0F608 /* OpenSubtitlesClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenSubtitlesClient.swift; sourceTree = "<group>"; };
+		50B23BF3D16A8682FEFC7EB3 /* YouTubeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeStore.swift; sourceTree = "<group>"; };
+		5182396E453E4A29DBB9909F /* StreamProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamProvider.swift; sourceTree = "<group>"; };
+		58A4DDE12BA9BADD848EEC5F /* TorrentSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentSearch.swift; sourceTree = "<group>"; };
+		59ACD9120F1FF949FAF4881B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		60C5C0A206F7AAA72301DE54 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		61D74AB70B669E1000817395 /* StreamDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamDetailView.swift; sourceTree = "<group>"; };
+		6A818D3814D47FEC1076B762 /* SubtitleMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleMemory.swift; sourceTree = "<group>"; };
+		73E907F3FE63DACDC896F388 /* PosterGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterGrid.swift; sourceTree = "<group>"; };
+		7461948CFBAE0244D14B9B39 /* LocalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStore.swift; sourceTree = "<group>"; };
+		77E8C8F6B0223C9A4D59DC86 /* YouTubeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeCard.swift; sourceTree = "<group>"; };
+		7AB4F5DCA3BA5BB95B3652BC /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		81C0225881ABC74B7F585B0A /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsView.swift; sourceTree = "<group>"; };
+		8625FBEACF2508D7B83D8ACC /* StreamImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamImageLoader.swift; sourceTree = "<group>"; };
+		86C353680C78B8CFEF6703E1 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		8CE826177C9F9775EBF5A460 /* LibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScanner.swift; sourceTree = "<group>"; };
+		9A24D62661513397EB0F86F6 /* ZyPlayerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZyPlayerApp.swift; sourceTree = "<group>"; };
+		9A55BC2436C24F2044B1C668 /* BollywoodStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BollywoodStore.swift; sourceTree = "<group>"; };
+		9BE1237F2BBDCFC05972C4A2 /* TMDBClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TMDBClient.swift; sourceTree = "<group>"; };
+		A50ABBCBA107C47B699FC1F2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		AB18694D13D6C0785F83A464 /* YouTubeSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeSearch.swift; sourceTree = "<group>"; };
+		AD647D3BD6F03D2F61CC8170 /* StreamingShelves.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingShelves.swift; sourceTree = "<group>"; };
+		ADD284AA5CF2F1696D92B59A /* LibraryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryViews.swift; sourceTree = "<group>"; };
+		ADF1BC6744A7F9D85B6C0E7F /* GoogleDriveClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleDriveClient.swift; sourceTree = "<group>"; };
+		AE32A7968BFA241E3516787D /* RemoteTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteTitle.swift; sourceTree = "<group>"; };
+		B15CB9CDAD64D9FD987AC0E5 /* FilenameParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilenameParser.swift; sourceTree = "<group>"; };
+		B1A24CD6490B9E8913EE1E1C /* CategoryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryViews.swift; sourceTree = "<group>"; };
+		B38AD8C0CBCE25A0B3D0C6CB /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
+		B578293A8A138D9F57C232E9 /* StreamResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamResolver.swift; sourceTree = "<group>"; };
+		B5D0AD762528ACE2AFF4508D /* DriveFolderPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveFolderPicker.swift; sourceTree = "<group>"; };
+		BA3CCF5F860BB62E0B6B5CA1 /* DizipalProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DizipalProvider.swift; sourceTree = "<group>"; };
+		BACE7B4A5552A4E51CECFF74 /* StreamingProviderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingProviderStore.swift; sourceTree = "<group>"; };
+		BEB04CFDDE103EDEC1BA0E80 /* GoogleDriveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleDriveStore.swift; sourceTree = "<group>"; };
+		BF6A93C296FC019D7D80D4A6 /* PowerAssertion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerAssertion.swift; sourceTree = "<group>"; };
+		C1E44F3F65ECC48778DC2ACB /* HdFilmCehennemiProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HdFilmCehennemiProvider.swift; sourceTree = "<group>"; };
+		C1F0B1725043BCA382454B9E /* AppleTVStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTVStore.swift; sourceTree = "<group>"; };
+		C208D2CFD3819A0630379FDB /* People.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = People.swift; sourceTree = "<group>"; };
+		C6C6119A71A034A4651F86D5 /* SubtitleTranslation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleTranslation.swift; sourceTree = "<group>"; };
+		C7F0937596E06D629C2FFE31 /* SubtitlePreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitlePreview.swift; sourceTree = "<group>"; };
+		CD95EA3976B9ED1B7761DD7C /* PlayerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerModel.swift; sourceTree = "<group>"; };
+		CF2A53E12F4731EC197C9684 /* SMBSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMBSettingsView.swift; sourceTree = "<group>"; };
+		D303CC5542C0BEFC7D8A12B4 /* MediaTrack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaTrack.swift; sourceTree = "<group>"; };
+		D436A8D35EC84AF6652070BC /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		D6C528C68403C8D149107FB1 /* StreamRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamRegistry.swift; sourceTree = "<group>"; };
+		DD9AE80A806079CF589ECF5C /* StremioSubtitleClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StremioSubtitleClient.swift; sourceTree = "<group>"; };
+		E09491C644E4453F7207441B /* MPVGLView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MPVGLView.swift; sourceTree = "<group>"; };
+		E115145FB7577588A3EAFE07 /* SMBMounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMBMounter.swift; sourceTree = "<group>"; };
+		E6D5301410FE25E896ECE2E4 /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
+		EA5A0711AE976ED842AF7E91 /* IMDbID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMDbID.swift; sourceTree = "<group>"; };
+		ED78B38A12A01F8A80A8EF16 /* StreamModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamModels.swift; sourceTree = "<group>"; };
+		F0C513E989F046CF8221AC2D /* SubtitleAddon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleAddon.swift; sourceTree = "<group>"; };
+		F175BB903E3C4EDBC5576688 /* SMBShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMBShare.swift; sourceTree = "<group>"; };
+		F463C1984F9D48215E353A09 /* MatchPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchPickerView.swift; sourceTree = "<group>"; };
+		F68F826FEA9BFEC33ABC7A50 /* TorrentStream */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TorrentStream; path = Vendor/TorrentStream; sourceTree = SOURCE_ROOT; };
+		F94EF9C8FC833C6010F39028 /* SubtitleSearchPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleSearchPanel.swift; sourceTree = "<group>"; };
+		FB6C27FFBBF8BAC03A8D5C9C /* RemoteDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDetailView.swift; sourceTree = "<group>"; };
+		FE672A89777FE719AEA31619 /* MPVCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MPVCore.swift; sourceTree = "<group>"; };
+		FFDE9F11281381575C40527D /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		0672961553888E752BD7BBC2 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				86C353680C78B8CFEF6703E1 /* AppIcon.icns */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		10DD7464F38DC99B5BD21097 /* Player */ = {
+			isa = PBXGroup;
+			children = (
+				D303CC5542C0BEFC7D8A12B4 /* MediaTrack.swift */,
+				FE672A89777FE719AEA31619 /* MPVCore.swift */,
+				E09491C644E4453F7207441B /* MPVGLView.swift */,
+				CD95EA3976B9ED1B7761DD7C /* PlayerModel.swift */,
+				B38AD8C0CBCE25A0B3D0C6CB /* PlayerView.swift */,
+				C6C6119A71A034A4651F86D5 /* SubtitleTranslation.swift */,
+			);
+			path = Player;
+			sourceTree = "<group>";
+		};
+		180D702A70DB223B3C15255A /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				B15CB9CDAD64D9FD987AC0E5 /* FilenameParser.swift */,
+				8CE826177C9F9775EBF5A460 /* LibraryScanner.swift */,
+				2457DD1AAF13A09AB5F2F6A6 /* LibraryStore.swift */,
+				35019645E5A4DFFFBEC79284 /* MediaModels.swift */,
+			);
+			path = Library;
+			sourceTree = "<group>";
+		};
+		206AD2CAFCA6C2725B377540 /* ZyPlayer */ = {
+			isa = PBXGroup;
+			children = (
+				A50ABBCBA107C47B699FC1F2 /* Info.plist */,
+				3FB7738F25255B4187180C6B /* App */,
+				180D702A70DB223B3C15255A /* Library */,
+				A605992D5F1A57013DCEB9B1 /* MediaSources */,
+				88C9D12173D1AE1A5AB68D51 /* Metadata */,
+				10DD7464F38DC99B5BD21097 /* Player */,
+				0672961553888E752BD7BBC2 /* Resources */,
+				2E89176674901F2F099801E2 /* Support */,
+				8CD754AEDB540B14517989CC /* UI */,
+			);
+			path = ZyPlayer;
+			sourceTree = "<group>";
+		};
+		2E89176674901F2F099801E2 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				0FD3E2DFFE68414148F4E381 /* AppSettings.swift */,
+				FFDE9F11281381575C40527D /* Keychain.swift */,
+				7461948CFBAE0244D14B9B39 /* LocalStore.swift */,
+				12921A4926595DE0D95E846F /* OpenSubtitlesHash.swift */,
+				19071F1C106F47B7C69E03F3 /* PlaybackResumeStore.swift */,
+				BF6A93C296FC019D7D80D4A6 /* PowerAssertion.swift */,
+				F0C513E989F046CF8221AC2D /* SubtitleAddon.swift */,
+				6A818D3814D47FEC1076B762 /* SubtitleMemory.swift */,
+				0751D5968748550F613C1F88 /* SubtitleStyle.swift */,
+				28913DBDFD6C8BF1FDC03C3D /* TranslatedSubtitleCache.swift */,
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
+		3FB7738F25255B4187180C6B /* App */ = {
+			isa = PBXGroup;
+			children = (
+				9A24D62661513397EB0F86F6 /* ZyPlayerApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		42CAF7C830BB5B119E5C4134 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				0B752A2B3008C7A90C40603F /* ZyPlayer.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		7B517AA4130C31BEA5FA7543 /* Stream */ = {
+			isa = PBXGroup;
+			children = (
+				BA3CCF5F860BB62E0B6B5CA1 /* DizipalProvider.swift */,
+				C1E44F3F65ECC48778DC2ACB /* HdFilmCehennemiProvider.swift */,
+				8625FBEACF2508D7B83D8ACC /* StreamImageLoader.swift */,
+				3F1A058DBE636CB89E35C023 /* StreamLookup.swift */,
+				ED78B38A12A01F8A80A8EF16 /* StreamModels.swift */,
+				24DBC5F11BFA55AEBA268B0E /* StreamPageRenderer.swift */,
+				5182396E453E4A29DBB9909F /* StreamProvider.swift */,
+				D6C528C68403C8D149107FB1 /* StreamRegistry.swift */,
+				B578293A8A138D9F57C232E9 /* StreamResolver.swift */,
+				2F71FBE8A7DCFD87F939CA66 /* WebFetcher.swift */,
+				1229717F84943F6857B48D68 /* ZyStreamStore.swift */,
+			);
+			path = Stream;
+			sourceTree = "<group>";
+		};
+		7CE8FDFDD46B56061B0F7D15 = {
+			isa = PBXGroup;
+			children = (
+				93A537BDC63DD0EAA75EE959 /* Sources */,
+				9005D32F7191BAC1ACD01994 /* Vendor */,
+				42CAF7C830BB5B119E5C4134 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		88C9D12173D1AE1A5AB68D51 /* Metadata */ = {
+			isa = PBXGroup;
+			children = (
+				C1F0B1725043BCA382454B9E /* AppleTVStore.swift */,
+				0EAA05673F84542AC68B812F /* ArtworkCache.swift */,
+				9A55BC2436C24F2044B1C668 /* BollywoodStore.swift */,
+				0858A1F8A95153B23771ED18 /* CinemaStore.swift */,
+				EA5A0711AE976ED842AF7E91 /* IMDbID.swift */,
+				3D060E422BEA97AC849B0EE5 /* IMDbRatingStore.swift */,
+				107297AA174541F1FF0505C6 /* MetadataService.swift */,
+				4B7FFE279126CF05A9C0F608 /* OpenSubtitlesClient.swift */,
+				C208D2CFD3819A0630379FDB /* People.swift */,
+				AE32A7968BFA241E3516787D /* RemoteTitle.swift */,
+				BACE7B4A5552A4E51CECFF74 /* StreamingProviderStore.swift */,
+				DD9AE80A806079CF589ECF5C /* StremioSubtitleClient.swift */,
+				9BE1237F2BBDCFC05972C4A2 /* TMDBClient.swift */,
+			);
+			path = Metadata;
+			sourceTree = "<group>";
+		};
+		8CD754AEDB540B14517989CC /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				7AB4F5DCA3BA5BB95B3652BC /* AboutView.swift */,
+				2275E2A0F77EE9F97F836328 /* AppleTVView.swift */,
+				2182ECAFB9BDF21D08177799 /* BollywoodView.swift */,
+				B1A24CD6490B9E8913EE1E1C /* CategoryViews.swift */,
+				E6D5301410FE25E896ECE2E4 /* DetailView.swift */,
+				81C0225881ABC74B7F585B0A /* DownloadsView.swift */,
+				B5D0AD762528ACE2AFF4508D /* DriveFolderPicker.swift */,
+				1B3568E1587FDDFD2C6BBFB4 /* GoogleDriveSettingsView.swift */,
+				ADD284AA5CF2F1696D92B59A /* LibraryViews.swift */,
+				F463C1984F9D48215E353A09 /* MatchPickerView.swift */,
+				476AF8E4538B8FC70B84AD9F /* PeopleViews.swift */,
+				73E907F3FE63DACDC896F388 /* PosterGrid.swift */,
+				FB6C27FFBBF8BAC03A8D5C9C /* RemoteDetailView.swift */,
+				60C5C0A206F7AAA72301DE54 /* RootView.swift */,
+				D436A8D35EC84AF6652070BC /* SettingsView.swift */,
+				CF2A53E12F4731EC197C9684 /* SMBSettingsView.swift */,
+				61D74AB70B669E1000817395 /* StreamDetailView.swift */,
+				AD647D3BD6F03D2F61CC8170 /* StreamingShelves.swift */,
+				C7F0937596E06D629C2FFE31 /* SubtitlePreview.swift */,
+				F94EF9C8FC833C6010F39028 /* SubtitleSearchPanel.swift */,
+				59ACD9120F1FF949FAF4881B /* Theme.swift */,
+				4494905006B6546FFF7DBBF1 /* TorrentPickerView.swift */,
+				77E8C8F6B0223C9A4D59DC86 /* YouTubeCard.swift */,
+				033B091E03A51B441F007F30 /* ZyStreamView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		9005D32F7191BAC1ACD01994 /* Vendor */ = {
+			isa = PBXGroup;
+			children = (
+				F68F826FEA9BFEC33ABC7A50 /* TorrentStream */,
+			);
+			path = Vendor;
+			sourceTree = "<group>";
+		};
+		93A537BDC63DD0EAA75EE959 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				206AD2CAFCA6C2725B377540 /* ZyPlayer */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		A605992D5F1A57013DCEB9B1 /* MediaSources */ = {
+			isa = PBXGroup;
+			children = (
+				33311B8F8D50EFCC56D9B5CE /* GoogleDriveAuth.swift */,
+				ADF1BC6744A7F9D85B6C0E7F /* GoogleDriveClient.swift */,
+				BEB04CFDDE103EDEC1BA0E80 /* GoogleDriveStore.swift */,
+				E115145FB7577588A3EAFE07 /* SMBMounter.swift */,
+				F175BB903E3C4EDBC5576688 /* SMBShare.swift */,
+				266211324B9197A372DFF512 /* SMBStore.swift */,
+				40FD3E2AB53B9F702817F9E6 /* TorrentEngine.swift */,
+				58A4DDE12BA9BADD848EEC5F /* TorrentSearch.swift */,
+				1C04B1F9FD823384918B91C0 /* TorrentStore.swift */,
+				335ACF55C40A0C7BC687B30D /* TorrentStreamer.swift */,
+				7B517AA4130C31BEA5FA7543 /* Stream */,
+				DE745953FDF742C15E1B3001 /* YouTube */,
+			);
+			path = MediaSources;
+			sourceTree = "<group>";
+		};
+		DE745953FDF742C15E1B3001 /* YouTube */ = {
+			isa = PBXGroup;
+			children = (
+				AB18694D13D6C0785F83A464 /* YouTubeSearch.swift */,
+				50B23BF3D16A8682FEFC7EB3 /* YouTubeStore.swift */,
+			);
+			path = YouTube;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0898535E2E7E1F71408843DC /* ZyPlayer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA9C613FC928D26016E565D7 /* Build configuration list for PBXNativeTarget "ZyPlayer" */;
+			buildPhases = (
+				5EB6768987A3EB3F6BD71ADB /* Sources */,
+				F13170EC9B7981B5B22BCA18 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ZyPlayer;
+			packageProductDependencies = (
+			);
+			productName = ZyPlayer;
+			productReference = 0B752A2B3008C7A90C40603F /* ZyPlayer.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BFC5D32BCA7A42D3FA2803AC /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 6BAC516FD9F4A2B22E05EF2F /* Build configuration list for PBXProject "ZyPlayer" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 7CE8FDFDD46B56061B0F7D15;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 42CAF7C830BB5B119E5C4134 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0898535E2E7E1F71408843DC /* ZyPlayer */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F13170EC9B7981B5B22BCA18 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				64BAB00BFEB20F1102960150 /* AppIcon.icns in Resources */,
+				60F15086CC148166B98C505C /* TorrentStream in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5EB6768987A3EB3F6BD71ADB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E7F1B5E976A7368A56A8EA7A /* AboutView.swift in Sources */,
+				0236F5D14735ABBC25A28455 /* AppSettings.swift in Sources */,
+				AF2F41104C9767B408D0F961 /* AppleTVStore.swift in Sources */,
+				29B9791EB501B63E84984167 /* AppleTVView.swift in Sources */,
+				DF9936A6DBCF9A2E4F024CBF /* ArtworkCache.swift in Sources */,
+				7B1322A0BCFBE55ECA3417A2 /* BollywoodStore.swift in Sources */,
+				B653E335E16B4EAB41C6016E /* BollywoodView.swift in Sources */,
+				5609B57FEDF571EB121F9EF3 /* CategoryViews.swift in Sources */,
+				B4AF564E43F76FB953C09C92 /* CinemaStore.swift in Sources */,
+				3D2205266208694D47EE59D0 /* DetailView.swift in Sources */,
+				99A7F99CEDE021EC957CA1E2 /* DizipalProvider.swift in Sources */,
+				607E818A3FB12CD465CC3C99 /* DownloadsView.swift in Sources */,
+				CFF502482EF5679764FF55FA /* DriveFolderPicker.swift in Sources */,
+				26D6E9569A85F175D2A9DDC9 /* FilenameParser.swift in Sources */,
+				95877089DDF0E37C5204857F /* GoogleDriveAuth.swift in Sources */,
+				B723EB1406FAC45C73723AC5 /* GoogleDriveClient.swift in Sources */,
+				4B12FCA28D775502DD398450 /* GoogleDriveSettingsView.swift in Sources */,
+				CDB4ADC9B12E6B76948CAAFE /* GoogleDriveStore.swift in Sources */,
+				C94E675A8CDED7653D32478E /* HdFilmCehennemiProvider.swift in Sources */,
+				3A8B99FF98F29C2D39634E16 /* IMDbID.swift in Sources */,
+				CC585B3E916C7879DC1A2896 /* IMDbRatingStore.swift in Sources */,
+				410F3E8F7B2D87DD41E33F84 /* Keychain.swift in Sources */,
+				63FBBC646AD46F479B5FE71A /* LibraryScanner.swift in Sources */,
+				1386F79D3DA1E5C5971D508B /* LibraryStore.swift in Sources */,
+				BE3A3728DE9195804D96E483 /* LibraryViews.swift in Sources */,
+				CF142A859D172F199E4D29B7 /* LocalStore.swift in Sources */,
+				AF566079D951739C3FC12512 /* MPVCore.swift in Sources */,
+				31631D4F5523EFEF05E95B85 /* MPVGLView.swift in Sources */,
+				5B2D96C4EFE552C2B666AA74 /* MatchPickerView.swift in Sources */,
+				189AB6C4E1A75D6A7A532FB7 /* MediaModels.swift in Sources */,
+				627C1E69E00908B056A8105F /* MediaTrack.swift in Sources */,
+				3C13148E4533B2BAD431C9B9 /* MetadataService.swift in Sources */,
+				D4D36DB58291DE30F3769430 /* OpenSubtitlesClient.swift in Sources */,
+				33B3D2BBF6943AEFB3360544 /* OpenSubtitlesHash.swift in Sources */,
+				FB406A88A177B7B0C0BBA59A /* People.swift in Sources */,
+				ACE551F4576213EE0754137A /* PeopleViews.swift in Sources */,
+				8C15D6892D3F8BB4B164C1BB /* PlaybackResumeStore.swift in Sources */,
+				A3329B14F83BD2075C124AEB /* PlayerModel.swift in Sources */,
+				3FAE35E8B7CCA2EE2DA01276 /* PlayerView.swift in Sources */,
+				547F26EC6B55F4E09D86EAD6 /* PosterGrid.swift in Sources */,
+				30B17B19DB7B76C8C5EEC4D2 /* PowerAssertion.swift in Sources */,
+				696FB3982A8E01B3C78E8D2C /* RemoteDetailView.swift in Sources */,
+				FA018D1BDEF2E81748C6891A /* RemoteTitle.swift in Sources */,
+				711A4189003EE8473F30641C /* RootView.swift in Sources */,
+				DBFCB58BA30B78EE266DC386 /* SMBMounter.swift in Sources */,
+				7DDF79A972A6C4B6ACDAD264 /* SMBSettingsView.swift in Sources */,
+				024188B239A6DFD59873B548 /* SMBShare.swift in Sources */,
+				F7498692799870BA175DFCCB /* SMBStore.swift in Sources */,
+				CEB3D54389940486D655F44F /* SettingsView.swift in Sources */,
+				8D894E186591E2F60A74439D /* StreamDetailView.swift in Sources */,
+				937EB942119082A901706CCD /* StreamImageLoader.swift in Sources */,
+				BD1FFD8794184A71512F1014 /* StreamLookup.swift in Sources */,
+				6FCA2ED777C9D9D71569047E /* StreamModels.swift in Sources */,
+				D8D0D14DCE842F55DDA21849 /* StreamPageRenderer.swift in Sources */,
+				880629B197DDAE4BD2E48CEA /* StreamProvider.swift in Sources */,
+				07537C88D2811F88144E298E /* StreamRegistry.swift in Sources */,
+				D652FCE77B656D7F617A7DC5 /* StreamResolver.swift in Sources */,
+				089D985856AB0B1EEFCE005A /* StreamingProviderStore.swift in Sources */,
+				2E7539F21B993ED78B7192EC /* StreamingShelves.swift in Sources */,
+				4B9ACFCA056CF19D1DAADE83 /* StremioSubtitleClient.swift in Sources */,
+				4D1F3B9020E5E1F796AC4EE5 /* SubtitleAddon.swift in Sources */,
+				E4EAF2F2769AF8EB3FBF2B40 /* SubtitleMemory.swift in Sources */,
+				3F8DE6B49475FB441FA1490C /* SubtitlePreview.swift in Sources */,
+				CA4E0811D80904C2AB653935 /* SubtitleSearchPanel.swift in Sources */,
+				17C56D7C14F8B6A20E6A3C61 /* SubtitleStyle.swift in Sources */,
+				38CE0F0EA204B4207F6DBC14 /* SubtitleTranslation.swift in Sources */,
+				027AE1BEEF27C8389A428C93 /* TMDBClient.swift in Sources */,
+				CD3FB76B445DD43AB32CD4B5 /* Theme.swift in Sources */,
+				251F5ECE76A0D04820EC3161 /* TorrentEngine.swift in Sources */,
+				3F899B66345BF0E825B61E76 /* TorrentPickerView.swift in Sources */,
+				56E763DD482775DF34F97B22 /* TorrentSearch.swift in Sources */,
+				A42ADA1D16C3267165489774 /* TorrentStore.swift in Sources */,
+				DFFCD1194E837083960876B3 /* TorrentStreamer.swift in Sources */,
+				77A1D84CC59513050B06C971 /* TranslatedSubtitleCache.swift in Sources */,
+				74D68463F4739C412B4C6268 /* WebFetcher.swift in Sources */,
+				AA913B72F0845E5EB2977A6A /* YouTubeCard.swift in Sources */,
+				ADCBA4CD7356FBE6FD79B7BD /* YouTubeSearch.swift in Sources */,
+				7282E57197D1B09C8D1CE743 /* YouTubeStore.swift in Sources */,
+				E81FA3BEAB92482779EB199C /* ZyPlayerApp.swift in Sources */,
+				A43F2B59711FD61A4C830E17 /* ZyStreamStore.swift in Sources */,
+				A7AD6ADD2393003DECE11CFB /* ZyStreamView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		5171F0658A35C7889C69AB8A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				HEADER_SEARCH_PATHS = /opt/homebrew/include;
+				INFOPLIST_FILE = Sources/ZyPlayer/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks /opt/homebrew/lib";
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/lib;
+				OTHER_LDFLAGS = "-lmpv";
+				PRODUCT_BUNDLE_IDENTIFIER = com.zyplayer.app;
+				PRODUCT_NAME = ZyPlayer;
+				SDKROOT = macosx;
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/Sources/Cmpv";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+			};
+			name = Debug;
+		};
+		60D3F581435C2FB9BD869325 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited) GL_SILENCE_DEPRECATION=1";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0.62;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		9B7B7CBBB7C70E9BD30520F0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				HEADER_SEARCH_PATHS = /opt/homebrew/include;
+				INFOPLIST_FILE = Sources/ZyPlayer/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks /opt/homebrew/lib";
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/lib;
+				OTHER_LDFLAGS = "-lmpv";
+				PRODUCT_BUNDLE_IDENTIFIER = com.zyplayer.app;
+				PRODUCT_NAME = ZyPlayer;
+				SDKROOT = macosx;
+				SWIFT_INCLUDE_PATHS = "$(SRCROOT)/Sources/Cmpv";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+			};
+			name = Release;
+		};
+		BE77D64552EF52B12C0544F3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited) GL_SILENCE_DEPRECATION=1";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0.62;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6BAC516FD9F4A2B22E05EF2F /* Build configuration list for PBXProject "ZyPlayer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BE77D64552EF52B12C0544F3 /* Debug */,
+				60D3F581435C2FB9BD869325 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		AA9C613FC928D26016E565D7 /* Build configuration list for PBXNativeTarget "ZyPlayer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5171F0658A35C7889C69AB8A /* Debug */,
+				9B7B7CBBB7C70E9BD30520F0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = BFC5D32BCA7A42D3FA2803AC /* Project object */;
+}

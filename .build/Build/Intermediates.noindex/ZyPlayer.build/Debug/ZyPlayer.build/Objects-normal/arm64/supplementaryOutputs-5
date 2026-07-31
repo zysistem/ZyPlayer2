@@ -1,0 +1,44 @@
+{
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/Metadata/RemoteTitle.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RemoteTitle.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RemoteTitle.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RemoteTitle.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RemoteTitle.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RemoteTitle.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/Player/PlayerView.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PlayerView.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PlayerView.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PlayerView.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PlayerView.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PlayerView.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/Support/PowerAssertion.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PowerAssertion.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PowerAssertion.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PowerAssertion.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PowerAssertion.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PowerAssertion.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/UI/PosterGrid.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PosterGrid.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PosterGrid.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PosterGrid.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PosterGrid.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/PosterGrid.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/UI/RemoteDetailView.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RemoteDetailView.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RemoteDetailView.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RemoteDetailView.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RemoteDetailView.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RemoteDetailView.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/UI/RootView.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RootView.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RootView.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RootView.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RootView.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/RootView.swiftdeps"
+  }
+}

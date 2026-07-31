@@ -1,0 +1,49 @@
+name: ZyPlayer
+
+options:
+  bundleIdPrefix: com.zyplayer
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    # Swift 5 language mode: the mpv/libtorrent C interop and AppKit callbacks
+    # are not expressible under Swift 6 strict concurrency without heavy churn.
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    GCC_PREPROCESSOR_DEFINITIONS: "$(inherited) GL_SILENCE_DEPRECATION=1"
+    MARKETING_VERSION: "1.0.62"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGNING_REQUIRED: "YES"
+    CODE_SIGNING_ALLOWED: "YES"
+    ENABLE_HARDENED_RUNTIME: "NO"
+    DEAD_CODE_STRIPPING: "YES"
+
+packages: {}
+
+targets:
+  ZyPlayer:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/ZyPlayer
+      # Vendored WebTorrent helper (Node). A folder reference so Xcode copies it
+      # into Resources whole instead of indexing 40k files as build inputs.
+      - path: Vendor/TorrentStream
+        type: folder
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zyplayer.app
+        PRODUCT_NAME: ZyPlayer
+        INFOPLIST_FILE: Sources/ZyPlayer/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_APP_SANDBOX: "NO"
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+        # libmpv (Homebrew). Bundled into the .app by Scripts/bundle-libs.sh for release.
+        SWIFT_INCLUDE_PATHS: "$(SRCROOT)/Sources/Cmpv"
+        HEADER_SEARCH_PATHS: "/opt/homebrew/include"
+        LIBRARY_SEARCH_PATHS: "/opt/homebrew/lib"
+        OTHER_LDFLAGS: "-lmpv"
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks /opt/homebrew/lib"

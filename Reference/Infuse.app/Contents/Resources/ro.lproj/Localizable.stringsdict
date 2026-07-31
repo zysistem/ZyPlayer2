@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>svcMultipleSelectionTitle</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li selectat</string>
+        <key>few</key>
+        <string>%li selectat</string>
+        <key>other</key>
+        <string>%li selectat</string>
+      </dict>
+    </dict>
+    <key>liDaysAgoPlural</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Acum %li zi</string>
+        <key>few</key>
+        <string>%li zile în urmă</string>
+        <key>other</key>
+        <string>%li zile în urmă</string>
+      </dict>
+    </dict>
+    <key>Remove %d items?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Sigur doriţi să ştergeţi permanent %li element?</string>
+        <key>few</key>
+        <string>Sigur doriţi să ştergeţi permanent %li elemente?</string>
+        <key>other</key>
+        <string>Sigur doriţi să ştergeţi permanent %li elemente?</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Bin?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Sunteți sigur că doriți să mutați %li item în coșul de gunoi?</string>
+        <key>few</key>
+        <string>Sunteți sigur că doriți să mutați %li item în coșul de gunoi?</string>
+        <key>other</key>
+        <string>Sunteți sigur că doriți să mutați %li item în coșul de gunoi?</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Recently Deleted Files?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Sunteţi sigur că doriţi să mutaţi %li element în fişiere recent şterse?</string>
+        <key>few</key>
+        <string>Sunteți sigur că doriți să mutați %li element în Fișiere șterse recent?</string>
+        <key>other</key>
+        <string>Sunteți sigur că doriți să mutați %li elemente în Fișiere șterse recent?</string>
+      </dict>
+    </dict>
+    <key>hoSeasons</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Sezonul %li</string>
+        <key>few</key>
+        <string>Sezoanele %li</string>
+        <key>other</key>
+        <string>Sezoanele %li</string>
+      </dict>
+    </dict>
+    <key>hoVideos</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li fișier video</string>
+        <key>few</key>
+        <string>%li fișierele video</string>
+        <key>other</key>
+        <string>%li fișierele video</string>
+      </dict>
+    </dict>
+    <key>hoItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li element</string>
+        <key>few</key>
+        <string>%li elemente</string>
+        <key>other</key>
+        <string>%li elemente</string>
+      </dict>
+    </dict>
+    <key>iapUnlockDaysRemaining</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>(%li zi rămasă)</string>
+        <key>few</key>
+        <string>(%li zile rămase)</string>
+        <key>other</key>
+        <string>(%li zile rămase)</string>
+      </dict>
+    </dict>
+    <key>iapDaysTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li zi de încercare</string>
+        <key>few</key>
+        <string>%li zile de încercare</string>
+        <key>other</key>
+        <string>%li zile de încercare</string>
+      </dict>
+    </dict>
+    <key>iapWeeksTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li săptămână de încercare</string>
+        <key>few</key>
+        <string>%li săptămăni de încercare</string>
+        <key>other</key>
+        <string>%li săptămăni de încercare</string>
+      </dict>
+    </dict>
+    <key>iapMonthsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li lună de încercare</string>
+        <key>few</key>
+        <string>%li luni de încercare</string>
+        <key>other</key>
+        <string>%li luni de încercare</string>
+      </dict>
+    </dict>
+    <key>iapYearsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li an de încercare</string>
+        <key>few</key>
+        <string>%li ani de încercare</string>
+        <key>other</key>
+        <string>%li ani de încercare</string>
+      </dict>
+    </dict>
+    <key>hoSavedMultipleLinks</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@links@</string>
+      <key>links</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>Link-ul a fost adăugat cu succes.</string>
+        <key>few</key>
+        <string>%d link-urile au fost adăugate cu succes.</string>
+        <key>other</key>
+        <string>%d link-urile au fost adăugate cu succes.</string>
+      </dict>
+    </dict>
+  </dict>
+</plist>

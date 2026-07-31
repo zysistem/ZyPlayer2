@@ -1,0 +1,44 @@
+{
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/App/ZyPlayerApp.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/ZyPlayerApp.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/ZyPlayerApp.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/ZyPlayerApp.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/ZyPlayerApp.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/ZyPlayerApp.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/MediaSources/TorrentEngine.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentEngine.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentEngine.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentEngine.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentEngine.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentEngine.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/MediaSources/TorrentSearch.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentSearch.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentSearch.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentSearch.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentSearch.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentSearch.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/MediaSources/TorrentStore.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentStore.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentStore.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentStore.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentStore.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentStore.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/MediaSources/TorrentStreamer.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentStreamer.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentStreamer.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentStreamer.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentStreamer.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentStreamer.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/UI/TorrentPickerView.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentPickerView.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentPickerView.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentPickerView.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentPickerView.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TorrentPickerView.swiftdeps"
+  }
+}

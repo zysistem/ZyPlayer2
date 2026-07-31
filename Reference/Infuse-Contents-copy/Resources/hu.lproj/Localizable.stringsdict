@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>svcMultipleSelectionTitle</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li kiválasztva</string>
+        <key>other</key>
+        <string>%li kiválasztva</string>
+      </dict>
+    </dict>
+    <key>liDaysAgoPlural</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li napja</string>
+        <key>other</key>
+        <string>%li napja</string>
+      </dict>
+    </dict>
+    <key>Remove %d items?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Biztos véglegesen törölni szeretne %li elemet?</string>
+        <key>other</key>
+        <string>Biztos véglegesen törölni szeretne %li elemet?</string>
+      </dict>
+    </dict>
+    <key>foAbstractRemoveItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Biztos el szeretne távolítani %li elemet?</string>
+        <key>other</key>
+        <string>Biztos el szeretne távolítani %li elemet?</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Bin?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Biztos át szeretne helyezni %li elemet a Kukába?</string>
+        <key>other</key>
+        <string>Biztos át szeretne helyezni %li elemet a Kukába?</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Recently Deleted Files?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Biztos át szeretne helyezni %li elemet a nemrég töröltek közé?</string>
+        <key>other</key>
+        <string>Biztos át szeretne helyezni %li elemet a nemrég töröltek közé?</string>
+      </dict>
+    </dict>
+    <key>hoSeasons</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li évad</string>
+        <key>other</key>
+        <string>%li évad</string>
+      </dict>
+    </dict>
+    <key>hoVideos</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li videó</string>
+        <key>other</key>
+        <string>%li videó</string>
+      </dict>
+    </dict>
+    <key>hoItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li elem</string>
+        <key>other</key>
+        <string>%li elem</string>
+      </dict>
+    </dict>
+    <key>iapUnlockDaysRemaining</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>(%li nap van hátra)</string>
+        <key>other</key>
+        <string>(%li nap van hátra)</string>
+      </dict>
+    </dict>
+    <key>iapDaysTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li napos próba</string>
+        <key>other</key>
+        <string>%li napos próba</string>
+      </dict>
+    </dict>
+    <key>iapWeeksTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li hetes próba</string>
+        <key>other</key>
+        <string>%li hetes próba</string>
+      </dict>
+    </dict>
+    <key>iapMonthsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li hónapos próba</string>
+        <key>other</key>
+        <string>%li hónapos próba</string>
+      </dict>
+    </dict>
+    <key>iapYearsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li éves próba</string>
+        <key>other</key>
+        <string>%li éves próba</string>
+      </dict>
+    </dict>
+    <key>hoSavedMultipleLinks</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@links@</string>
+      <key>links</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>A hivatkozás hozzáadása sikeresen megtörtént.</string>
+        <key>other</key>
+        <string>%d hivatkozás hozzáadása sikeresen megtörtént.</string>
+      </dict>
+    </dict>
+    <key>hoSavedMultipleLinksWithExpiration</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@links@</string>
+      <key>links</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>%d hivatkozás hozzáadása sikeresen megtörtént és eddig lesz elérhető: #date_placeholder#.</string>
+        <key>other</key>
+        <string>%d hivatkozás hozzáadása sikeresen megtörtént és eddig lesznek elérhetőek: #date_placeholder#.</string>
+      </dict>
+    </dict>
+  </dict>
+</plist>

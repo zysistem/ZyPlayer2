@@ -1,0 +1,44 @@
+{
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/Metadata/TMDBClient.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TMDBClient.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TMDBClient.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TMDBClient.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TMDBClient.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/TMDBClient.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/Support/SubtitleAddon.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleAddon.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleAddon.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleAddon.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleAddon.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleAddon.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/Support/SubtitleStyle.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleStyle.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleStyle.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleStyle.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleStyle.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleStyle.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/UI/SubtitlePreview.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitlePreview.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitlePreview.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitlePreview.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitlePreview.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitlePreview.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/UI/SubtitleSearchPanel.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleSearchPanel.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleSearchPanel.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleSearchPanel.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleSearchPanel.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/SubtitleSearchPanel.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/UI/Theme.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/Theme.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/Theme.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/Theme.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/Theme.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/Theme.swiftdeps"
+  }
+}

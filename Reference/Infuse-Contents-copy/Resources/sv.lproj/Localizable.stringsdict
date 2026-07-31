@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>svcMultipleSelectionTitle</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li markerad</string>
+        <key>other</key>
+        <string>%li markerade</string>
+      </dict>
+    </dict>
+    <key>liDaysAgoPlural</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li dygn sedan</string>
+        <key>other</key>
+        <string>%li dagar sedan</string>
+      </dict>
+    </dict>
+    <key>Remove %d items?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Är du säker på att du vill ta bort %li objekt?</string>
+        <key>other</key>
+        <string>Är du säker på att du vill ta bort %li objekt?</string>
+      </dict>
+    </dict>
+    <key>foAbstractRemoveItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Är du säker på att du vill ta bort %li objekt?</string>
+        <key>other</key>
+        <string>Är du säker på att du vill ta bort %li objekt?</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Bin?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Är du säker på att du vill flytta %li objekt till papperskorgen?</string>
+        <key>other</key>
+        <string>Är du säker på att du vill flytta %li objekt till papperskorgen?</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Recently Deleted Files?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Är du säker på att du vill flytta %li objekt till nyligen raderade filer?</string>
+        <key>other</key>
+        <string>Är du säker på att du vill flytta %li objekt till nyligen raderade filer?</string>
+      </dict>
+    </dict>
+    <key>hoSeasons</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li säsong</string>
+        <key>other</key>
+        <string>%li säsonger</string>
+      </dict>
+    </dict>
+    <key>hoVideos</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li video</string>
+        <key>other</key>
+        <string>%li videor</string>
+      </dict>
+    </dict>
+    <key>hoItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li objekt</string>
+        <key>other</key>
+        <string>%li objekt</string>
+      </dict>
+    </dict>
+    <key>iapUnlockDaysRemaining</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>(%li dag kvar)</string>
+        <key>other</key>
+        <string>(%li dagar kvar)</string>
+      </dict>
+    </dict>
+    <key>iapDaysTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li dagars provversion</string>
+        <key>other</key>
+        <string>%li dagars provperiod</string>
+      </dict>
+    </dict>
+    <key>iapWeeksTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li veckors provperiod</string>
+        <key>other</key>
+        <string>%li veckors provperiod</string>
+      </dict>
+    </dict>
+    <key>iapMonthsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li månads provperiod</string>
+        <key>other</key>
+        <string>%li månader provperiod</string>
+      </dict>
+    </dict>
+    <key>iapYearsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li års provperiod</string>
+        <key>other</key>
+        <string>%li år provperiod</string>
+      </dict>
+    </dict>
+    <key>hoSavedMultipleLinks</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@links@</string>
+      <key>links</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>Länken lades till utan problem.</string>
+        <key>other</key>
+        <string>%d länkar lades till utan problem.</string>
+      </dict>
+    </dict>
+  </dict>
+</plist>

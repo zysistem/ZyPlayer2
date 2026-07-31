@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>svcMultipleSelectionTitle</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Выбран %li</string>
+        <key>few</key>
+        <string>Выбрано %li</string>
+        <key>many</key>
+        <string>Выбрано %li</string>
+        <key>other</key>
+        <string>Выбрано %li</string>
+      </dict>
+    </dict>
+    <key>liDaysAgoPlural</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li день назад</string>
+        <key>few</key>
+        <string>%li дня назад</string>
+        <key>many</key>
+        <string>%li дней назад</string>
+        <key>other</key>
+        <string>%li дней назад</string>
+      </dict>
+    </dict>
+    <key>Remove %d items?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Вы действительно хотите удалить %li элемент?</string>
+        <key>few</key>
+        <string>Вы действительно хотите удалить %li элемента?</string>
+        <key>many</key>
+        <string>Вы действительно хотите удалить %li элементов?</string>
+        <key>other</key>
+        <string>Вы действительно хотите удалить %li элемента?</string>
+      </dict>
+    </dict>
+    <key>foAbstractRemoveItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Вы уверены, что хотите удалить %li объект?</string>
+        <key>few</key>
+        <string>Вы уверены, что хотите удалить %li объекта?</string>
+        <key>many</key>
+        <string>Вы уверены, что хотите удалить %li объектов?</string>
+        <key>other</key>
+        <string>Вы уверены, что хотите удалить %li объектов?</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Bin?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Вы действительно хотите переместить %li элементов в корзину?</string>
+        <key>few</key>
+        <string>Вы действительно хотите переместить %li элемента в корзину?</string>
+        <key>many</key>
+        <string>Вы действительно хотите переместить %li элементов в корзину?</string>
+        <key>other</key>
+        <string>Вы действительно хотите переместить %li элементов в корзину?</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Recently Deleted Files?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Вы действительно хотите переместить %li элемент в раздел "Недавно удаленные"?</string>
+        <key>few</key>
+        <string>Вы действительно хотите переместить %li элемента в раздел "Недавно удаленные"?</string>
+        <key>many</key>
+        <string>Вы действительно хотите переместить %li элементов в раздел "Недавно удаленные"?</string>
+        <key>other</key>
+        <string>Вы действительно хотите переместить %li элементов в раздел "Недавно удаленные"?</string>
+      </dict>
+    </dict>
+    <key>hoSeasons</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li сезон</string>
+        <key>few</key>
+        <string>%li сезона</string>
+        <key>many</key>
+        <string>%li сезонов</string>
+        <key>other</key>
+        <string>%li сезонов</string>
+      </dict>
+    </dict>
+    <key>hoVideos</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li видео</string>
+        <key>few</key>
+        <string>%li видео</string>
+        <key>many</key>
+        <string>%li видео</string>
+        <key>other</key>
+        <string>%li видео</string>
+      </dict>
+    </dict>
+    <key>hoItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li элемент</string>
+        <key>few</key>
+        <string>%li элемента</string>
+        <key>many</key>
+        <string>%li элементов</string>
+        <key>other</key>
+        <string>%li элементов</string>
+      </dict>
+    </dict>
+    <key>iapUnlockDaysRemaining</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>(остался %li день)</string>
+        <key>few</key>
+        <string>(осталось %li дня)</string>
+        <key>many</key>
+        <string>(осталось %li дней)</string>
+        <key>other</key>
+        <string>(осталось %li дней)</string>
+      </dict>
+    </dict>
+    <key>iapDaysTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li пробный день</string>
+        <key>few</key>
+        <string>%li пробных дня</string>
+        <key>many</key>
+        <string>%li пробных дней</string>
+        <key>other</key>
+        <string>%li пробных дней</string>
+      </dict>
+    </dict>
+    <key>iapWeeksTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li пробная неделя</string>
+        <key>few</key>
+        <string>%li пробных недели</string>
+        <key>many</key>
+        <string>%li пробных недель</string>
+        <key>other</key>
+        <string>%li пробных недель</string>
+      </dict>
+    </dict>
+    <key>iapMonthsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li пробный месяц</string>
+        <key>few</key>
+        <string>%li пробных месяца</string>
+        <key>many</key>
+        <string>%li пробных месяцев</string>
+        <key>other</key>
+        <string>%li пробных месяцев</string>
+      </dict>
+    </dict>
+    <key>iapYearsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li пробный год</string>
+        <key>few</key>
+        <string>%li пробных года</string>
+        <key>many</key>
+        <string>%li пробных лет</string>
+        <key>other</key>
+        <string>%li пробных лет</string>
+      </dict>
+    </dict>
+    <key>hoSavedMultipleLinks</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@links@</string>
+      <key>links</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>Ссылка успешно добавлена.</string>
+        <key>few</key>
+        <string>%d ссылки успешно добавлено.</string>
+        <key>many</key>
+        <string>%d ссылок успешно добавлено.</string>
+        <key>other</key>
+        <string>%d ссылок успешно добавлено.</string>
+      </dict>
+    </dict>
+    <key>hoSavedMultipleLinksWithExpiration</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@links@</string>
+      <key>links</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>Ссылка успешно сохранена и будет доступна до #date_placeholder#.</string>
+        <key>few</key>
+        <string>%d ссылки успешно сохранено и будут доступны до #date_placeholder#.</string>
+        <key>many</key>
+        <string>%d ссылок успешно сохранено и будут доступны до #date_placeholder#.</string>
+        <key>other</key>
+        <string>%d ссылок успешно сохранено и будут доступны до #date_placeholder#.</string>
+      </dict>
+    </dict>
+  </dict>
+</plist>

@@ -1,0 +1,51 @@
+{
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/Library/FilenameParser.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/FilenameParser.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/FilenameParser.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/FilenameParser.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/FilenameParser.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/FilenameParser.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/Library/LibraryScanner.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/LibraryScanner.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/LibraryScanner.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/LibraryScanner.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/LibraryScanner.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/LibraryScanner.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/MediaSources/GoogleDriveAuth.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveAuth.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveAuth.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveAuth.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveAuth.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveAuth.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/MediaSources/GoogleDriveClient.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveClient.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveClient.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveClient.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveClient.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveClient.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/MediaSources/GoogleDriveStore.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveStore.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveStore.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveStore.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveStore.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveStore.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/Support/Keychain.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/Keychain.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/Keychain.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/Keychain.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/Keychain.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/Keychain.swiftdeps"
+  },
+  "/Users/zulfuyildiz/Desktop/ZyPlayer/Sources/ZyPlayer/UI/GoogleDriveSettingsView.swift" : {
+    "const-values" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveSettingsView.swiftconstvalues",
+    "dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveSettingsView.d",
+    "diagnostics" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveSettingsView.dia",
+    "object" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveSettingsView.o",
+    "swift-dependencies" : "/Users/zulfuyildiz/Desktop/ZyPlayer/.build/Build/Intermediates.noindex/ZyPlayer.build/Debug/ZyPlayer.build/Objects-normal/arm64/GoogleDriveSettingsView.swiftdeps"
+  }
+}

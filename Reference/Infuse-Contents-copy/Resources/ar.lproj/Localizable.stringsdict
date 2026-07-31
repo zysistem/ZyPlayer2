@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>svcMultipleSelectionTitle</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>لم يتم تحديد أي ملف</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>تم تحديد ملف واحد</string>
+        <key>two</key>
+        <string>تم تحديد ملفان</string>
+        <key>few</key>
+        <string>%li تم تحديدها</string>
+        <key>many</key>
+        <string>%li تم تحديدها</string>
+        <key>other</key>
+        <string>%li تم تحديدها</string>
+      </dict>
+    </dict>
+    <key>liDaysAgoPlural</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>منذ اقل من يوم</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>منذ يوم</string>
+        <key>two</key>
+        <string>منذ يومان</string>
+        <key>few</key>
+        <string>منذ %li أيام</string>
+        <key>many</key>
+        <string>منذ %li أيام</string>
+        <key>other</key>
+        <string>منذ %li يوم</string>
+      </dict>
+    </dict>
+    <key>Remove %d items?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>هل أنت متأكد من حذف %li ملف نهائياً ؟</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>هل أنت متأكد من حذف ملف واحد نهائياً ؟</string>
+        <key>two</key>
+        <string>هل أنت متأكد من حذف ملفين نهائياً ؟</string>
+        <key>few</key>
+        <string>هل أنت متأكد من حذف %li ملفات نهائياً ؟</string>
+        <key>many</key>
+        <string>هل أنت متأكد من حذف %li ملف نهائياً ؟</string>
+        <key>other</key>
+        <string>هل أنت متأكد من حذف %li ملف نهائياً ؟</string>
+      </dict>
+    </dict>
+    <key>foAbstractRemoveItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>هل أنت متأكد من حذف هذا العنصر؟</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>هل أنت متأكد من حذف هذا العنصر؟</string>
+        <key>two</key>
+        <string>هل أنت متأكد من حذف هذين العنصرين؟</string>
+        <key>few</key>
+        <string>هل أنت متأكد من حذف %li عناصر؟</string>
+        <key>many</key>
+        <string>هل أنت متأكد من حذف %li عنصر؟</string>
+        <key>other</key>
+        <string>هل أنت متأكد من حذف %li عنصر؟</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Bin?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>هل أنت متأكد من نقل هذا العنصر الى سلة المهملات؟</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>هل أنت متأكد من نقل هذا العنصر إلى سلة المهملات؟</string>
+        <key>two</key>
+        <string>هل أنت متأكد من نقل هذين العنصرين الى سلة المهملات؟</string>
+        <key>few</key>
+        <string>هل أنت متأكد من نقل %li عناصر إلى سلة المهملات؟</string>
+        <key>many</key>
+        <string>هل أنت متأكد من نقل %li عنصر إلى سلة المهملات؟</string>
+        <key>other</key>
+        <string>هل أنت متأكد من نقل %li عناصر إلى سلة المهملات؟</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Recently Deleted Files?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>هل أنت متأكد من نقل هذا العنصر إلى "المحذوفة مؤخرًا"؟</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>هل أنت متأكد من نقل هذا العنصر إلى "المحذوفة مؤخرًا"؟</string>
+        <key>two</key>
+        <string>هل أنت متأكد من نقل هذين العنصرين إلى "المحذوفة مؤخرًا"؟</string>
+        <key>few</key>
+        <string>هل أنت متأكد من نقل %li عناصر إلى "المحذوفة مؤخرًا"؟</string>
+        <key>many</key>
+        <string>هل أنت متأكد من نقل %li عنصر إلى "المحذوفة مؤخرًا"؟</string>
+        <key>other</key>
+        <string>هل أنت متأكد من نقل %li عناصر إلى "المحذوفة مؤخرًا"؟</string>
+      </dict>
+    </dict>
+    <key>hoSeasons</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>ولا موسم %li</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>موسم واحد</string>
+        <key>two</key>
+        <string>موسمان</string>
+        <key>few</key>
+        <string>%li مواسم</string>
+        <key>many</key>
+        <string>%li مواسم</string>
+        <key>other</key>
+        <string>%li مواسم</string>
+      </dict>
+    </dict>
+    <key>hoVideos</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>ولا فيديو</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>فيديو واحد</string>
+        <key>two</key>
+        <string>مقطعي فيديو</string>
+        <key>few</key>
+        <string>%li فيديوات</string>
+        <key>many</key>
+        <string>%li فيديوات</string>
+        <key>other</key>
+        <string>%li فيديوات</string>
+      </dict>
+    </dict>
+    <key>hoItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>ولا عنصر</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>عنصر واحد</string>
+        <key>two</key>
+        <string>عنصران</string>
+        <key>few</key>
+        <string>%li عناصر</string>
+        <key>many</key>
+        <string>%li عناصر</string>
+        <key>other</key>
+        <string>%li عناصر</string>
+      </dict>
+    </dict>
+    <key>iapUnlockDaysRemaining</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>(لايوجد أيام متبقية)</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>(متبقي يوم)</string>
+        <key>two</key>
+        <string>(متبقي يومان)</string>
+        <key>few</key>
+        <string>(%li أيام متبقية)</string>
+        <key>many</key>
+        <string>(%li يوم متبقي)</string>
+        <key>other</key>
+        <string>(%li أيام متبقية)</string>
+      </dict>
+    </dict>
+    <key>iapDaysTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>%li يوم تجريبي</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li يوم تجريبي</string>
+        <key>two</key>
+        <string>%li يوم تجريبي</string>
+        <key>few</key>
+        <string>%li أيام تجريبية</string>
+        <key>many</key>
+        <string>%li يوم تجريبي</string>
+        <key>other</key>
+        <string>%li أيام تجريبية</string>
+      </dict>
+    </dict>
+    <key>iapWeeksTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>%li أسبوع للتجربة</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li أسبوع للتجربة</string>
+        <key>two</key>
+        <string>%li أسبوع للتجربة</string>
+        <key>few</key>
+        <string>%li أسأبيع للتجربة</string>
+        <key>many</key>
+        <string>%li أسبوع للتجربة</string>
+        <key>other</key>
+        <string>%li أسبوع للتجربة</string>
+      </dict>
+    </dict>
+    <key>iapMonthsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>%li شهر للتجربة</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li شهر للتجربة</string>
+        <key>two</key>
+        <string>%li شهر للتجربة</string>
+        <key>few</key>
+        <string>%li شهر للتجربة</string>
+        <key>many</key>
+        <string>%li شهر للتجربة</string>
+        <key>other</key>
+        <string>%li شهر للتجربة</string>
+      </dict>
+    </dict>
+    <key>iapYearsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>zero</key>
+        <string>%li سنة للتجربة</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li سنة للتجربة</string>
+        <key>two</key>
+        <string>%li سنة للتجربة</string>
+        <key>few</key>
+        <string>%li سنوات للتجربة</string>
+        <key>many</key>
+        <string>%li سنة للتجربة</string>
+        <key>other</key>
+        <string>%li سنة للتجربة</string>
+      </dict>
+    </dict>
+    <key>hoSavedMultipleLinks</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@links@</string>
+      <key>links</key>
+      <dict>
+        <key>zero</key>
+        <string>لم يتم إضافة اي رابط.</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>تم حفظ الرابط بنجاح.</string>
+        <key>two</key>
+        <string>تمت إضافة رابطان بنجاح.</string>
+        <key>few</key>
+        <string>تمت إضافة بعض الروابط بنجاح.</string>
+        <key>many</key>
+        <string>تم اضافة الروابط بنجاح.</string>
+        <key>other</key>
+        <string>تمت إضافة روابط %d بنجاح.</string>
+      </dict>
+    </dict>
+    <key>hoSavedMultipleLinksWithExpiration</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@links@</string>
+      <key>links</key>
+      <dict>
+        <key>zero</key>
+        <string>لم يتم إضافة اي رابط.</string>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>تمت إضافة الرابط بنجاح وسيظل متاحًا حتى #date_placeholder#.</string>
+        <key>two</key>
+        <string>تمت إضافة الرابطان بنجاح وسيظل متاحًا حتى #date_placeholder#.</string>
+        <key>few</key>
+        <string>تمت إضافة بعض الروابط بنجاح وسيظل متاحًا حتى #date_placeholder#.</string>
+        <key>many</key>
+        <string>تمت إضافة عدة روابط بنجاح وسيظل متاحًا حتى #date_placeholder#.</string>
+        <key>other</key>
+        <string>تمت إضافة %d روابط بنجاح وستكون متاحة حتى #date_placeholder#.</string>
+      </dict>
+    </dict>
+  </dict>
+</plist>

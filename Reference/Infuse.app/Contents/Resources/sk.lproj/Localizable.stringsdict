@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>svcMultipleSelectionTitle</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li vybrané</string>
+        <key>few</key>
+        <string>%li vybrané</string>
+        <key>many</key>
+        <string>%li vybraných</string>
+        <key>other</key>
+        <string>%li vybraných</string>
+      </dict>
+    </dict>
+    <key>liDaysAgoPlural</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Pred %li dňom</string>
+        <key>few</key>
+        <string>Pred %li dňami</string>
+        <key>many</key>
+        <string>Pred %li dňami</string>
+        <key>other</key>
+        <string>Pred %li dňami</string>
+      </dict>
+    </dict>
+    <key>Remove %d items?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Ste si istý, že chcete natrvalo zmazať %li položku?</string>
+        <key>few</key>
+        <string>Ste si istý, že chcete natrvalo zmazať %li položky?</string>
+        <key>many</key>
+        <string>Ste si istý, že chcete natrvalo zmazať %li položiek?</string>
+        <key>other</key>
+        <string>Ste si istý, že chcete natrvalo zmazať %li položiek?</string>
+      </dict>
+    </dict>
+    <key>foAbstractRemoveItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Ste si istí, že chcete odstrániť %li položku?</string>
+        <key>few</key>
+        <string>Ste si istí, že chcete odstrániť %li položky?</string>
+        <key>many</key>
+        <string>Ste si istí, že chcete odstrániť %li položiek?</string>
+        <key>other</key>
+        <string>Ste si istí, že chcete odstrániť %li položiek?</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Bin?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Ste si istí, že chcete presunúť položku %li do koša?</string>
+        <key>few</key>
+        <string>Ste si istí, že chcete presunúť položky %li do koša?</string>
+        <key>many</key>
+        <string>Ste si istí, že chcete presunúť položky %li do koša?</string>
+        <key>other</key>
+        <string>Ste si istí, že chcete presunúť položky %li do koša?</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Recently Deleted Files?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Ste si istí, že chcete presunúť položku %li do Nedávno odstránených súborov?</string>
+        <key>few</key>
+        <string>Ste si istí, že chcete presunúť položky %li do Nedávno odstránených súborov?</string>
+        <key>many</key>
+        <string>Ste si istí, že chcete presunúť položky %li do Nedávno odstránených súborov?</string>
+        <key>other</key>
+        <string>Ste si istí, že chcete presunúť položky %li do Nedávno odstránených súborov?</string>
+      </dict>
+    </dict>
+    <key>hoSeasons</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li séria</string>
+        <key>few</key>
+        <string>%li série</string>
+        <key>many</key>
+        <string>%li sérií</string>
+        <key>other</key>
+        <string>%li sérií</string>
+      </dict>
+    </dict>
+    <key>hoVideos</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li video</string>
+        <key>few</key>
+        <string>%li videá</string>
+        <key>many</key>
+        <string>%li videí</string>
+        <key>other</key>
+        <string>%li videí</string>
+      </dict>
+    </dict>
+    <key>hoItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li položka</string>
+        <key>few</key>
+        <string>%li položky</string>
+        <key>many</key>
+        <string>%li položiek</string>
+        <key>other</key>
+        <string>%li položiek</string>
+      </dict>
+    </dict>
+    <key>iapUnlockDaysRemaining</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>(zostáva %li deň)</string>
+        <key>few</key>
+        <string>(zostávajú %li dni)</string>
+        <key>many</key>
+        <string>(zostáva %li dní)</string>
+        <key>other</key>
+        <string>(zostáva %li dní)</string>
+      </dict>
+    </dict>
+    <key>iapDaysTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li deň skúšobnej verzie</string>
+        <key>few</key>
+        <string>%li dni skúšobnej verzie</string>
+        <key>many</key>
+        <string>%li dní skúšobnej verzie</string>
+        <key>other</key>
+        <string>%li dní skúšobnej verzie</string>
+      </dict>
+    </dict>
+    <key>iapWeeksTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li týždeň skúšobnej verzie</string>
+        <key>few</key>
+        <string>%li týždne skúšobnej verzie</string>
+        <key>many</key>
+        <string>%li týždňov skúšobnej verzie</string>
+        <key>other</key>
+        <string>%li týždňov skúšobnej verzie</string>
+      </dict>
+    </dict>
+    <key>iapMonthsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li mesačná skúšobná verzia</string>
+        <key>few</key>
+        <string>%li mesačná skúšobná verzia</string>
+        <key>many</key>
+        <string>%li mesačná skúšobná verzia</string>
+        <key>other</key>
+        <string>%li mesačná skúšobná verzia</string>
+      </dict>
+    </dict>
+    <key>iapYearsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li rok skúšobná verzia</string>
+        <key>few</key>
+        <string>%li roky skúšobná verzia</string>
+        <key>many</key>
+        <string>%li rokov skúšobná verzia</string>
+        <key>other</key>
+        <string>%li rokov skúšobná verzia</string>
+      </dict>
+    </dict>
+    <key>hoSavedMultipleLinks</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@links@</string>
+      <key>links</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>Odkaz bol úspešne pridaný.</string>
+        <key>few</key>
+        <string>%d odkazy boli úspešne pridané.</string>
+        <key>many</key>
+        <string>%d odkazov bolo úspešne pridaných.</string>
+        <key>other</key>
+        <string>%d odkazov bolo úspešne pridaných.</string>
+      </dict>
+    </dict>
+    <key>hoSavedMultipleLinksWithExpiration</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@links@</string>
+      <key>links</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>Odkaz bol úspešne pridaný a bude k dispozícii do #date_placeholder#.</string>
+        <key>few</key>
+        <string>%d odkazy boli úspešne pridané a budú k dispozícii do #date_placeholder#.</string>
+        <key>many</key>
+        <string>%d odkazov bolo úspešne pridaných a budú k dispozícii do #date_placeholder#.</string>
+        <key>other</key>
+        <string>%d odkazov bolo úspešne pridaných a budú k dispozícii do #date_placeholder#.</string>
+      </dict>
+    </dict>
+  </dict>
+</plist>

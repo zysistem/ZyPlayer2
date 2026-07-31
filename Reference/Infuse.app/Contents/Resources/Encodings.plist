@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<!-- Automatic -->
+	<dict>
+		<key>EncName</key>
+		<string>Auto</string>
+		<key>EncValue</key>
+		<integer>4294967294</integer> 
+	</dict>
+
+	<!-- Universal -->
+	<dict>
+		<key>EncName</key>
+		<string>Universal (UTF-8)</string>
+		<key>EncValue</key>
+		<integer>134217984</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Universal (UTF-16)</string>
+		<key>EncValue</key>
+		<integer>256</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Universal (big endian UTF-16)</string>
+		<key>EncValue</key>
+		<integer>268435712</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Universal (little endian UTF-16)</string>
+		<key>EncValue</key>
+		<integer>335544576</integer>
+	</dict>
+
+	<!-- Western -->
+	<dict>
+		<key>EncName</key>
+		<string>Western (Mac OS Roman)</string>
+		<key>EncValue</key>
+		<integer>0</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Western European (Latin-9)</string>
+		<key>EncValue</key>
+		<integer>527</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Western European (Windows-1252)</string>
+		<key>EncValue</key>
+		<integer>1280</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Eastern European (Latin-2)</string>
+		<key>EncValue</key>
+		<integer>514</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Eastern European (Windows-1250)</string>
+		<key>EncValue</key>
+		<integer>1281</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Esperanto (Latin-3)</string>
+		<key>EncValue</key>
+		<integer>515</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Nordic (Latin-6)</string>
+		<key>EncValue</key>
+		<integer>522</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>South-Eastern European (Latin-10)</string>
+		<key>EncValue</key>
+		<integer>528</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Baltic (Latin-7)</string>
+		<key>EncValue</key>
+		<integer>525</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Baltic (Windows-1257)</string>
+		<key>EncValue</key>
+		<integer>1287</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Celtic (Latin-8)</string>
+		<key>EncValue</key>
+		<integer>526</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Greek (Windows-1253)</string>
+		<key>EncValue</key>
+		<integer>1283</integer>
+	</dict>
+
+	<dict>
+		<key>EncName</key>
+		<string>Greek (ISO 8859-7)</string>
+		<key>EncValue</key>
+		<integer>519</integer>
+	</dict>
+
+	<!-- Chinese -->
+	<dict>
+		<key>EncName</key>
+		<string>Universal, Chinese (GB 18030)</string>
+		<key>EncValue</key>
+		<integer>1586</integer>
+	</dict>
+		<dict>
+		<key>EncName</key>
+		<string>Simplified Chinese (ISO-2022-CN-EXT)</string>
+		<key>EncValue</key>
+		<integer>2097</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Simplified Chinese Unix (EUC-CN)</string>
+		<key>EncValue</key>
+		<integer>2352</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Traditional Chinese (Big 5)</string>
+		<key>EncValue</key>
+		<integer>2563</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Traditional Chinese Unix (EUC-TW)</string>
+		<key>EncValue</key>
+		<integer>2353</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Hong-Kong Supplementary (HKSCS)</string>
+		<key>EncValue</key>
+		<integer>2566</integer>
+	</dict>
+
+	<!-- Japanese -->
+	<dict>
+		<key>EncName</key>
+		<string>Japanese (7-bits JIS/ISO-2022-JP-2)</string>
+		<key>EncValue</key>
+		<integer>2081</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Japanese Unix (EUC-JP)</string>
+		<key>EncValue</key>
+		<integer>2336</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Japanese (Shift JIS)</string>
+		<key>EncValue</key>
+		<integer>2561</integer>
+	</dict>
+
+	<!-- Russian -->
+	<dict>
+		<key>EncName</key>
+		<string>Cyrillic (Windows-1251)</string>
+		<key>EncValue</key>
+		<integer>1282</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Russian (KOI8-R)</string>
+		<key>EncValue</key>
+		<integer>2562</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Ukrainian (KOI8-U)</string>
+		<key>EncValue</key>
+		<integer>2568</integer>
+	</dict>
+
+	<!-- Arabic -->
+	<dict>
+		<key>EncName</key>
+		<string>Arabic (ISO 8859-6)</string>
+		<key>EncValue</key>
+		<integer>518</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Arabic (Windows-1256)</string>
+		<key>EncValue</key>
+		<integer>1286</integer>
+	</dict>
+
+
+	<!-- Hebrew -->
+	<dict>
+		<key>EncName</key>
+		<string>Hebrew (ISO 8859-8)</string>
+		<key>EncValue</key>
+		<integer>520</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Hebrew (Windows-1255)</string>
+		<key>EncValue</key>
+		<integer>1285</integer>
+	</dict>
+
+	<!-- Turkish -->
+	<dict>
+		<key>EncName</key>
+		<string>Turkish (ISO 8859-9/Latin-5)</string>
+		<key>EncValue</key>
+		<integer>521</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Turkish (Windows-1254)</string>
+		<key>EncValue</key>
+		<integer>1284</integer>
+	</dict>
+
+	<!-- Thai -->
+	<dict>
+		<key>EncName</key>
+		<string>Thai (TIS 620-2533/ISO 8859-11)</string>
+		<key>EncValue</key>
+		<integer>523</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Thai (Windows-874)</string>
+		<key>EncValue</key>
+		<integer>1053</integer>
+	</dict>
+
+	<!-- Korean -->
+	<dict>
+		<key>EncName</key>
+		<string>Korean (EUC-KR/CP949)</string>
+		<key>EncValue</key>
+		<integer>2368</integer>
+	</dict>
+	<dict>
+		<key>EncName</key>
+		<string>Korean (ISO-2022-KR)</string>
+		<key>EncValue</key>
+		<integer>2112</integer>
+	</dict>
+
+	<!-- Vietnamese -->
+	<dict>
+		<key>EncName</key>
+		<string>Vietnamese (Windows-1258)</string>
+		<key>EncValue</key>
+		<integer>1288</integer>
+	</dict>
+</array>
+</plist>

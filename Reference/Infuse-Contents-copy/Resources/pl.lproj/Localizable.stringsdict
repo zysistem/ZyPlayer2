@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>svcMultipleSelectionTitle</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li zaznaczony</string>
+        <key>few</key>
+        <string>%li zaznaczone</string>
+        <key>many</key>
+        <string>%li zaznaczonych</string>
+        <key>other</key>
+        <string>%li zaznaczonych</string>
+      </dict>
+    </dict>
+    <key>liDaysAgoPlural</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li dzień temu</string>
+        <key>few</key>
+        <string>%li dni temu</string>
+        <key>many</key>
+        <string>%li dni temu</string>
+        <key>other</key>
+        <string>%li dni temu</string>
+      </dict>
+    </dict>
+    <key>Remove %d items?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Czy na pewno chcesz usunąć %li plik?</string>
+        <key>few</key>
+        <string>Czy na pewno chcesz usunąć %li pliki?</string>
+        <key>many</key>
+        <string>Czy na pewno chcesz usunąć %li pliki?</string>
+        <key>other</key>
+        <string>Czy na pewno chcesz usunąć %li pliki?</string>
+      </dict>
+    </dict>
+    <key>foAbstractRemoveItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Czy na pewno chcesz usunąć element %li ?</string>
+        <key>few</key>
+        <string>Czy na pewno chcesz usunąć elementy %li ?</string>
+        <key>many</key>
+        <string>Czy na pewno chcesz usunąć elementy %li ?</string>
+        <key>other</key>
+        <string>Czy na pewno chcesz usunąć elementy %li ?</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Bin?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Czy na pewno chcesz przenieść element %li do Kosza?</string>
+        <key>few</key>
+        <string>Czy na pewno chcesz przenieść elementy %li do Kosza?</string>
+        <key>many</key>
+        <string>Czy na pewno chcesz przenieść elementy %li do Kosza?</string>
+        <key>other</key>
+        <string>Czy na pewno chcesz przenieść elementy %li do Kosza?</string>
+      </dict>
+    </dict>
+    <key>Move %d items to Recently Deleted Files?</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>Czy na pewno chcesz przenieść element %li do Ostatnio usuniętych?</string>
+        <key>few</key>
+        <string>Czy na pewno chcesz przenieść elementy %li do Ostatnio usuniętych?</string>
+        <key>many</key>
+        <string>Czy na pewno chcesz przenieść elementy %li do Ostatnio usuniętych?</string>
+        <key>other</key>
+        <string>Czy na pewno chcesz przenieść elementy %li do Ostatnio usuniętych?</string>
+      </dict>
+    </dict>
+    <key>hoSeasons</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li sezon</string>
+        <key>few</key>
+        <string>%li sezony</string>
+        <key>many</key>
+        <string>%li sezonów</string>
+        <key>other</key>
+        <string>%li sezonów</string>
+      </dict>
+    </dict>
+    <key>hoVideos</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li film</string>
+        <key>few</key>
+        <string>%li filmy</string>
+        <key>many</key>
+        <string>%li filmów</string>
+        <key>other</key>
+        <string>%li filmów</string>
+      </dict>
+    </dict>
+    <key>hoItems</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li element</string>
+        <key>few</key>
+        <string>%li elementów</string>
+        <key>many</key>
+        <string>%li elementów</string>
+        <key>other</key>
+        <string>%li elementów</string>
+      </dict>
+    </dict>
+    <key>iapUnlockDaysRemaining</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>(pozostał %li dzień)</string>
+        <key>few</key>
+        <string>(pozostało %li dni)</string>
+        <key>many</key>
+        <string>(pozostało %li dni)</string>
+        <key>other</key>
+        <string>(pozostało %li dni)</string>
+      </dict>
+    </dict>
+    <key>iapDaysTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li Dzień próbny</string>
+        <key>few</key>
+        <string>%li Dzień próbny</string>
+        <key>many</key>
+        <string>%li Dzień próbny</string>
+        <key>other</key>
+        <string>%li Dni próby</string>
+      </dict>
+    </dict>
+    <key>iapWeeksTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li Tydzień próbny</string>
+        <key>few</key>
+        <string>%li Tydzień próbny</string>
+        <key>many</key>
+        <string>%li Tydzień próbny</string>
+        <key>other</key>
+        <string>%li Tygodnie próby</string>
+      </dict>
+    </dict>
+    <key>iapMonthsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li Miesiąc próbny</string>
+        <key>few</key>
+        <string>%li Miesiąc próbny</string>
+        <key>many</key>
+        <string>%li Miesiąc próbny</string>
+        <key>other</key>
+        <string>%li Miesiące próbne</string>
+      </dict>
+    </dict>
+    <key>iapYearsTrial</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@items@</string>
+      <key>items</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>li</string>
+        <key>one</key>
+        <string>%li Rok próby</string>
+        <key>few</key>
+        <string>%li Rok próby</string>
+        <key>many</key>
+        <string>%li Rok próby</string>
+        <key>other</key>
+        <string>%li Lata próby</string>
+      </dict>
+    </dict>
+    <key>hoSavedMultipleLinks</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@links@</string>
+      <key>links</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>Link został dodany pomyślnie.</string>
+        <key>few</key>
+        <string>%d linki zostały dodane pomyślnie.</string>
+        <key>many</key>
+        <string>%d linki zostały dodane pomyślnie.</string>
+        <key>other</key>
+        <string>%d linki zostały dodane pomyślnie.</string>
+      </dict>
+    </dict>
+    <key>hoSavedMultipleLinksWithExpiration</key>
+    <dict>
+      <key>NSStringLocalizedFormatKey</key>
+      <string>%#@links@</string>
+      <key>links</key>
+      <dict>
+        <key>NSStringFormatSpecTypeKey</key>
+        <string>NSStringPluralRuleType</string>
+        <key>NSStringFormatValueTypeKey</key>
+        <string>d</string>
+        <key>one</key>
+        <string>Link został dodany pomyślnie i będzie dostępny do #date_placeholder#.</string>
+        <key>few</key>
+        <string>%d Linki zostały dodane pomyślnie i będą dostępne do #date_placeholder#.</string>
+        <key>many</key>
+        <string>%d Linki zostały dodane pomyślnie i będą dostępne do #date_placeholder#.</string>
+        <key>other</key>
+        <string>%d Linki zostały dodane pomyślnie i będą dostępne do #date_placeholder#.</string>
+      </dict>
+    </dict>
+  </dict>
+</plist>
