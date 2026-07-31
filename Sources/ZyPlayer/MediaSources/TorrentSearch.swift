@@ -137,19 +137,18 @@ struct TorrentioClient {
 
     /// Verilen temel adres için torrent listesi getirir. Bölge engellemesini
     /// aşmak için birden fazla public instance sırayla denenir; ilk başarılı
-    /// yanıt döner. Eğer tüm mirror'lar başarısız olursa doğrudan YTS API'ye
-    /// (YIFY Official API) başvurur.
-    func streams(imdbID: String, season: Int?, episode: Int?) async throws -> [TorrentOption] {
+    /// yanıt döner. Eğer tüm mirror'lar başarısız olursa veya boş dönerse
+    /// doğrudan YTS API'ye (YIFY Official API) hem IMDb ID hem de başlık/yıl ile başvurur.
+    func streams(imdbID: String, title: String? = nil, year: Int? = nil, season: Int?, episode: Int?) async throws -> [TorrentOption] {
         let trimmedBase = base.trimmingCharacters(in: .whitespacesAndNewlines)
         let isCustomBase = !trimmedBase.isEmpty
             && trimmedBase.lowercased() != Self.defaultBase.lowercased()
 
         if isCustomBase {
-            return try await fetchStreams(from: configuredBase, imdbID: imdbID,
-                                         season: season, episode: episode)
+            if let customResults = try? await fetchStreams(from: configuredBase, imdbID: imdbID, season: season, episode: episode, timeout: 8), !customResults.isEmpty {
+                return customResults
+            }
         }
-
-        var lastError: Error = ClientError.badBase
 
         for mirror in Self.fallbackMirrors {
             let mirrorBase = mirror.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -158,24 +157,24 @@ struct TorrentioClient {
             do {
                 let results = try await fetchStreams(from: mirrorBase, imdbID: imdbID,
                                                     season: season, episode: episode,
-                                                    timeout: 8)
+                                                    timeout: 6)
                 if !results.isEmpty {
                     return results
                 }
             } catch {
-                lastError = error
+                // DNS çözülemedi veya sunucu bulunamadı hatasını sessizce yut, diğer mirror'a geç
                 continue
             }
         }
 
-        // Torrentio mirror'ları açılmıyorsa ve istek bir filme aitse, YTS.mx resmi API'sinden çek
+        // Torrentio mirror'ları açılmıyorsa veya boş döndüyse ve istek bir filme aitse, YTS API'sinden çek
         if season == nil {
-            if let ytsResults = try? await fetchYTSStreams(imdbID: imdbID), !ytsResults.isEmpty {
+            if let ytsResults = await fetchYTSStreams(imdbID: imdbID, title: title, year: year), !ytsResults.isEmpty {
                 return ytsResults
             }
         }
 
-        throw lastError
+        return []
     }
 
     /// Tek bir base URL'den stream listesi getirir.
@@ -207,53 +206,72 @@ struct TorrentioClient {
     }
 
     /// Doğrudan YTS.mx (YIFY Official REST API) üzerinden torrent sonuçlarını çeker.
-    private func fetchYTSStreams(imdbID: String) async throws -> [TorrentOption] {
-        guard let url = URL(string: "https://yts.mx/api/v2/list_movies.json?query_term=\(imdbID)") else { return [] }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 10
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return [] }
-
-        struct YTSResponse: Decodable {
-            let data: YTSData?
-            struct YTSData: Decodable {
-                let movies: [YTSMovie]?
-            }
-            struct YTSMovie: Decodable {
-                let title: String?
-                let torrents: [YTSTorrent]?
-            }
-            struct YTSTorrent: Decodable {
-                let hash: String
-                let quality: String
-                let type: String?
-                let seeds: Int
-                let peers: Int
-                let size: String
+    /// Hem IMDb ID hem de başlık/yıl ile sorgulama yapar.
+    private func fetchYTSStreams(imdbID: String, title: String?, year: Int?) async -> [TorrentOption]? {
+        var queryTerms: [String] = [imdbID]
+        if let title = title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
+            queryTerms.append(title)
+            if let year = year {
+                queryTerms.append("\(title) \(year)")
             }
         }
-
-        guard let decoded = try? JSONDecoder().decode(YTSResponse.self, from: data),
-              let movies = decoded.data?.movies,
-              let movie = movies.first,
-              let torrents = movie.torrents else { return [] }
 
         let trackersQuery = Self.trackers.map { "tr=" + $0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)! }.joined(separator: "&")
 
-        return torrents.compactMap { torrent -> TorrentOption? in
-            let magnet = "magnet:?xt=urn:btih:\(torrent.hash)&dn=\(movie.title ?? "Movie")&\(trackersQuery)"
-            let detailStr = "\(torrent.type?.uppercased() ?? "BLURAY") · \(torrent.size) · 👤 \(torrent.seeds)"
-            return TorrentOption(
-                id: torrent.hash,
-                quality: torrent.quality,
-                detail: detailStr,
-                seeds: torrent.seeds,
-                peers: torrent.peers,
-                provider: "YTS",
-                link: magnet,
-                fileIndex: nil
-            )
+        for term in queryTerms {
+            guard let encodedTerm = term.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+                  let url = URL(string: "https://yts.mx/api/v2/list_movies.json?query_term=\(encodedTerm)") else { continue }
+
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 6
+
+            guard let (data, response) = try? await URLSession.shared.data(for: request),
+                  let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { continue }
+
+            struct YTSResponse: Decodable {
+                let data: YTSData?
+                struct YTSData: Decodable {
+                    let movies: [YTSMovie]?
+                }
+                struct YTSMovie: Decodable {
+                    let title: String?
+                    let torrents: [YTSTorrent]?
+                }
+                struct YTSTorrent: Decodable {
+                    let hash: String
+                    let quality: String
+                    let type: String?
+                    let seeds: Int
+                    let peers: Int
+                    let size: String
+                }
+            }
+
+            if let decoded = try? JSONDecoder().decode(YTSResponse.self, from: data),
+               let movies = decoded.data?.movies,
+               let movie = movies.first,
+               let torrents = movie.torrents, !torrents.isEmpty {
+
+                let options = torrents.compactMap { torrent -> TorrentOption? in
+                    let magnet = "magnet:?xt=urn:btih:\(torrent.hash)&dn=\(movie.title ?? "Movie")&\(trackersQuery)"
+                    let detailStr = "\(torrent.type?.uppercased() ?? "BLURAY") · \(torrent.size) · 👤 \(torrent.seeds)"
+                    return TorrentOption(
+                        id: torrent.hash,
+                        quality: torrent.quality,
+                        detail: detailStr,
+                        seeds: torrent.seeds,
+                        peers: torrent.peers,
+                        provider: "YTS",
+                        link: magnet,
+                        fileIndex: nil
+                    )
+                }
+                if !options.isEmpty {
+                    return options
+                }
+            }
         }
+        return nil
     }
 
     /// 4K and 1080p only, and no telesyncs — including the ones that call

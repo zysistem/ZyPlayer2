@@ -4,12 +4,12 @@ import Observation
 /// What to look up: a whole film, or one episode of a show. Both are addressed
 /// by IMDb id — that is the only key the index understands.
 enum TorrentRequest: Hashable {
-    case movie(imdbID: String?)
+    case movie(imdbID: String?, title: String? = nil, year: Int? = nil)
     case episode(imdbID: String, season: Int, episode: Int)
 
     var key: String {
         switch self {
-        case .movie(let imdbID): "movie-\(imdbID ?? "?")"
+        case .movie(let imdbID, let title, _): "movie-\(imdbID ?? title ?? "?")"
         case .episode(let imdbID, let season, let episode): "tv-\(imdbID)-\(season)-\(episode)"
         }
     }
@@ -35,17 +35,13 @@ final class TorrentPickerModel {
         let client = TorrentioClient(base: settings.effectiveTorrentAPIBase)
         do {
             switch request {
-            case .movie(let imdbID):
-                guard let imdbID, !imdbID.isEmpty else {
-                    message = "Bu film için IMDb kimliği bulunamadı, torrent aranamıyor."
-                    torrents = []
-                    return
-                }
-                torrents = try await client.streams(imdbID: imdbID, season: nil, episode: nil)
+            case .movie(let imdbID, let title, let year):
+                let id = imdbID ?? ""
+                torrents = try await client.streams(imdbID: id, title: title, year: year, season: nil, episode: nil)
 
             case .episode(let imdbID, let season, let episode):
                 torrents = try await client.streams(
-                    imdbID: imdbID, season: season, episode: episode
+                    imdbID: imdbID, title: nil, year: nil, season: season, episode: episode
                 )
             }
             if torrents.isEmpty { message = "Torrent bulunamadı." }

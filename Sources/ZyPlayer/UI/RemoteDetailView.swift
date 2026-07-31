@@ -56,7 +56,7 @@ struct RemoteDetailView: View {
                     switch title.kind {
                     case .movie:
                         TorrentPickerView(
-                            request: .movie(imdbID: loader.imdbID),
+                            request: .movie(imdbID: loader.imdbID, title: title.title, year: title.year),
                             isReady: loader.loadedID == title.id,
                             settings: settings,
                             streamer: streamer,
