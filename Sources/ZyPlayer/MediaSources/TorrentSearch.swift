@@ -92,6 +92,15 @@ struct TorrentioClient {
 
     static let defaultBase = "https://torrentio.strem.fun"
 
+    /// Bölge engellemesini aşmak için otomatik olarak denenen yedek public
+    /// Torrentio instance'ları. Kullanıcı kendi adresini girdiyse bu liste
+    /// atlanır; yalnızca varsayılan adres kullanılıyorken devreye girer.
+    private static let fallbackMirrors = [
+        "https://torrentio.strem.fun",
+        "https://stremio.torrentio.strem.fun",
+        "https://stremio.strem.fun"
+    ]
+
     /// Trackers to search, in the addon's own configuration syntax. Its full set
     /// includes regional and anime-only indexes whose releases are noise here.
     private static let providers = [
@@ -128,19 +137,62 @@ struct TorrentioClient {
         "udp://tracker.openbittorrent.com:6969/announce"
     ]
 
+    /// Verilen temel adres için torrent listesi getirir. Bölge engellemesini
+    /// aşmak için birden fazla public instance sırayla denenir; ilk başarılı
+    /// yanıt döner. Kullanıcı özel bir adres girdiyse yalnızca o denenir.
     func streams(imdbID: String, season: Int?, episode: Int?) async throws -> [TorrentOption] {
-        let root = configuredBase
+        // Kullanıcı kendi adresini girdiyse doğrudan kullan — yedek instance
+        // listesini pas geç.
+        let trimmedBase = base.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isCustomBase = !trimmedBase.isEmpty
+            && trimmedBase.lowercased() != Self.defaultBase.lowercased()
+
+        if isCustomBase {
+            return try await fetchStreams(from: configuredBase, imdbID: imdbID,
+                                         season: season, episode: episode)
+        }
+
+        // Varsayılan adres için bölge engeline karşı yedek instance'ları dene.
+        // Her instance için ayrı bir timeout kullanılıyor ki bir tanesi takılıp
+        // kalınca toplam bekleme süresi uzamasın.
+        let providerConfig = "/providers=" + Self.providers.joined(separator: ",")
+        var lastError: Error = ClientError.badBase
+
+        for mirror in Self.fallbackMirrors {
+            let mirrorBase = mirror.trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            let fullBase = mirrorBase + providerConfig
+
+            do {
+                let results = try await fetchStreams(from: fullBase, imdbID: imdbID,
+                                                    season: season, episode: episode,
+                                                    timeout: 12)
+                return results
+            } catch {
+                lastError = error
+                // Bağlantı hatası veya timeout: bir sonraki mirror'ı dene.
+                continue
+            }
+        }
+
+        throw lastError
+    }
+
+    /// Tek bir base URL'den stream listesi getirir.
+    private func fetchStreams(from base: String, imdbID: String,
+                             season: Int?, episode: Int?,
+                             timeout: TimeInterval = 25) async throws -> [TorrentOption] {
         let path: String
         if let season, let episode {
-            path = "\(root)/stream/series/\(imdbID):\(season):\(episode).json"
+            path = "\(base)/stream/series/\(imdbID):\(season):\(episode).json"
         } else {
-            path = "\(root)/stream/movie/\(imdbID).json"
+            path = "\(base)/stream/movie/\(imdbID).json"
         }
         guard let url = URL(string: path) else { throw ClientError.badBase }
 
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "accept")
-        request.timeoutInterval = 25
+        request.timeoutInterval = timeout
 
         let (data, response) = try await URLSession.shared.data(for: request)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
