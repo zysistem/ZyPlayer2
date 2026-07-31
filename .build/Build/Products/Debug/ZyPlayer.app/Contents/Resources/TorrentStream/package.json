@@ -1,7 +1,0 @@
-{
-  "name": "zyplayer-torrent-stream",
-  "private": true,
-  "type": "module",
-  "description": "Vendored WebTorrent stream helper. Not built by Xcode; copied into the .app as a folder reference.",
-  "dependencies": { "webtorrent": "^3.0.16" }
-}
