@@ -3,12 +3,15 @@ import AppKit
 import IOKit
 import IOKit.hid
 import MediaPlayer
+import GameController
 
-/// Google Chromecast / Bluetooth Kumanda (Huayu RC-BT1846 vb.) Donanım ve HID Sürücüsü.
+/// Google Chromecast / Bluetooth Kumanda (Huayu RC-BT1846 vb.) Donanım, HID ve GameController Sürücüsü.
 ///
-/// Kumanda macOS tarafından Bluetooth Klavye olarak algılanır.
-/// Hem video oynatıcı (Player) modunda hem de Ana Menü / Arayüz gezinmesinde
-/// D-Pad (Yön tuşları), OK (Enter/Space), Geri (Back/Escape) ve Medya tuşlarını destekler.
+/// macOS üzerinde Bluetooth Kumandalar:
+/// 1. GameController (GCController) altyapısıyla
+/// 2. IOKit IOHIDManager ham HID sürücüsüyle
+/// 3. NSEvent ve MPRemoteCommandCenter ile
+/// %100 tam uyumlu olarak dinlenir.
 final class BluetoothRemoteManager: @unchecked Sendable {
     static let shared = BluetoothRemoteManager()
 
@@ -28,6 +31,7 @@ final class BluetoothRemoteManager: @unchecked Sendable {
         self.onGlobalSearch = onGlobalSearch
 
         if hidManager == nil {
+            setupGameController()
             setupIOHIDManager()
             setupNSEventMonitors()
             setupMPRemoteCommandCenter()
@@ -49,14 +53,119 @@ final class BluetoothRemoteManager: @unchecked Sendable {
         if let globalMonitor { NSEvent.removeMonitor(globalMonitor) }
         localMonitor = nil
         globalMonitor = nil
+        NotificationCenter.default.removeObserver(self)
     }
 
-    // MARK: - 1. IOKit IOHIDManager (Ham Bluetooth HID Tuşlarını Yakalama)
+    // MARK: - 1. GameController Framework (Apple Remote / Bluetooth Controller API)
+    private func setupGameController() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleControllerConnect(_:)),
+            name: .GCControllerDidConnect,
+            object: nil
+        )
+
+        GCController.startWirelessControllerDiscovery()
+        for controller in GCController.controllers() {
+            registerGCController(controller)
+        }
+    }
+
+    @objc private func handleControllerConnect(_ notification: Notification) {
+        if let controller = notification.object as? GCController {
+            registerGCController(controller)
+        }
+    }
+
+    private func registerGCController(_ controller: GCController) {
+        // MicroGamepad (Apple TV Remote / Simple BT Remote)
+        if let micro = controller.microGamepad {
+            micro.dpad.valueChangedHandler = { [weak self] _, xValue, yValue in
+                self?.handleDPadInput(x: xValue, y: yValue)
+            }
+            micro.buttonA.valueChangedHandler = { [weak self] _, _, pressed in
+                if pressed { self?.handleSelectInput() }
+            }
+            micro.buttonX.valueChangedHandler = { [weak self] _, _, pressed in
+                if pressed { self?.handlePlayPauseInput() }
+            }
+        }
+
+        // Extended Gamepad (Android TV / Chromecast Remote)
+        if let extended = controller.extendedGamepad {
+            extended.dpad.valueChangedHandler = { [weak self] _, xValue, yValue in
+                self?.handleDPadInput(x: xValue, y: yValue)
+            }
+            extended.buttonA.valueChangedHandler = { [weak self] _, _, pressed in
+                if pressed { self?.handleSelectInput() }
+            }
+            extended.buttonB.valueChangedHandler = { [weak self] _, _, pressed in
+                if pressed { self?.handleBackInput() }
+            }
+            extended.buttonX.valueChangedHandler = { [weak self] _, _, pressed in
+                if pressed { self?.handlePlayPauseInput() }
+            }
+            extended.buttonMenu.valueChangedHandler = { [weak self] _, _, pressed in
+                if pressed { self?.handleBackInput() }
+            }
+        }
+    }
+
+    private func handleDPadInput(x: Float, y: Float) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if let player = self.activePlayer {
+                if x > 0.5 { player.seek(by: 10) }
+                else if x < -0.5 { player.seek(by: -10) }
+                else if y > 0.5 { player.setVolume(min(100, player.volume + 5)) }
+                else if y < -0.5 { player.setVolume(max(0, player.volume - 5)) }
+            } else {
+                if x > 0.5 { self.postKeyEvent(keyCode: 124) }      // Sağ Ok
+                else if x < -0.5 { self.postKeyEvent(keyCode: 123) } // Sol Ok
+                else if y > 0.5 { self.postKeyEvent(keyCode: 126) }  // Yukarı Ok
+                else if y < -0.5 { self.postKeyEvent(keyCode: 125) } // Aşağı Ok
+            }
+        }
+    }
+
+    private func handleSelectInput() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if let player = self.activePlayer {
+                player.togglePause()
+            } else {
+                self.postKeyEvent(keyCode: 36) // Return
+            }
+        }
+    }
+
+    private func handlePlayPauseInput() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if let player = self.activePlayer {
+                player.togglePause()
+            } else {
+                self.postKeyEvent(keyCode: 36)
+            }
+        }
+    }
+
+    private func handleBackInput() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if self.activePlayer != nil {
+                self.onClosePlayer?()
+            } else {
+                self.onGlobalBack?()
+            }
+        }
+    }
+
+    // MARK: - 2. IOKit IOHIDManager (Ham Bluetooth HID Tuşlarını Yakalama)
     private func setupIOHIDManager() {
         let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
         self.hidManager = manager
 
-        // Consumer Controls (0x0C) ve Generic Desktop (0x01) HID cihazlarını eşleştir
         let criteria: [[String: Any]] = [
             [
                 kIOHIDDeviceUsagePageKey as String: 0x0C,
@@ -87,14 +196,12 @@ final class BluetoothRemoteManager: @unchecked Sendable {
         let usage = IOHIDElementGetUsage(element)
         let integerValue = IOHIDValueGetIntegerValue(value)
 
-        // Sadece Tuşa basılma anı (Button Down / Value > 0)
         guard integerValue > 0 else { return }
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
 
             if let player = self.activePlayer {
-                // ── Player Açıkken Oynatıcı Kontrolleri ──
                 if usagePage == 0x0C {
                     switch usage {
                     case 0xCD, 0xB0, 0xB1: player.togglePause()
@@ -118,22 +225,20 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                     }
                 }
             } else {
-                // ── Player Kapalıyken Ana Menü / Arayüz Kontrolleri ──
-                // Ham HID kumanda tuşlarını macOS klavye yön ve seçim tuşlarına çevir
                 if usagePage == 0x0C {
                     switch usage {
                     case 0x224, 0xB7: self.onGlobalBack?()
                     case 0x221, 0x223: self.onGlobalSearch?()
-                    case 0xCD, 0xB0, 0x8D: self.postKeyEvent(keyCode: 36) // Return / OK
+                    case 0xCD, 0xB0, 0x8D: self.postKeyEvent(keyCode: 36)
                     default: break
                     }
                 } else if usagePage == 0x01 {
                     switch usage {
-                    case 0x89: self.postKeyEvent(keyCode: 126) // Yukarı Ok
-                    case 0x8A: self.postKeyEvent(keyCode: 125) // Aşağı Ok
-                    case 0x8B: self.postKeyEvent(keyCode: 124) // Sağ Ok
-                    case 0x8C: self.postKeyEvent(keyCode: 123) // Sol Ok
-                    case 0x8D: self.postKeyEvent(keyCode: 36)  // Return / OK
+                    case 0x89: self.postKeyEvent(keyCode: 126)
+                    case 0x8A: self.postKeyEvent(keyCode: 125)
+                    case 0x8B: self.postKeyEvent(keyCode: 124)
+                    case 0x8C: self.postKeyEvent(keyCode: 123)
+                    case 0x8D: self.postKeyEvent(keyCode: 36)
                     default: break
                     }
                 }
@@ -141,14 +246,13 @@ final class BluetoothRemoteManager: @unchecked Sendable {
         }
     }
 
-    // MARK: - 2. NSEvent Monitoring (Klavye, D-Pad ve Medya Kısayolları)
+    // MARK: - 3. NSEvent Monitoring (Klavye, D-Pad ve Medya Kısayolları)
     private func setupNSEventMonitors() {
         let handler: (NSEvent) -> NSEvent? = { [weak self] event in
             guard let self else { return event }
 
             let isPlayerOpen = (self.activePlayer != nil)
 
-            // System Defined (Medya Tuşları)
             if event.type == .systemDefined && event.subtype.rawValue == 8 {
                 let keyCode = Int32(event.data1) >> 16 & 0xFF
                 let keyFlags = (event.data1 & 0x0000FFFF)
@@ -164,52 +268,45 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                         }
                     } else {
                         if keyCode == 16 || keyCode == 0 {
-                            self.simulateSelectClick()
+                            self.postKeyEvent(keyCode: 36)
                             return nil
                         }
                     }
                 }
             }
 
-            // Normal Klavye Olayları (.keyDown)
             if event.type == .keyDown {
                 if isPlayerOpen {
-                    // ── Player Modu: Oynatıcıyı kumandayla kontrol et ──
                     switch event.keyCode {
-                    case 36, 76, 49, 65: // OK / Enter / Space / Numpad Enter
+                    case 36, 76, 49, 65:
                         self.activePlayer?.togglePause()
                         return nil
-                    case 123: // Sol (10sn geri sar)
+                    case 123:
                         self.activePlayer?.seek(by: -10)
                         return nil
-                    case 124: // Sağ (10sn ileri sar)
+                    case 124:
                         self.activePlayer?.seek(by: 10)
                         return nil
-                    case 126: // Yukarı (Ses +)
+                    case 126:
                         if let p = self.activePlayer { p.setVolume(min(100, p.volume + 5)) }
                         return nil
-                    case 125: // Aşağı (Ses -)
+                    case 125:
                         if let p = self.activePlayer { p.setVolume(max(0, p.volume - 5)) }
                         return nil
-                    case 53, 51, 115, 117: // Back / Esc / Home
+                    case 53, 51, 115, 117:
                         self.onClosePlayer?()
                         return nil
                     default:
                         break
                     }
                 } else {
-                    // ── Ana Menü / Arayüz Modu ──
-                    // macOS native klavye / kumanda gezinmesine izin ver (return event)
                     let typing = self.isTypingContext()
-
                     if !typing {
                         switch event.keyCode {
-                        case 53, 51: // Geri / Escape / Backspace
+                        case 53, 51:
                             self.onGlobalBack?()
                             return nil
                         default:
-                            // Yön tuşları (123, 124, 125, 126) ve Enter (36, 49) tuşlarını ENGELLEME
-                            // Bırak macOS ve SwiftUI kendi focus/gezinme altyapısı çalıştırsın!
                             return event
                         }
                     }
@@ -225,7 +322,7 @@ final class BluetoothRemoteManager: @unchecked Sendable {
         }
     }
 
-    // MARK: - 3. MPRemoteCommandCenter (macOS Donanım Medya Kontrol Merkezi)
+    // MARK: - 4. MPRemoteCommandCenter (macOS Donanım Medya Kontrol Merkezi)
     private func setupMPRemoteCommandCenter() {
         let center = MPRemoteCommandCenter.shared()
 
@@ -241,7 +338,7 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                 if let player = self?.activePlayer {
                     player.togglePause()
                 } else {
-                    self?.simulateSelectClick()
+                    self?.postKeyEvent(keyCode: 36)
                 }
             }
             return .success
@@ -260,17 +357,6 @@ final class BluetoothRemoteManager: @unchecked Sendable {
         }
     }
 
-    /// OK / Select tuşuna basıldığında odaktaki elemana tıklama simülasyonu
-    private func simulateSelectClick() {
-        guard let window = NSApp.keyWindow else { return }
-        if let responder = window.firstResponder as? NSButton {
-            responder.performClick(nil)
-        } else if let responder = window.firstResponder as? NSControl {
-            window.makeFirstResponder(responder)
-        }
-    }
-
-    /// Klavyeden basılmış gibi sistem geneli CGEvent tuş olayı üretir
     private func postKeyEvent(keyCode: CGKeyCode) {
         guard let src = CGEventSource(stateID: .hidSystemState) else { return }
         if let down = CGEvent(keyboardEventSource: src, virtualKey: keyCode, keyDown: true) {
