@@ -861,20 +861,19 @@ struct Sidebar: View {
         // selected — so clicking "Ana Ekran" while a detail screen was open did
         // nothing, and a tap gesture layered on top never saw the click either.
         // Plain buttons always report, and the highlight is drawn here instead.
-        List {
-            Section {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach([SidebarItem.home, .movies, .shows, .favorites, .appleTV, .bollywood]) { item in
                     row(item)
                 }
-            }
-            Section {
+                Divider()
+                    .padding(.vertical, 8)
                 ForEach([SidebarItem.downloads, .settings]) { item in
                     row(item)
                 }
             }
+            .padding(12)
         }
-        .listStyle(.sidebar)
-        .scrollContentBackground(.hidden)
         .background(AppTheme.sidebar(scheme).ignoresSafeArea())
     }
 

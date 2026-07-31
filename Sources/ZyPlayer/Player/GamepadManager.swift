@@ -200,7 +200,7 @@ final class GamepadManager: @unchecked Sendable {
 
     private func handleDirection(_ dir: GamepadDirection) {
         let now = Date()
-        guard now.timeIntervalSince(lastDPadTime) > 0.16 else { return }
+        guard now.timeIntervalSince(lastDPadTime) > 0.15 else { return }
         lastDPadTime = now
 
         DispatchQueue.main.async { [weak self] in
@@ -214,12 +214,20 @@ final class GamepadManager: @unchecked Sendable {
                 case .down: player.setVolume(max(0, player.volume - 5))
                 }
             } else {
+                let keyCode: UInt16
+                let sel: Selector
                 switch dir {
-                case .right: self.postKeyEvent(keyCode: 124) // Sağ Ok
-                case .left:  self.postKeyEvent(keyCode: 123) // Sol Ok
-                case .up:    self.postKeyEvent(keyCode: 126) // Yukarı Ok
-                case .down:  self.postKeyEvent(keyCode: 125) // Aşağı Ok
+                case .right: keyCode = 124; sel = #selector(NSResponder.moveRight(_:))
+                case .left:  keyCode = 123; sel = #selector(NSResponder.moveLeft(_:))
+                case .up:    keyCode = 126; sel = #selector(NSResponder.moveUp(_:))
+                case .down:  keyCode = 125; sel = #selector(NSResponder.moveDown(_:))
                 }
+
+                if let window = NSApp.keyWindow {
+                    // Direct firstResponder movement dispatch
+                    window.firstResponder?.tryToPerform(sel, with: nil)
+                }
+                self.postKeyEvent(keyCode: keyCode)
             }
         }
     }
