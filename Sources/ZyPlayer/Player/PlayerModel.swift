@@ -805,14 +805,14 @@ final class PlayerModel {
         position = 0
         setSubtitleDelay(baseSubtitleDelay)
         core.setHTTPHeaders([:])
-        // Fragman iki dakikalık bir tanıtım: ayrı video+ses akışını indirip
-        // birleştirmek başlamayı gereksiz geciktiriyor. Tek parça (progressive)
-        // bir akış gözle görülür farkla daha çabuk açılıyor; yoksa mpv normal
-        // sırasına düşüyor.
-        // En az 1080p zorunlu: 1080p'nin altındaki akışlar hiçbir zaman seçilmez.
+        // Fragman için en az 1080p zorunlu.
+        // YouTube'da 1080p progressive (tek parça) akış bulunmuyor; mpv yt-dlp'nin
+        // DASH formatını natively destekler — ayrı video+ses URL'lerini ffmpeg
+        // olmadan birlikte oynatır. Bu yüzden bestvideo+bestaudio kullanılıyor.
+        // Öncelik sırası: 1080p+ mp4 DASH → 1080p+ herhangi DASH → en iyi mevcut.
         core.loadFile(url, options: [
             "ytdl": "yes",
-            "ytdl-format": "best[height>=1080][ext=mp4]/best[height>=1080]"
+            "ytdl-format": "bestvideo[height>=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height>=1080]+bestaudio/best[height>=1080]/best"
         ])
         core.play()
     }
