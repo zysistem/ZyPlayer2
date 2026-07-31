@@ -20,6 +20,13 @@ final class GamepadManager: @unchecked Sendable {
     var onGlobalBack: (() -> Void)?
     var onGlobalSearch: (() -> Void)?
 
+    // Direct UI navigation callbacks for main interface (bypassing macOS event simulation)
+    var onNavigateUp: (() -> Void)?
+    var onNavigateDown: (() -> Void)?
+    var onNavigateLeft: (() -> Void)?
+    var onNavigateRight: (() -> Void)?
+    var onSelectKey: (() -> Void)?
+
     private init() {}
 
     func start(onGlobalBack: @escaping () -> Void, onGlobalSearch: @escaping () -> Void) {
@@ -142,7 +149,11 @@ final class GamepadManager: @unchecked Sendable {
             if let player = self.activePlayer {
                 player.togglePause()
             } else {
-                self.postKeyEvent(keyCode: 36) // Return
+                if let onSelectKey = self.onSelectKey {
+                    onSelectKey()
+                } else {
+                    self.postKeyEvent(keyCode: 36) // Return
+                }
             }
         }
     }
@@ -214,15 +225,20 @@ final class GamepadManager: @unchecked Sendable {
                 case .down: player.setVolume(max(0, player.volume - 5))
                 }
             } else {
-                let keyCode: UInt16
                 switch dir {
-                case .right: keyCode = 124 // Sağ Ok
-                case .left:  keyCode = 123 // Sol Ok
-                case .up:    keyCode = 126 // Yukarı Ok
-                case .down:  keyCode = 125 // Aşağı Ok
+                case .up:
+                    if let onNavigateUp = self.onNavigateUp { onNavigateUp() }
+                    else { self.postKeyEvent(keyCode: 126) }
+                case .down:
+                    if let onNavigateDown = self.onNavigateDown { onNavigateDown() }
+                    else { self.postKeyEvent(keyCode: 125) }
+                case .left:
+                    if let onNavigateLeft = self.onNavigateLeft { onNavigateLeft() }
+                    else { self.postKeyEvent(keyCode: 123) }
+                case .right:
+                    if let onNavigateRight = self.onNavigateRight { onNavigateRight() }
+                    else { self.postKeyEvent(keyCode: 124) }
                 }
-
-                self.postKeyEvent(keyCode: keyCode)
             }
         }
     }

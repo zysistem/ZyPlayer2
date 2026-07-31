@@ -167,6 +167,23 @@ struct RootView: View {
                 onGlobalBack: handleBack,
                 onGlobalSearch: { searchText = "" }
             )
+            
+            let sidebarItems = SidebarItem.allCases
+            GamepadManager.shared.onNavigateDown = {
+                if let idx = sidebarItems.firstIndex(of: selection), idx < sidebarItems.count - 1 {
+                    selection = sidebarItems[idx + 1]
+                    selectFromSidebar(selection)
+                }
+            }
+            GamepadManager.shared.onNavigateUp = {
+                if let idx = sidebarItems.firstIndex(of: selection), idx > 0 {
+                    selection = sidebarItems[idx - 1]
+                    selectFromSidebar(selection)
+                }
+            }
+            GamepadManager.shared.onSelectKey = {
+                selectFromSidebar(selection)
+            }
             keyMonitor.start(onEscape: handleBack)
         }
         .onDisappear {
