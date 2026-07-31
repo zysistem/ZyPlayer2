@@ -47,6 +47,7 @@ struct RootView: View {
     }
 
     @State private var focusZone: GamepadFocusZone = .sidebar
+    @State private var focusedPosterIndex: Int = 0
     @State private var selection: SidebarItem = .home
     @State private var searchText = ""
     @State private var route: DetailRoute?
@@ -185,6 +186,10 @@ struct RootView: View {
                         selection = sidebarItems[idx + 1]
                         selectFromSidebar(selection)
                     }
+                } else if focusZone == .content {
+                    withAnimation(.easeOut(duration: 0.12)) {
+                        focusedPosterIndex += 4
+                    }
                 }
             }
             GamepadManager.shared.onNavigateUp = {
@@ -193,25 +198,48 @@ struct RootView: View {
                         selection = sidebarItems[idx - 1]
                         selectFromSidebar(selection)
                     }
+                } else if focusZone == .content {
+                    if focusedPosterIndex >= 4 {
+                        withAnimation(.easeOut(duration: 0.12)) {
+                            focusedPosterIndex -= 4
+                        }
+                    } else {
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            focusZone = .sidebar
+                        }
+                    }
                 }
             }
             GamepadManager.shared.onNavigateRight = {
                 if focusZone == .sidebar {
                     withAnimation(.easeOut(duration: 0.15)) {
                         focusZone = .content
+                        focusedPosterIndex = 0
+                    }
+                } else if focusZone == .content {
+                    withAnimation(.easeOut(duration: 0.12)) {
+                        focusedPosterIndex += 1
                     }
                 }
             }
             GamepadManager.shared.onNavigateLeft = {
                 if focusZone == .content {
-                    withAnimation(.easeOut(duration: 0.15)) {
-                        focusZone = .sidebar
+                    if focusedPosterIndex % 4 == 0 || focusedPosterIndex == 0 {
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            focusZone = .sidebar
+                        }
+                    } else {
+                        withAnimation(.easeOut(duration: 0.12)) {
+                            focusedPosterIndex -= 1
+                        }
                     }
                 }
             }
             GamepadManager.shared.onSelectKey = {
                 if focusZone == .sidebar {
                     selectFromSidebar(selection)
+                } else if focusZone == .content {
+                    BluetoothRemoteManager.shared.simulateSelectClick()
                 }
             }
             keyMonitor.start(onEscape: handleBack)

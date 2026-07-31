@@ -178,7 +178,7 @@ final class BluetoothRemoteManager: @unchecked Sendable {
         }
     }
 
-    private func simulateSelectClick() {
+    func simulateSelectClick() {
         guard let window = NSApp.keyWindow else { return }
         if let responder = window.firstResponder as? NSButton {
             responder.performClick(nil)
