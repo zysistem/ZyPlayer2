@@ -64,8 +64,14 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                 if keyDown {
                     if self.activePlayer != nil {
                         switch keyCode {
-                        case 16, 0, 100: // Play / Pause
+                        case 16, 100: // Play / Pause (NX_KEYTYPE_PLAY)
                             self.togglePauseWithDebounce()
+                            return nil
+                        case 0: // Sound Up (Ses Artır)
+                            if let p = self.activePlayer { p.setVolume(min(100, p.volume + 5)) }
+                            return nil
+                        case 1: // Sound Down (Ses Azalt)
+                            if let p = self.activePlayer { p.setVolume(max(0, p.volume - 5)) }
                             return nil
                         case 17, 19, 9: // Next / Fast Forward
                             self.activePlayer?.seek(by: 10)
@@ -80,7 +86,7 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                             break
                         }
                     } else {
-                        if keyCode == 16 || keyCode == 0 {
+                        if keyCode == 16 || keyCode == 100 {
                             self.simulateSelectClick()
                             return nil
                         }
