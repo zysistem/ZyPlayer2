@@ -90,21 +90,17 @@ struct TorrentioClient {
 
     var base: String
 
-    static let defaultBase = "https://torrentio.strem.fun"
+    static let defaultBase = "https://torrentio.strem.fun/lite"
 
     /// Bölge engellemesini aşmak için otomatik olarak denenen yedek public
-    /// Torrentio instance'ları. Kullanıcı kendi adresini girdiyse bu liste
-    /// atlanır; yalnızca varsayılan adres kullanılıyorken devreye girer.
-    /// Bölge engellemesini aşmak için otomatik olarak denenen yedek public
-    /// Torrentio ve alternatif Stremio torrent mirror'ları. Kullanıcı kendi
-    /// adresini girdiyse bu liste atlanır.
+    /// Torrentio ve alternatif Stremio torrent mirror'ları (Lite endpoint'li).
     private static let fallbackMirrors = [
-        "https://torrentio.strem.fun",
-        "https://stremio.torrentio.strem.fun",
-        "https://torrentio.stremio.strem.fun",
-        "https://torrentio.elfhosted.com",
-        "https://torrentio.superstrem.io",
-        "https://torrentio.run"
+        "https://torrentio.strem.fun/lite",
+        "https://stremio.torrentio.strem.fun/lite",
+        "https://torrentio.stremio.strem.fun/lite",
+        "https://torrentio.elfhosted.com/lite",
+        "https://torrentio.superstrem.io/lite",
+        "https://torrentio.run/lite"
     ]
 
     /// Trackers to search, in the addon's own configuration syntax. Its full set
@@ -119,16 +115,15 @@ struct TorrentioClient {
 
     /// The base with the provider selection appended.
     ///
-    /// An address copied from the addon's own `/configure` page already carries
-    /// its settings in the path, so that is left untouched — it is how someone
-    /// can pick a different set without a code change.
+    /// An address copied from the addon's own `/configure` page or `/manifest.json`
+    /// carries its settings in the path, so that is left untouched.
     private var configuredBase: String {
         var trimmed = base.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         for suffix in ["/configure", "/manifest.json"] where trimmed.hasSuffix(suffix) {
             trimmed = String(trimmed.dropLast(suffix.count))
         }
-        if trimmed.contains("=") { return trimmed }
+        if trimmed.contains("=") || trimmed.hasSuffix("/lite") { return trimmed }
         return trimmed + "/providers=" + Self.providers.joined(separator: ",")
     }
 
