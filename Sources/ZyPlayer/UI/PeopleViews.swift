@@ -181,11 +181,12 @@ struct PersonDetailView: View {
                         .padding(.horizontal, 24)
                         .padding(.top, 24)
 
-                    PosterGrid(items: loader.titles) { title in
+                    PosterGrid(items: loader.titles) { title, isGamepadSelected in
                         RemoteCard(
                             title: title,
                             isOwned: isOwned(title),
-                            onSelect: { onSelectTitle(title) }
+                            onSelect: { onSelectTitle(title) },
+                            isGamepadSelected: isGamepadSelected
                         )
                     }
                 }

@@ -1138,8 +1138,8 @@ struct CategoryDetailView: View {
                             Text("Kütüphanedeki Filmler (\(matchingMovies.count))")
                                 .font(.system(size: 16, weight: .semibold))
                             
-                            PosterGrid(items: matchingMovies) { item in
-                                MediaCard(item: item, state: library.state(for: item), actions: actions)
+                            PosterGrid(items: matchingMovies) { item, isGamepadSelected in
+                                MediaCard(item: item, state: library.state(for: item), actions: actions, isGamepadSelected: isGamepadSelected)
                             }
                         }
                     }
@@ -1149,8 +1149,8 @@ struct CategoryDetailView: View {
                             Text("Kütüphanedeki Diziler (\(matchingShows.count))")
                                 .font(.system(size: 16, weight: .semibold))
 
-                            PosterGrid(items: matchingShows) { series in
-                                SeriesCard(series: series, actions: actions, isWatched: library.isSeriesFullyWatched(seriesKey: series.id))
+                            PosterGrid(items: matchingShows) { series, isGamepadSelected in
+                                SeriesCard(series: series, actions: actions, isWatched: library.isSeriesFullyWatched(seriesKey: series.id), isGamepadSelected: isGamepadSelected)
                             }
                         }
                     }
@@ -1161,11 +1161,12 @@ struct CategoryDetailView: View {
                                 .font(.system(size: 16, weight: .semibold))
 
                             let owned = library.ownedMovieTMDBIDs
-                            PosterGrid(items: remoteTitles) { title in
+                            PosterGrid(items: remoteTitles) { title, isGamepadSelected in
                                 RemoteCard(
                                     title: title,
                                     isOwned: owned.contains(title.tmdbID),
-                                    onSelect: { actions.selectRemote(title) }
+                                    onSelect: { actions.selectRemote(title) },
+                                    isGamepadSelected: isGamepadSelected
                                 )
                             }
                         }
