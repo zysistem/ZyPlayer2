@@ -139,6 +139,7 @@ struct RootView: View {
             }
         }
         .onAppear {
+            NSApp.activate(ignoringOtherApps: true)
             isFullscreen = NSApp.keyWindow?.styleMask.contains(.fullScreen) ?? false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 NSApp.keyWindow?.makeFirstResponder(nil)

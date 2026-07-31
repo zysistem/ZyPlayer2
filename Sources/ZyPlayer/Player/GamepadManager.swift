@@ -215,18 +215,13 @@ final class GamepadManager: @unchecked Sendable {
                 }
             } else {
                 let keyCode: UInt16
-                let sel: Selector
                 switch dir {
-                case .right: keyCode = 124; sel = #selector(NSResponder.moveRight(_:))
-                case .left:  keyCode = 123; sel = #selector(NSResponder.moveLeft(_:))
-                case .up:    keyCode = 126; sel = #selector(NSResponder.moveUp(_:))
-                case .down:  keyCode = 125; sel = #selector(NSResponder.moveDown(_:))
+                case .right: keyCode = 124 // Sağ Ok
+                case .left:  keyCode = 123 // Sol Ok
+                case .up:    keyCode = 126 // Yukarı Ok
+                case .down:  keyCode = 125 // Aşağı Ok
                 }
 
-                if let window = NSApp.keyWindow {
-                    // Direct firstResponder movement dispatch
-                    window.firstResponder?.tryToPerform(sel, with: nil)
-                }
                 self.postKeyEvent(keyCode: keyCode)
             }
         }
