@@ -2,15 +2,6 @@
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
 
-$trackers = [
-    "udp://tracker.opentrackr.org:1337/announce",
-    "udp://open.demonii.com:1337/announce",
-    "udp://open.stealth.si:80/announce",
-    "udp://tracker.torrent.eu.org:451/announce",
-    "udp://exodus.desync.com:6969/announce",
-    "udp://tracker.openbittorrent.com:6969/announce"
-];
-
 $uri = $_SERVER['REQUEST_URI'];
 $imdbId = "";
 
@@ -29,10 +20,21 @@ if (empty($imdbId)) {
     exit;
 }
 
+function httpGet($url) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+    curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $data = curl_exec($ch);
+    curl_close($ch);
+    return $data;
+}
+
 function fetchPirateBay($imdbId) {
-    $url = "https://apibay.org/q.php?q=" . urlencode($imdbId);
-    $ctx = stream_context_create(["http" => ["timeout" => 5, "header" => "User-Agent: ZyPlayer\r\n"]]);
-    $json = @file_get_contents($url, false, $ctx);
+    $json = httpGet("https://apibay.org/q.php?q=" . urlencode($imdbId));
     if (!$json) return [];
     
     $data = json_decode($json, true);
@@ -56,21 +58,56 @@ function fetchPirateBay($imdbId) {
 }
 
 function fetchYTS($imdbId) {
-    $url = "https://yts.mx/api/v2/list_movies.json?query_term=" . urlencode($imdbId);
-    $ctx = stream_context_create(["http" => ["timeout" => 5, "header" => "User-Agent: ZyPlayer\r\n"]]);
-    $json = @file_get_contents($url, false, $ctx);
+    $urls = [
+        "https://yts.mx/api/v2/list_movies.json?query_term=" . urlencode($imdbId),
+        "https://yts.lt/api/v2/list_movies.json?query_term=" . urlencode($imdbId),
+        "https://yts.rs/api/v2/list_movies.json?query_term=" . urlencode($imdbId)
+    ];
+
+    foreach ($urls as $url) {
+        $json = httpGet($url);
+        if (!$json) continue;
+
+        $data = json_decode($json, true);
+        $movie = $data['data']['movies'][0] ?? null;
+        if (!$movie || !isset($movie['torrents'])) continue;
+
+        $streams = [];
+        foreach ($movie['torrents'] as $t) {
+            $streams[] = [
+                "name" => "ZyPlayer\n" . $t['quality'],
+                "title" => $movie['title'] . " [" . $t['quality'] . " " . strtoupper($t['type']) . "]\n💾 " . $t['size'] . "  👤 " . $t['seeds'] . "  ⚙️ YTS",
+                "infoHash" => strtolower($t['hash']),
+                "fileIdx" => 0
+            ];
+        }
+        if (!empty($streams)) return $streams;
+    }
+    return [];
+}
+
+function fetchEZTV($imdbId) {
+    $numericId = preg_replace('/[^\d]/', '', $imdbId);
+    if (empty($numericId)) return [];
+
+    $json = httpGet("https://eztv.re/api/get-torrents?imdb_id=" . $numericId);
     if (!$json) return [];
 
     $data = json_decode($json, true);
-    $movie = $data['data']['movies'][0] ?? null;
-    if (!$movie || !isset($movie['torrents'])) return [];
+    $torrents = $data['torrents'] ?? [];
+    if (!is_array($torrents)) return [];
 
     $streams = [];
-    foreach ($movie['torrents'] as $t) {
+    foreach (array_slice($torrents, 0, 15) as $item) {
+        if (!isset($item['hash']) || empty($item['hash'])) continue;
+
+        $sizeMB = round((int)($item['size_bytes'] ?? 0) / (1024 * 1024), 1);
+        $seeds = (int)($item['seeds'] ?? 0);
+
         $streams[] = [
-            "name" => "ZyPlayer\n" . $t['quality'],
-            "title" => $movie['title'] . " [" . $t['quality'] . " " . strtoupper($t['type']) . "]\n💾 " . $t['size'] . "  👤 " . $t['seeds'] . "  ⚙️ YTS",
-            "infoHash" => strtolower($t['hash']),
+            "name" => "ZyPlayer\nTV",
+            "title" => ($item['title'] ?? 'EZTV') . "\n💾 {$sizeMB} MB  👤 {$seeds}  ⚙️ EZTV",
+            "infoHash" => strtolower($item['hash']),
             "fileIdx" => 0
         ];
     }
@@ -79,6 +116,8 @@ function fetchYTS($imdbId) {
 
 $yts = fetchYTS($imdbId);
 $pb = fetchPirateBay($imdbId);
-$all = array_merge($yts, $pb);
+$eztv = fetchEZTV($imdbId);
+
+$all = array_merge($yts, $pb, $eztv);
 
 echo json_encode(["streams" => $all]);
