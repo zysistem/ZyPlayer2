@@ -111,16 +111,26 @@ final class GamepadManager: @unchecked Sendable {
                 if pressed { self?.handleR1Button() }
             }
 
-            // D-Pad Yön Tuşları
-            extended.dpad.valueChangedHandler = { [weak self] _, xValue, yValue in
-                self?.handleDPad(x: xValue, y: yValue)
+            // 🎯 PS5 Sol D-Pad Buton Dinleyicileri (Yukarı, Aşağı, Sol, Sağ)
+            extended.dpad.up.pressedChangedHandler = { [weak self] _, _, pressed in
+                if pressed { self?.handleDirection(.up) }
+            }
+            extended.dpad.down.pressedChangedHandler = { [weak self] _, _, pressed in
+                if pressed { self?.handleDirection(.down) }
+            }
+            extended.dpad.left.pressedChangedHandler = { [weak self] _, _, pressed in
+                if pressed { self?.handleDirection(.left) }
+            }
+            extended.dpad.right.pressedChangedHandler = { [weak self] _, _, pressed in
+                if pressed { self?.handleDirection(.right) }
             }
 
-            // Sol Analog Stick
+            // 🕹️ Sol Analog Stick Eksen Dinleyicisi
             extended.leftThumbstick.valueChangedHandler = { [weak self] _, xValue, yValue in
-                if abs(xValue) > 0.6 || abs(yValue) > 0.6 {
-                    self?.handleDPad(x: xValue, y: yValue)
-                }
+                if yValue > 0.6 { self?.handleDirection(.up) }
+                else if yValue < -0.6 { self?.handleDirection(.down) }
+                else if xValue < -0.6 { self?.handleDirection(.left) }
+                else if xValue > 0.6 { self?.handleDirection(.right) }
             }
         }
     }
@@ -182,58 +192,79 @@ final class GamepadManager: @unchecked Sendable {
         }
     }
 
+    enum GamepadDirection {
+        case up, down, left, right
+    }
+
     private var lastDPadTime: Date = .distantPast
 
-    private func handleDPad(x: Float, y: Float) {
+    private func handleDirection(_ dir: GamepadDirection) {
         let now = Date()
-        guard now.timeIntervalSince(lastDPadTime) > 0.18 else { return }
-        
+        guard now.timeIntervalSince(lastDPadTime) > 0.16 else { return }
+        lastDPadTime = now
+
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            
+
             if let player = self.activePlayer {
-                if x > 0.5 { self.lastDPadTime = now; player.seek(by: 10) }
-                else if x < -0.5 { self.lastDPadTime = now; player.seek(by: -10) }
-                else if y > 0.5 { self.lastDPadTime = now; player.setVolume(min(100, player.volume + 5)) }
-                else if y < -0.5 { self.lastDPadTime = now; player.setVolume(max(0, player.volume - 5)) }
+                switch dir {
+                case .right: player.seek(by: 10)
+                case .left: player.seek(by: -10)
+                case .up: player.setVolume(min(100, player.volume + 5))
+                case .down: player.setVolume(max(0, player.volume - 5))
+                }
             } else {
-                if x > 0.5 { self.lastDPadTime = now; self.postKeyEvent(keyCode: 124) }      // Sağ Ok
-                else if x < -0.5 { self.lastDPadTime = now; self.postKeyEvent(keyCode: 123) } // Sol Ok
-                else if y > 0.5 { self.lastDPadTime = now; self.postKeyEvent(keyCode: 126) }  // Yukarı Ok
-                else if y < -0.5 { self.lastDPadTime = now; self.postKeyEvent(keyCode: 125) } // Aşağı Ok
+                switch dir {
+                case .right: self.postKeyEvent(keyCode: 124) // Sağ Ok
+                case .left:  self.postKeyEvent(keyCode: 123) // Sol Ok
+                case .up:    self.postKeyEvent(keyCode: 126) // Yukarı Ok
+                case .down:  self.postKeyEvent(keyCode: 125) // Aşağı Ok
+                }
             }
         }
     }
 
     private func postKeyEvent(keyCode: UInt16) {
-        guard let window = NSApp.keyWindow else { return }
-        if let down = NSEvent.keyEvent(
-            with: .keyDown,
-            location: .zero,
-            modifierFlags: [],
-            timestamp: ProcessInfo.processInfo.systemUptime,
-            windowNumber: window.windowNumber,
-            context: nil,
-            characters: "",
-            charactersIgnoringModifiers: "",
-            isARepeat: false,
-            keyCode: keyCode
-        ) {
-            window.sendEvent(down)
+        // 1. Pencere İçi Olay İletimi (Pencere Odaklı)
+        if let window = NSApp.keyWindow {
+            if let down = NSEvent.keyEvent(
+                with: .keyDown,
+                location: .zero,
+                modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: window.windowNumber,
+                context: nil,
+                characters: "",
+                charactersIgnoringModifiers: "",
+                isARepeat: false,
+                keyCode: keyCode
+            ) {
+                window.sendEvent(down)
+            }
+            if let up = NSEvent.keyEvent(
+                with: .keyUp,
+                location: .zero,
+                modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: window.windowNumber,
+                context: nil,
+                characters: "",
+                charactersIgnoringModifiers: "",
+                isARepeat: false,
+                keyCode: keyCode
+            ) {
+                window.sendEvent(up)
+            }
         }
-        if let up = NSEvent.keyEvent(
-            with: .keyUp,
-            location: .zero,
-            modifierFlags: [],
-            timestamp: ProcessInfo.processInfo.systemUptime,
-            windowNumber: window.windowNumber,
-            context: nil,
-            characters: "",
-            charactersIgnoringModifiers: "",
-            isARepeat: false,
-            keyCode: keyCode
-        ) {
-            window.sendEvent(up)
+
+        // 2. Sistem Seviyesi Klavye Simülasyonu (Tüm SwiftUI Listeleri için)
+        if let src = CGEventSource(stateID: .hidSystemState) {
+            if let down = CGEvent(keyboardEventSource: src, virtualKey: CGKeyCode(keyCode), keyDown: true) {
+                down.post(tap: .cgAnnotatedSessionEventTap)
+            }
+            if let up = CGEvent(keyboardEventSource: src, virtualKey: CGKeyCode(keyCode), keyDown: false) {
+                up.post(tap: .cgAnnotatedSessionEventTap)
+            }
         }
     }
 
