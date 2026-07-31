@@ -11,6 +11,7 @@ final class BluetoothRemoteManager: @unchecked Sendable {
     static let shared = BluetoothRemoteManager()
 
     private var localMonitor: Any?
+    private var lastToggleTime: Date = .distantPast
 
     weak var activePlayer: PlayerModel?
     var onClosePlayer: (() -> Void)?
@@ -18,6 +19,14 @@ final class BluetoothRemoteManager: @unchecked Sendable {
     var onGlobalSearch: (() -> Void)?
 
     private init() {}
+
+    /// Çift sinyal tetiklenmesini (Karabiner + MPRemoteCommandCenter çakışmasını) önlemek için 0.25sn debounce korumalı toggle.
+    func togglePauseWithDebounce() {
+        let now = Date()
+        guard now.timeIntervalSince(lastToggleTime) > 0.25 else { return }
+        lastToggleTime = now
+        activePlayer?.togglePause()
+    }
 
     func startGlobal(onGlobalBack: @escaping () -> Void, onGlobalSearch: @escaping () -> Void) {
         self.onGlobalBack = onGlobalBack
@@ -53,19 +62,19 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                 let keyDown = (((keyFlags & 0xFF00) >> 8) & 0x1) == 0
 
                 if keyDown {
-                    if let player = self.activePlayer {
+                    if self.activePlayer != nil {
                         switch keyCode {
                         case 16, 0, 100: // Play / Pause
-                            player.togglePause()
+                            self.togglePauseWithDebounce()
                             return nil
                         case 17, 19, 9: // Next / Fast Forward
-                            player.seek(by: 10)
+                            self.activePlayer?.seek(by: 10)
                             return nil
                         case 18, 20, 10: // Prev / Rewind
-                            player.seek(by: -10)
+                            self.activePlayer?.seek(by: -10)
                             return nil
                         case 7: // Mute
-                            player.setVolume(player.volume > 0 ? 0 : 100)
+                            if let p = self.activePlayer { p.setVolume(p.volume > 0 ? 0 : 100) }
                             return nil
                         default:
                             break
@@ -87,7 +96,7 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                     // ── PLAYER (OYNATICI) MODU ──
                     switch event.keyCode {
                     case 36, 76, 49, 65: // Return, Keypad Enter, Space, Numpad Enter (OK / Oynat-Duraklat)
-                        self.activePlayer?.togglePause()
+                        self.togglePauseWithDebounce()
                         return nil
                     case 123: // Sol Ok (10sn Geri Sar)
                         self.activePlayer?.seek(by: -10)
@@ -147,8 +156,8 @@ final class BluetoothRemoteManager: @unchecked Sendable {
         center.togglePlayPauseCommand.isEnabled = true
         center.togglePlayPauseCommand.addTarget { [weak self] _ in
             Task { @MainActor in
-                if let player = self?.activePlayer {
-                    player.togglePause()
+                if self?.activePlayer != nil {
+                    self?.togglePauseWithDebounce()
                 } else {
                     self?.simulateSelectClick()
                 }
@@ -158,13 +167,13 @@ final class BluetoothRemoteManager: @unchecked Sendable {
 
         center.playCommand.isEnabled = true
         center.playCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.activePlayer?.togglePause() }
+            Task { @MainActor in self?.togglePauseWithDebounce() }
             return .success
         }
 
         center.pauseCommand.isEnabled = true
         center.pauseCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.activePlayer?.togglePause() }
+            Task { @MainActor in self?.togglePauseWithDebounce() }
             return .success
         }
     }
