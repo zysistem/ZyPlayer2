@@ -838,9 +838,13 @@ final class PlayerModel {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
+    /// Controls bar'ın ekranda belirmesini sağlayan kullanıcı aktivite callback'i.
+    var onControlsUserActivity: (() -> Void)?
+
     func togglePause() {
         core.togglePause()
         updateNowPlayingInfo()
+        onControlsUserActivity?()
     }
 
     func updateNowPlayingInfo() {
@@ -860,6 +864,7 @@ final class PlayerModel {
 
     func seek(by seconds: Double) {
         core.seek(by: seconds)
+        onControlsUserActivity?()
     }
 
     // MARK: - Scrubbing
@@ -904,11 +909,13 @@ final class PlayerModel {
         let clamped = max(0, min(100, value))
         volume = clamped
         core.setVolume(clamped)
+        onControlsUserActivity?()
     }
 
     func setSpeed(_ value: Double) {
         speed = value
         core.setSpeed(value)
+        onControlsUserActivity?()
     }
 
     private func extractEmbeddedSubtitle(from videoURL: URL, ffIndex: Int) async throws -> URL {

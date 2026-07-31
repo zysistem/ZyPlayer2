@@ -165,12 +165,14 @@ struct PlayerView: View {
             barPosition.offset = settings.playerControlsOffset
             // Kayıtlı çeviri aranırken hangi motorun çevirisi yeğlensin.
             model.restoreEngineHint = settings.translationEngine
+            model.onControlsUserActivity = { revealControls() }
             revealControls()
             BluetoothRemoteManager.shared.setPlayer(model, onClose: onClose)
             GamepadManager.shared.setPlayer(model, onClose: onClose)
         }
         .onDisappear {
             hideTask?.cancel()
+            model.onControlsUserActivity = nil
             BluetoothRemoteManager.shared.setPlayer(nil, onClose: nil)
             GamepadManager.shared.setPlayer(nil, onClose: nil)
             NSCursor.unhide()
