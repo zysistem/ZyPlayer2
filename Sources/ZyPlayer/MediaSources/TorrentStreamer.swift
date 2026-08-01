@@ -34,6 +34,7 @@ final class TorrentStreamer {
     private(set) var title = ""
     /// Hash of the release being streamed, so its row can show the state.
     private(set) var activeHash: String?
+    private(set) var activeFileIndex: Int?
 
     @ObservationIgnored private var process: Process?
     @ObservationIgnored private var stdoutBuffer = Data()
@@ -110,6 +111,11 @@ final class TorrentStreamer {
     func start(_ torrent: TorrentOption, title: String, onReady: @escaping (URL, String) -> Void) {
         stop()
 
+        self.title = title
+        self.onReady = onReady
+        self.activeHash = torrent.id
+        self.activeFileIndex = torrent.fileIndex
+        
         guard let node = Self.nodeURL, let helper = Self.helperURL else {
             phase = .failed(Self.unavailableReason ?? "Torrent akışı kullanılamıyor.")
             return

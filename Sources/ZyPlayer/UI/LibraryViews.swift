@@ -51,7 +51,12 @@ struct HomeView: View {
     var body: some View {
         content
             .task {
-                await stream.loadDiscover(providers: settings.enabledStreamProviders)
+                async let a: () = stream.loadDiscover(providers: settings.enabledStreamProviders)
+                async let b: () = library.refreshTrending(settings: settings)
+                async let c: () = cinema.refresh(settings: settings)
+                async let d: () = appleTV.refresh(settings: settings)
+                async let e: () = providers.refresh(settings: settings)
+                _ = await (a, b, c, d, e)
             }
             .onAppear {
                 isFullscreen = NSApp.keyWindow?.styleMask.contains(.fullScreen) ?? false

@@ -50,7 +50,7 @@ struct PersonCard: View {
     @ViewBuilder
     private var portrait: some View {
         if let url = person.profileURL {
-            AsyncImage(url: url) { phase in
+            CachedAsyncImage(url: url) { phase in
                 if case .success(let image) = phase {
                     image.resizable().aspectRatio(contentMode: .fill)
                 } else {
@@ -266,7 +266,7 @@ struct PersonDetailView: View {
         let url = (loader.detail?.profilePath).map { TMDBClient.imageURL(path: $0, size: "h632") }
             ?? person.largeProfileURL
         if let url {
-            AsyncImage(url: url) { phase in
+            CachedAsyncImage(url: url) { phase in
                 if case .success(let image) = phase {
                     image.resizable().aspectRatio(contentMode: .fill)
                 } else {

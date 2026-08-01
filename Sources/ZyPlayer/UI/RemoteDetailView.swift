@@ -206,7 +206,7 @@ struct RemoteDetailView: View {
     @ViewBuilder
     private func still(_ episode: EpisodeDetail) -> some View {
         if let path = episode.stillPath {
-            AsyncImage(url: TMDBClient.imageURL(path: path, size: "w300")) { phase in
+            CachedAsyncImage(url: TMDBClient.imageURL(path: path, size: "w300")) { phase in
                 if case .success(let image) = phase {
                     image.resizable().aspectRatio(contentMode: .fill)
                 } else {

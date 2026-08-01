@@ -244,7 +244,7 @@ struct SeriesDetailView: View {
                 HStack(alignment: .top, spacing: 12) {
                     ZStack {
                         if let path = episode.stillPath {
-                            AsyncImage(url: TMDBClient.imageURL(path: path, size: "w300")) { phase in
+                            CachedAsyncImage(url: TMDBClient.imageURL(path: path, size: "w300")) { phase in
                                 if case .success(let image) = phase {
                                     image.resizable().aspectRatio(contentMode: .fill)
                                 } else {
@@ -748,7 +748,7 @@ struct DetailHeader: View {
                     .clipped()
                     .overlay(backdropDim)
             } else if let backdropURL {
-                AsyncImage(url: backdropURL) { phase in
+                CachedAsyncImage(url: backdropURL) { phase in
                     if case .success(let image) = phase {
                         image.resizable().aspectRatio(contentMode: .fill)
                             .frame(width: geo.size.width, height: geo.size.height)
@@ -779,7 +779,7 @@ struct DetailHeader: View {
         } else if let image = ArtworkCache.image(named: posterFileName) {
             Image(nsImage: image).resizable().aspectRatio(2.0 / 3.0, contentMode: .fit)
         } else if let posterURL {
-            AsyncImage(url: posterURL) { phase in
+            CachedAsyncImage(url: posterURL) { phase in
                 if case .success(let image) = phase {
                     image.resizable().aspectRatio(2.0 / 3.0, contentMode: .fit)
                 } else {

@@ -41,6 +41,7 @@ struct ZyPlayerApp: App {
     @State private var streamer = TorrentStreamer()
 
     init() {
+        ImageCacheManager.configure()
         let settings = AppSettings()
         _settings = State(initialValue: settings)
         _drive = State(initialValue: GoogleDriveStore(settings: settings))
@@ -60,13 +61,8 @@ struct ZyPlayerApp: App {
                     AppDelegate.streamer = streamer
                     // Anything a crash left behind is dead weight.
                     TorrentStreamer.clearCache()
-                    // Fetch Home screen content immediately on launch so it opens instantly
-                    Task {
-                        await library.refreshTrending(settings: settings)
-                        await cinema.refresh(settings: settings)
-                        await appleTV.refresh(settings: settings)
-                        await providers.refresh(settings: settings)
-                    }
+                    // Removed eager loading to improve launch performance.
+                    // HomeView will fetch its own content when it appears.
                     // Heavy file sync runs concurrently in background
                     Task {
                         await smb.remountAll(library: library)

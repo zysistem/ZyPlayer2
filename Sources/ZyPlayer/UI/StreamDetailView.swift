@@ -215,7 +215,7 @@ struct StreamDetailView: View {
                     let thumbURL = episodeStills[stillKey] ?? episode.thumbnailURL
                     Group {
                         if let thumbURL {
-                            AsyncImage(url: thumbURL) { phase in
+                            CachedAsyncImage(url: thumbURL) { phase in
                                 switch phase {
                                 case .success(let img):
                                     img.resizable()

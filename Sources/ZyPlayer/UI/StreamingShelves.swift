@@ -37,7 +37,7 @@ struct StreamingBrandBadge: View {
     var body: some View {
         Group {
             if let logoURL {
-                AsyncImage(url: logoURL) { phase in
+                CachedAsyncImage(url: logoURL) { phase in
                     if let image = phase.image {
                         image.resizable().scaledToFill()
                     } else {

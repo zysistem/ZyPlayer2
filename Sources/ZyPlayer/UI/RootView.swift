@@ -56,6 +56,7 @@ struct RootView: View {
     @State private var youtubeStore = YouTubeStore()
     @State private var resumeStore = PlaybackResumeStore()
     @State private var bollywood = BollywoodStore()
+    @State private var zyMovieStore = ZyMovieStore()
     @State private var matchTarget: MatchTarget?
     @State private var keyMonitor = RootKeyMonitor()
     @State private var isTrailerLoading = false
@@ -256,6 +257,9 @@ struct RootView: View {
                         if focusedPosterIndex >= 0 && focusedPosterIndex < bollywood.all.count {
                             actions.selectRemote(bollywood.all[focusedPosterIndex])
                         }
+                    case .zyMovie:
+                        // Selection doesn't navigate yet, but we could play torrent directly
+                        break
                     default:
                         BluetoothRemoteManager.shared.simulateSelectClick()
                     }
@@ -532,6 +536,8 @@ struct RootView: View {
             case .appleTV:   AppleTVView(library: library, appleTV: appleTV, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .bollywood: BollywoodView(library: library, store: bollywood,
                                            settings: settings, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
+            case .zyMovie:   ZyMovieView(library: library, store: zyMovieStore,
+                                         settings: settings, player: player, streamer: streamer, torrents: torrents, selectedIndex: focusZone == .content ? focusedPosterIndex : -1, onOpenRemoteTitle: { route = .remote($0) })
             case .downloads: DownloadsView(library: library, torrents: torrents, settings: settings,
                                            resume: resumeStore, onResume: resumeTorrent)
             case .settings:  SettingsView(library: library, smb: smb, drive: drive,
@@ -539,6 +545,8 @@ struct RootView: View {
             case .stream:    ZyStreamView(store: streamStore, library: library,
                                           resume: resumeStore, settings: settings,
                                           onOpen: { route = .stream($0) })
+            case .music:     MusicView()
+            case .games:     GamesView()
             }
         }
     }
@@ -625,8 +633,64 @@ struct RootView: View {
             }
             return PlayerEpisodeList(showTitle: details.hit.title, entries: entries)
         }
+        
+        if let hit = zyMovieStore.playingHit, streamer.activeHash == hit.rssLink, !zyMovieStore.playingFiles.isEmpty {
+            let entries = zyMovieStore.playingFiles.map { file in
+                let seasonStr = extractSeason(from: hit.rssTitle)
+                let epNumber = extractEpisodeNumber(from: file.name) ?? (file.index + 1)
+                
+                return PlayerEpisodeList.Entry(
+                    id: "\(hit.rssLink)-\(file.index)",
+                    season: seasonStr != nil ? (Int(seasonStr!) ?? 1) : 1,
+                    episode: epNumber,
+                    title: extractEpisodeTitle(from: file.name) ?? "Bölüm \(epNumber)",
+                    isCurrent: streamer.activeFileIndex == file.index,
+                    isWatched: false,
+                    play: {
+                        let title = hit.remoteTitle?.title ?? hit.rssTitle
+                        let option = TorrentOption(
+                            id: hit.rssLink,
+                            quality: "RSS",
+                            detail: "TurkTorrent",
+                            seeds: 0,
+                            peers: 0,
+                            provider: "TurkTorrent",
+                            link: hit.rssLink,
+                            fileIndex: file.index
+                        )
+                        streamer.start(option, title: title) { url, _ in
+                            player.open(url, title: title, resumeAt: 0)
+                        }
+                    }
+                )
+            }
+            let showTitle = hit.remoteTitle?.title ?? hit.rssTitle
+            return PlayerEpisodeList(showTitle: showTitle, entries: entries)
+        }
 
         return nil
+    }
+    
+    private func extractSeason(from string: String) -> String? {
+        if let range = string.range(of: "S(\\d+)", options: .regularExpression) {
+            let match = string[range]
+            return String(match.dropFirst())
+        }
+        return nil
+    }
+    
+    private func extractEpisodeNumber(from string: String) -> Int? {
+        if let range = string.range(of: "E(\\d+)", options: .regularExpression) {
+            let match = string[range]
+            return Int(match.dropFirst())
+        }
+        return nil
+    }
+    
+    private func extractEpisodeTitle(from string: String) -> String? {
+        // e.g., Extract base name
+        let url = URL(fileURLWithPath: string)
+        return url.deletingPathExtension().lastPathComponent
     }
 
     /// "Severance · S2B7 · Chikhai Bardo" for episodes, the title for movies.
@@ -918,7 +982,7 @@ struct SearchResultsView: View {
 }
 
 enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
-    case home, movies, shows, favorites, appleTV, bollywood, stream, downloads, settings
+    case home, movies, shows, favorites, appleTV, bollywood, zyMovie, stream, downloads, settings, music, games
 
     var id: String { rawValue }
 
@@ -930,9 +994,12 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
         case .favorites: "Favoriler"
         case .appleTV: "Apple TV"
         case .bollywood: "Bollywood"
+        case .zyMovie: "ZyMovie"
         case .stream: "ZyStream"
         case .downloads: "İndirilenler"
         case .settings: "Ayarlar"
+        case .music: "Müzik"
+        case .games: "Oyunlar"
         }
     }
 
@@ -944,9 +1011,12 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
         case .favorites: "star"
         case .appleTV: "appletv"
         case .bollywood: "movieclapper"
+        case .zyMovie: "film.stack"
         case .stream: "play.tv"
         case .downloads: "arrow.down.circle"
         case .settings: "gearshape"
+        case .music: "music.note"
+        case .games: "gamecontroller"
         }
     }
 }
@@ -960,12 +1030,12 @@ struct Sidebar: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 4) {
-                ForEach([SidebarItem.home, .movies, .shows, .favorites, .appleTV, .bollywood]) { item in
+                ForEach([SidebarItem.home, .movies, .shows, .favorites, .appleTV, .bollywood, .zyMovie]) { item in
                     row(item)
                 }
                 Divider()
                     .padding(.vertical, 8)
-                ForEach([SidebarItem.downloads, .settings]) { item in
+                ForEach([SidebarItem.music, .games, .downloads, .settings]) { item in
                     row(item)
                 }
             }

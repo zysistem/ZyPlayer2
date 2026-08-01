@@ -91,7 +91,7 @@ struct YouTubeCard: View {
     /// Cloudflare kalkanı yok, `AsyncImage` doğrudan yükleyebiliyor.
     @ViewBuilder
     private var thumbnail: some View {
-        AsyncImage(url: video.thumbnailURL) { phase in
+        CachedAsyncImage(url: video.thumbnailURL) { phase in
             switch phase {
             case .success(let image):
                 image.resizable().scaledToFill()

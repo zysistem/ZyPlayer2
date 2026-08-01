@@ -6,6 +6,10 @@ struct PosterCard: View {
     let subtitle: String
     var progress: Double = 0
     var isFinished: Bool = false
+    /// Season indicator tag (e.g. "S01", "S02") drawn on the top-left corner.
+    var seasonBadge: String? = nil
+    /// 4K indicator tag drawn on the top-right corner.
+    var is4K: Bool = false
     /// Drawn as a bookmark tag when the item is on the watchlist and not yet
     /// watched.
     var watchlisted: Bool = false
@@ -81,6 +85,18 @@ struct PosterCard: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.white, .blue)
                         .padding(6)
+                } else if is4K {
+                    Text("4K")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2.5)
+                        .background(
+                            LinearGradient(colors: [Color(red: 1.0, green: 0.8, blue: 0.2), Color(red: 1.0, green: 0.6, blue: 0.0)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                            in: Capsule()
+                        )
+                        .shadow(radius: 2)
+                        .padding(6)
                 } else if watchlisted {
                     Image(systemName: "bookmark.fill")
                         .font(.system(size: 13))
@@ -92,7 +108,16 @@ struct PosterCard: View {
                 }
             }
             .overlay(alignment: .topLeading) {
-                if let imdbRating {
+                if let seasonBadge {
+                    Text(seasonBadge)
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2.5)
+                        .background(Color.purple.opacity(0.9), in: Capsule())
+                        .shadow(radius: 2)
+                        .padding(6)
+                } else if let imdbRating {
                     IMDbRatingTag(rating: imdbRating).padding(6)
                 }
             }
@@ -139,7 +164,7 @@ struct PosterCard: View {
         } else if let image = ArtworkCache.image(named: posterFileName) {
             Image(nsImage: image).resizable()
         } else if let posterURL {
-            AsyncImage(url: posterURL) { phase in
+            CachedAsyncImage(url: posterURL) { phase in
                 switch phase {
                 case .success(let image): image.resizable()
                 default: placeholder
@@ -229,29 +254,38 @@ struct PosterBadge {
 struct PosterGrid<Item: Identifiable, Content: View>: View {
     let items: [Item]
     var selectedIndex: Int = -1
+    var embedsInScrollView: Bool = true
     @ViewBuilder let content: (Item, Bool) -> Content
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 10)
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 22) {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        content(item, index == selectedIndex)
-                            .id(index)
+        if embedsInScrollView {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    gridBody
+                }
+                .onChange(of: selectedIndex) { _, newIndex in
+                    if newIndex >= 0 {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            proxy.scrollTo(newIndex, anchor: .center)
+                        }
                     }
                 }
-                .padding(20)
             }
-            .onChange(of: selectedIndex) { _, newIndex in
-                if newIndex >= 0 {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        proxy.scrollTo(newIndex, anchor: .center)
-                    }
-                }
+        } else {
+            gridBody
+        }
+    }
+
+    private var gridBody: some View {
+        LazyVGrid(columns: columns, spacing: 22) {
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                content(item, index == selectedIndex)
+                    .id(item.id)
             }
         }
+        .padding(20)
     }
 }
 

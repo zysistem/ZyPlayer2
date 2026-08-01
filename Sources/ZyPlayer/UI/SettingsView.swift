@@ -158,6 +158,7 @@ struct SettingsView: View {
     @State private var translationCacheStats = TranslatedSubtitleCache.Stats(count: 0, bytes: 0)
     @State private var rememberedVideoCount = 0
     @State private var cacheClearedNote: String?
+    @State private var currentImageCacheSize: String = ImageCacheManager.formattedCacheSize
 
     /// Hem çevirileri hem hatırlanan altyazı seçimlerini tek cümlede özetler.
     private var subtitleMemorySummary: String {
@@ -946,6 +947,31 @@ struct SettingsView: View {
 
             if !library.metadataMessage.isEmpty {
                 Text(library.metadataMessage).font(.caption).foregroundStyle(.secondary)
+            }
+
+            Divider().padding(.vertical, 4)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Cache Temizliği")
+                    .font(.system(size: 13, weight: .semibold))
+
+                Text("Tüm film ve dizi posterleri ile afişleri yerel diskte saklanır. İndirilen posterler siz temizleyene kadar tekrar yüklenmez.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 12) {
+                    Text("Afiş ve Görsel Önbelleği: \(currentImageCacheSize)")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Button("Cache'i Temizle") {
+                        ImageCacheManager.clearAllCaches()
+                        currentImageCacheSize = ImageCacheManager.formattedCacheSize
+                    }
+                    .controlSize(.small)
+                }
             }
         }
     }

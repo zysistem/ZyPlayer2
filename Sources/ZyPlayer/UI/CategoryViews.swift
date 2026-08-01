@@ -334,7 +334,7 @@ struct HeroCinemaBanner: View {
             GeometryReader { geo in
                 ZStack {
                     if let backdropURL = movie.backdropURL {
-                        AsyncImage(url: backdropURL) { phase in
+                        CachedAsyncImage(url: backdropURL) { phase in
                             switch phase {
                             case .success(let image):
                                 image.resizable()
@@ -1197,12 +1197,16 @@ struct CategoryDetailView: View {
 
     private func fetchRemoteTitles() async {
         guard settings.hasTMDBToken else { return }
-        isLoadingRemote = true
+        
+        // 1. Load from local cache immediately (0ms instant UI rendering!)
+        loadCachedRemoteTitles()
+        
+        if remoteTitles.isEmpty {
+            isLoadingRemote = true
+        }
         defer { isLoadingRemote = false }
 
         let client = TMDBClient(token: settings.tmdbToken, language: settings.metadataLanguage)
-        // TMDB sayfa başına 20 sonuç veriyor; 100 sonuç için altı sayfa paralel
-        // çekiliyor (tekrarlar elendiğinde altıncı sayfa açığı kapatıyor).
         let pages = await withTaskGroup(of: (Int, [MovieResult]).self) { group in
             for page in 1...6 {
                 group.addTask {
@@ -1212,13 +1216,32 @@ struct CategoryDetailView: View {
             }
             var collected: [(Int, [MovieResult])] = []
             for await result in group { collected.append(result) }
-            // Sayfa sırası korunuyor: TMDB'nin popülerlik sıralaması bozulmasın.
             return collected.sorted { $0.0 < $1.0 }.flatMap(\.1)
         }
         var seen = Set<Int>()
-        remoteTitles = pages
+        let freshTitles = pages
             .filter { seen.insert($0.id).inserted }
             .prefix(100)
             .map(RemoteTitle.init(movie:))
+        
+        if !freshTitles.isEmpty {
+            remoteTitles = Array(freshTitles)
+            saveCachedRemoteTitles(Array(freshTitles))
+        }
+    }
+
+    private func loadCachedRemoteTitles() {
+        let cacheKey = "category_genre_\(genre.tmdbGenreID)"
+        if let data = UserDefaults.standard.data(forKey: cacheKey),
+           let cached = try? JSONDecoder().decode([RemoteTitle].self, from: data) {
+            self.remoteTitles = cached
+        }
+    }
+
+    private func saveCachedRemoteTitles(_ titles: [RemoteTitle]) {
+        let cacheKey = "category_genre_\(genre.tmdbGenreID)"
+        if let data = try? JSONEncoder().encode(titles) {
+            UserDefaults.standard.set(data, forKey: cacheKey)
+        }
     }
 }
