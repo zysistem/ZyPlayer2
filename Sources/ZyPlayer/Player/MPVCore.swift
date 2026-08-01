@@ -92,6 +92,8 @@ final class MPVCore {
         mpv_terminate_destroy(handle)
     }
 
+    private let mpvQueue = DispatchQueue(label: "com.zyplayer.mpv.commandQueue", qos: .userInitiated)
+
     // MARK: - Options & properties
 
     func setOption(_ name: String, _ value: String) {
@@ -101,19 +103,28 @@ final class MPVCore {
 
     func setProperty(_ name: String, _ value: String) {
         guard let handle else { return }
-        mpv_set_property_string(handle, name, value)
+        mpvQueue.async { [weak self] in
+            guard let self, self.handle == handle else { return }
+            mpv_set_property_string(handle, name, value)
+        }
     }
 
     func setProperty(_ name: String, _ value: Double) {
         guard let handle else { return }
-        var v = value
-        mpv_set_property(handle, name, MPV_FORMAT_DOUBLE, &v)
+        mpvQueue.async { [weak self] in
+            guard let self, self.handle == handle else { return }
+            var v = value
+            mpv_set_property(handle, name, MPV_FORMAT_DOUBLE, &v)
+        }
     }
 
     func setProperty(_ name: String, _ value: Bool) {
         guard let handle else { return }
-        var v: Int32 = value ? 1 : 0
-        mpv_set_property(handle, name, MPV_FORMAT_FLAG, &v)
+        mpvQueue.async { [weak self] in
+            guard let self, self.handle == handle else { return }
+            var v: Int32 = value ? 1 : 0
+            mpv_set_property(handle, name, MPV_FORMAT_FLAG, &v)
+        }
     }
 
     func doubleProperty(_ name: String) -> Double? {
@@ -134,14 +145,16 @@ final class MPVCore {
     /// the duration of the call.
     func command(_ args: [String]) {
         guard let handle else { return }
-        let owned: [UnsafeMutablePointer<CChar>?] = args.map { strdup($0) }
-        defer { owned.forEach { if let p = $0 { free(p) } } }
+        mpvQueue.async { [weak self] in
+            guard let self, self.handle == handle else { return }
+            let owned: [UnsafeMutablePointer<CChar>?] = args.map { strdup($0) }
+            defer { owned.forEach { if let p = $0 { free(p) } } }
 
-        // mpv_command wants a NULL-terminated array of `const char *`.
-        var argv: [UnsafePointer<CChar>?] = owned.map { $0.map { UnsafePointer($0) } }
-        argv.append(nil)
-        argv.withUnsafeMutableBufferPointer { buffer in
-            _ = mpv_command(handle, buffer.baseAddress)
+            var argv: [UnsafePointer<CChar>?] = owned.map { $0.map { UnsafePointer($0) } }
+            argv.append(nil)
+            argv.withUnsafeMutableBufferPointer { buffer in
+                _ = mpv_command(handle, buffer.baseAddress)
+            }
         }
     }
 
