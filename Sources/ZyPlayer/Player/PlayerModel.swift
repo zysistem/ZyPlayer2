@@ -3,6 +3,39 @@ import Observation
 import AppKit
 import MediaPlayer
 
+enum VideoQuality: String, CaseIterable, Identifiable, Codable {
+    case auto = "Otomatik"
+    case q2160p = "4K (2160p)"
+    case q1080p = "1080p (Full HD)"
+    case q720p = "720p (HD)"
+    case q480p = "480p (SD)"
+    case q360p = "360p"
+
+    var id: String { rawValue }
+
+    var shortName: String {
+        switch self {
+        case .auto: return "Kalite"
+        case .q2160p: return "4K"
+        case .q1080p: return "1080p"
+        case .q720p: return "720p"
+        case .q480p: return "480p"
+        case .q360p: return "360p"
+        }
+    }
+
+    var ytdlFormat: String {
+        switch self {
+        case .auto: return "bestvideo+bestaudio/best"
+        case .q2160p: return "bestvideo[height<=?2160]+bestaudio/best"
+        case .q1080p: return "bestvideo[height<=?1080]+bestaudio/best"
+        case .q720p: return "bestvideo[height<=?720]+bestaudio/best"
+        case .q480p: return "bestvideo[height<=?480]+bestaudio/best"
+        case .q360p: return "bestvideo[height<=?360]+bestaudio/best"
+        }
+    }
+}
+
 /// Observable playback state the UI binds to. Owns the mpv engine and keeps a
 /// display-rate mirror of its properties.
 @Observable
@@ -18,6 +51,7 @@ final class PlayerModel {
     var isPaused: Bool = true
     var volume: Double = 100
     var speed: Double = 1.0
+    var selectedVideoQuality: VideoQuality = .auto
     var currentURL: URL?
     var currentTitle: String = ""
 
@@ -915,6 +949,19 @@ final class PlayerModel {
     func setSpeed(_ value: Double) {
         speed = value
         core.setSpeed(value)
+        onControlsUserActivity?()
+    }
+
+    func setVideoQuality(_ quality: VideoQuality) {
+        guard selectedVideoQuality != quality else { return }
+        selectedVideoQuality = quality
+        core.setOption("ytdl-format", quality.ytdlFormat)
+        
+        if let url = currentURL, !url.isFileURL {
+            let currentPos = position
+            core.loadFile(url, startAt: currentPos > 5 ? currentPos : nil, options: Self.contentOptions(for: url))
+            core.play()
+        }
         onControlsUserActivity?()
     }
 

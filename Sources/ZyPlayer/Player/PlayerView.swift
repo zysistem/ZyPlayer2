@@ -451,6 +451,7 @@ struct PlayerControls: View {
             volume
             audioMenu
             subtitleMenu
+            qualityMenu
             speedMenu
             IconButton(systemImage: "arrow.up.left.and.arrow.down.right") {
                 model.toggleFullscreen()
@@ -594,6 +595,29 @@ struct PlayerControls: View {
         }
         .menuStyle(GlassMenuStyle())
         .help("Altyazı")
+    }
+
+    private var qualityMenu: some View {
+        Menu {
+            ForEach(VideoQuality.allCases) { quality in
+                Button {
+                    model.setVideoQuality(quality)
+                } label: {
+                    Label(
+                        quality.rawValue,
+                        systemImage: model.selectedVideoQuality == quality ? "checkmark" : ""
+                    )
+                }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "slider.horizontal.3")
+                Text(model.selectedVideoQuality.shortName)
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+            }
+        }
+        .menuStyle(GlassMenuStyle())
+        .help("Video Kalitesi (4K, 1080p, 720p, 480p)")
     }
 
     private var speedMenu: some View {
