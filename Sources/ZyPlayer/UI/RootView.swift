@@ -817,14 +817,52 @@ struct RootView: View {
         selection = .downloads
     }
 
-    /// Saves progress before leaving the player.
+    /// Saves progress before leaving the player and cleans download/cache if not favorited.
     private func closePlayer() {
         if let url = player.currentURL, let item = library.item(for: url) {
             library.updateProgress(for: item, position: player.position, duration: player.duration)
         }
+        
+        let activeHash = streamer.activeHash
+        let activeTitle = player.currentTitle
+        let playingHit = zyMovieStore.playingHit
+        
         player.close()
-        // A stream only exists while it is being watched; its cache goes with it.
         streamer.stop()
+        
+        Task { @MainActor in
+            let favs = zyMovieStore.favorites
+            
+            if let hit = playingHit {
+                let isFav = favs.contains { $0.id == hit.id }
+                if !isFav {
+                    zyMovieStore.playingHit = nil
+                    zyMovieStore.playingFiles = []
+                }
+            }
+            
+            // Clean torrent downloads in aria2 (`torrents`) that match the active stream / playing hit UNLESS favorited
+            for download in torrents.downloads {
+                let isFavorited = favs.contains { fav in
+                    if let hash = activeHash, !hash.isEmpty, fav.rssLink.contains(hash) { return true }
+                    if let hit = playingHit, fav.id == hit.id { return true }
+                    if !download.name.isEmpty && !fav.rssTitle.isEmpty &&
+                        (download.name.localizedCaseInsensitiveContains(fav.rssTitle) || fav.rssTitle.localizedCaseInsensitiveContains(download.name)) {
+                        return true
+                    }
+                    return false
+                }
+                
+                if !isFavorited {
+                    let matchesClosed = (activeHash != nil && !activeHash!.isEmpty && download.id.contains(activeHash!)) ||
+                                       (playingHit != nil && (download.name.localizedCaseInsensitiveContains(playingHit!.rssTitle) || download.id.contains(playingHit!.rssLink))) ||
+                                       (!activeTitle.isEmpty && (download.name.localizedCaseInsensitiveContains(activeTitle) || activeTitle.localizedCaseInsensitiveContains(download.name)))
+                    if matchesClosed {
+                        await torrents.remove(download, deleteFiles: true, library: library)
+                    }
+                }
+            }
+        }
     }
 }
 
