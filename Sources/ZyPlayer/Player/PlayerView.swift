@@ -1000,14 +1000,7 @@ final class PlayerKeyMonitor {
         center.skipBackwardCommand.removeTarget(nil)
     }
 
-    private static func isTypingContext() -> Bool {
-        guard let window = NSApp.keyWindow else { return false }
-        if window.sheets.isEmpty == false { return true }
-        guard let responder = window.firstResponder else { return false }
-        if responder is NSTextView || responder is NSTextField { return true }
-        if let textView = responder as? NSTextView, textView.isFieldEditor { return true }
-        return false
-    }
+    private static func isTypingContext() -> Bool { KeyboardContext.isTyping }
 
     deinit { stop() }
 }

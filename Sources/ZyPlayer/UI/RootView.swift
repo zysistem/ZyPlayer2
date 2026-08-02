@@ -157,7 +157,12 @@ struct RootView: View {
                 NSApp.keyWindow?.makeFirstResponder(nil)
             }
             let handleBack = {
-                if player.currentURL != nil {
+                // En üstteki katman önce kapanır. Altyazı paneli oynatıcının
+                // üstünde durur; eskiden en sonda sınandığı için oynatıcı
+                // açıkken hiç sırası gelmiyor, panel Escape'e yanıt vermiyordu.
+                if showSubtitleSearch {
+                    showSubtitleSearch = false
+                } else if player.currentURL != nil {
                     // Player handles its own Escape
                 } else if streamStore.activeDetails != nil {
                     streamStore.closeDetails()
@@ -167,8 +172,6 @@ struct RootView: View {
                     searchText = ""
                 } else if matchTarget != nil {
                     matchTarget = nil
-                } else if showSubtitleSearch {
-                    showSubtitleSearch = false
                 }
             }
             BluetoothRemoteManager.shared.startGlobal(
@@ -316,6 +319,10 @@ struct RootView: View {
                 episode: subtitleQuery.episode,
                 onDone: { showSubtitleSearch = false }
             )
+            // Panel açıkken oynatıcının tuş kısayolları susar: burada yazılan
+            // backspace harf siler, boşluk boşluk yazar — oynatmaya karışmaz.
+            .onAppear { KeyboardContext.isPanelOpen = true }
+            .onDisappear { KeyboardContext.isPanelOpen = false }
         }
         .onAppear {
             // Progress is reported during playback, not only on close, so a
@@ -538,10 +545,10 @@ struct RootView: View {
                                            settings: settings, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .zyMovie:   ZyMovieView(library: library, store: zyMovieStore,
                                          settings: settings, player: player, streamer: streamer, torrents: torrents, selectedIndex: focusZone == .content ? focusedPosterIndex : -1, onOpenRemoteTitle: { route = .remote($0) })
-            case .downloads: DownloadsView(library: library, torrents: torrents, settings: settings,
-                                           resume: resumeStore, onResume: resumeTorrent)
+            case .downloads: DownloadsView(library: library, torrents: torrents, settings: settings)
             case .settings:  SettingsView(library: library, smb: smb, drive: drive,
-                                          torrents: torrents, settings: settings)
+                                          torrents: torrents, settings: settings,
+                                          resume: resumeStore)
             case .stream:    ZyStreamView(store: streamStore, library: library,
                                           resume: resumeStore, settings: settings,
                                           onOpen: { route = .stream($0) })

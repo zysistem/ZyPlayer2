@@ -96,7 +96,12 @@ final class BluetoothRemoteManager: @unchecked Sendable {
 
             // 2. Normal Klavye / Kumanda Olayları (.keyDown)
             if event.type == .keyDown {
-                print("🎮 [ZyPlayer Kumanda] Basılan Tuş -> KeyCode: \(event.keyCode), Char: \(event.characters ?? ""), Modifier: \(event.modifierFlags)")
+                // Metin yazılan her bağlamda — oynatıcı açık olsun ya da
+                // olmasın — tuş olduğu gibi geçer. Bu kontrol eskiden yalnızca
+                // aşağıdaki menü dalında yapılıyordu; oynatıcı açıkken altyazı
+                // arama kutusuna basılan backspace harf silmek yerine oynatıcıyı
+                // kapatıyor, boşluk oynatmayı duraklatıyordu.
+                if KeyboardContext.isTyping { return event }
 
                 if isPlayerOpen {
                     // ── PLAYER (OYNATICI) MODU ──
@@ -127,22 +132,19 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                     }
                 } else {
                     // ── ANA MENÜ / ARAYÜZ MODU ──
-                    let typing = self.isTypingContext()
-
-                    if !typing {
-                        switch event.keyCode {
-                        case 53, 51, 115, 2: // Escape, Backspace, Home, 'd' (Karabiner ac_back -> Geri Dön)
-                            self.onGlobalBack?()
-                            return nil
-                        case 3: // 'f' (Karabiner ac_search -> Arama)
-                            self.onGlobalSearch?()
-                            return nil
-                        case 36, 76, 65: // Return / Enter (OK Seçim Tuşu)
-                            self.simulateSelectClick()
-                            return nil
-                        default:
-                            return event
-                        }
+                    // Yazma bağlamı yukarıda elendi; buraya gelen tuş kısayoldur.
+                    switch event.keyCode {
+                    case 53, 51, 115, 2: // Escape, Backspace, Home, 'd' (Karabiner ac_back -> Geri Dön)
+                        self.onGlobalBack?()
+                        return nil
+                    case 3: // 'f' (Karabiner ac_search -> Arama)
+                        self.onGlobalSearch?()
+                        return nil
+                    case 36, 76, 65: // Return / Enter (OK Seçim Tuşu)
+                        self.simulateSelectClick()
+                        return nil
+                    default:
+                        return event
                     }
                 }
             }
@@ -193,12 +195,4 @@ final class BluetoothRemoteManager: @unchecked Sendable {
         }
     }
 
-    private func isTypingContext() -> Bool {
-        guard let window = NSApp.keyWindow else { return false }
-        if window.sheets.isEmpty == false { return true }
-        guard let responder = window.firstResponder else { return false }
-        if responder is NSTextView || responder is NSTextField { return true }
-        if let textView = responder as? NSTextView, textView.isFieldEditor { return true }
-        return false
-    }
 }

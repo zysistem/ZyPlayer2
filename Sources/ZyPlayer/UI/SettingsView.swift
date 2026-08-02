@@ -145,6 +145,8 @@ struct SettingsView: View {
     let drive: GoogleDriveStore
     let torrents: TorrentStore
     @Bindable var settings: AppSettings
+    /// Torrent devam kayıtlarını temizleyebilmek için.
+    var resume: PlaybackResumeStore?
 
     /// Accordion: one pane open at a time. The old flat page showed every
     /// control at once, which is what made it hard to read.
@@ -158,6 +160,9 @@ struct SettingsView: View {
     @State private var translationCacheStats = TranslatedSubtitleCache.Stats(count: 0, bytes: 0)
     @State private var rememberedVideoCount = 0
     @State private var cacheClearedNote: String?
+    @State private var torrentResumeClearedNote: String?
+    @State private var isCheckingDomains = false
+    @State private var domainCheckNote: String?
     @State private var currentImageCacheSize: String = ImageCacheManager.formattedCacheSize
 
     /// Hem çevirileri hem hatırlanan altyazı seçimlerini tek cümlede özetler.
@@ -789,13 +794,44 @@ struct SettingsView: View {
                         }
                     }
                     .padding(.leading, 31)
+
+                    if !source.nextBaseURL.isEmpty {
+                        Text("Sitenin duyurduğu sonraki adres: \(source.nextBaseURL) — bu adres kapandığında oraya geçilecek.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 31)
+                    }
                 }
                 .padding(.vertical, 4)
             }
 
-            Text("Adres değişirse (site alan adı taşırsa) buradan güncelleyebilirsiniz. "
-                 + "Not: Bu siteler telif korumalı içerik barındırabilir ve yapıları sık "
-                 + "değiştiği için zaman zaman çalışmayabilir.")
+            HStack(spacing: 8) {
+                Button("Adresleri Şimdi Denetle") {
+                    isCheckingDomains = true
+                    domainCheckNote = nil
+                    Task {
+                        let moved = await StreamDomainTracker.refreshAll(settings: settings)
+                        isCheckingDomains = false
+                        domainCheckNote = moved.isEmpty
+                            ? "Adresler güncel."
+                            : "Güncellendi: \(moved.joined(separator: ", "))"
+                    }
+                }
+                .controlSize(.small)
+                .disabled(isCheckingDomains)
+
+                if isCheckingDomains {
+                    ProgressView().controlSize(.small)
+                } else if let note = domainCheckNote {
+                    Text(note).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+
+            Text("Adresler uygulama açılışında ve ZyStream sekmesine her girişte kendiliğinden "
+                 + "denetlenir: site taşındığında ana sayfasında duyurduğu yeni adrese geçilir, "
+                 + "elle güncellemeniz gerekmez. Yukarıdaki alandan yine de kendiniz "
+                 + "değiştirebilirsiniz. Not: Bu siteler telif korumalı içerik barındırabilir ve "
+                 + "yapıları sık değiştiği için zaman zaman çalışmayabilir.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -900,6 +936,34 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            }
+
+            Divider().padding(.vertical, 2)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Torrent devam kayıtları")
+                    .font(.system(size: 12, weight: .medium))
+                HStack(spacing: 8) {
+                    Button("Devam Kayıtlarını Temizle") {
+                        let removed = resume?.torrentPointCount ?? 0
+                        resume?.clearTorrentPoints()
+                        torrentResumeClearedNote = removed > 0
+                            ? "\(removed) torrent devam kaydı silindi."
+                            : "Silinecek kayıt yoktu."
+                    }
+                    .controlSize(.small)
+                    .disabled((resume?.torrentPointCount ?? 0) == 0)
+
+                    if let note = torrentResumeClearedNote {
+                        Text(note)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Text("İzlenen torrentler ana ekrandaki “İzlemeyi Sürdür” rafında birikir ve `torrent-resume.json` dosyasında saklanır. Kendiliğinden silinmezler; liste ancak buradan boşaltılır.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
