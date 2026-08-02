@@ -17,7 +17,7 @@ import Foundation
 /// The domain moves constantly (the site itself announces the next one in a
 /// banner), which is exactly what the editable base URL in Settings is for.
 struct DizipalProvider: StreamProvider {
-    static let defaultBaseURL = "https://dizipal2089.com"
+    static let defaultBaseURL = "https://dizipal2108.com"
 
     let id = "dizipal"
     let displayName = "ZySeries"

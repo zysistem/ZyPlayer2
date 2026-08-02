@@ -7,11 +7,16 @@ struct StreamSourceToggle: Codable, Identifiable, Hashable {
     var id: String
     var isEnabled: Bool
     var baseURL: String
+    /// Sitenin ana sayfasında duyurduğu bir sonraki alan adı. Bugün değil,
+    /// site taşındığında işe yarar: eski adres kapandığında elde hazır bir
+    /// hedef bulunsun diye önceden saklanır. Boş = henüz duyurulmadı.
+    var nextBaseURL: String
 
-    init(id: String, isEnabled: Bool, baseURL: String) {
+    init(id: String, isEnabled: Bool, baseURL: String, nextBaseURL: String = "") {
         self.id = id
         self.isEnabled = isEnabled
         self.baseURL = baseURL
+        self.nextBaseURL = nextBaseURL
     }
 
     /// Tolerant: a toggle saved before the URL field existed still decodes.
@@ -20,6 +25,7 @@ struct StreamSourceToggle: Codable, Identifiable, Hashable {
         id = c.value(.id, "")
         isEnabled = c.value(.isEnabled, true)
         baseURL = c.value(.baseURL, "")
+        nextBaseURL = c.value(.nextBaseURL, "")
     }
 }
 
