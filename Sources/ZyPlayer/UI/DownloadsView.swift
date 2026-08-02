@@ -6,18 +6,16 @@ struct DownloadsView: View {
     let library: LibraryStore
     let torrents: TorrentStore
     @Bindable var settings: AppSettings
-    /// Continue-watching for the last streamed torrent.
-    var resume: PlaybackResumeStore?
-    var onResume: ((ResumePoint) -> Void)?
 
     @State private var linkInput = ""
+
+    // Bu ekran yalnızca gerçek indirmeleri gösterir. İzlenen torrentlerin
+    // devam noktaları ana ekrandaki "İzlemeyi Sürdür" rafına ait; burada da
+    // durunca indirme listesi hiç indirilmemiş içerikle karışıyordu.
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            if let point = resume?.lastTorrent {
-                resumeBanner(point)
-            }
             Divider()
 
             if !torrents.isEngineAvailable {
@@ -73,41 +71,6 @@ struct DownloadsView: View {
             }
         }
         .padding(16)
-    }
-
-    /// "Continue where you left off" for the last streamed torrent.
-    private func resumeBanner(_ point: ResumePoint) -> some View {
-        Button {
-            onResume?(point)
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "play.circle.fill")
-                    .font(.system(size: 26))
-                    .foregroundStyle(.tint)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Kaldığın yerden devam et")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    Text(point.title)
-                        .font(.system(size: 13, weight: .medium))
-                        .lineLimit(1)
-                    ProgressView(value: point.progress)
-                        .frame(maxWidth: 320)
-                }
-                Spacer()
-                Button {
-                    resume?.remove(key: point.id)
-                } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help("Listeden kaldır")
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 
     private var list: some View {

@@ -87,8 +87,26 @@ final class PlaybackResumeStore {
     @ObservationIgnored private let file = LocalStore(
         fileName: "resume-points.json", defaultValue: ResumeData()
     )
+    /// Torrent devam noktaları ayrı bir dosyada durur: İndirmeler ekranından
+    /// kaldırıldıkları için biriktikleri tek yer burasıdır ve kullanıcı
+    /// "temizle" dediğinde yalnızca bu dosya boşaltılır — ZyStream ve YouTube
+    /// devam kayıtları etkilenmez.
+    @ObservationIgnored private let torrentFile = LocalStore(
+        fileName: "torrent-resume.json", defaultValue: ResumeData()
+    )
 
-    init() { points = file.value.points }
+    init() {
+        // Eski sürümlerde her tür tek dosyadaydı; oradaki torrent girdileri
+        // silinmez, yeni dosyaya taşınır.
+        let shared = file.value.points.filter { $0.kind != .torrent }
+        let stranded = file.value.points.filter { $0.kind == .torrent }
+        var torrents = torrentFile.value.points
+        for point in stranded where !torrents.contains(where: { $0.id == point.id }) {
+            torrents.append(point)
+        }
+        points = shared + torrents
+        if !stranded.isEmpty { persist() }
+    }
 
     func point(forKey id: String) -> ResumePoint? { points.first { $0.id == id } }
 
@@ -132,10 +150,15 @@ final class PlaybackResumeStore {
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
-    /// The last streamed torrent still in progress.
-    var lastTorrent: ResumePoint? {
-        points.filter { $0.kind == .torrent && !$0.isFinished && $0.position > 5 }
-            .max { $0.updatedAt < $1.updatedAt }
+    /// Saklanan torrent devam kaydı sayısı — Ayarlar'daki temizleme düğmesi
+    /// neyi sileceğini söyleyebilsin diye.
+    var torrentPointCount: Int { points.count { $0.kind == .torrent } }
+
+    /// Torrent devam kayıtlarının tamamını siler. Kendiliğinden temizlenmezler:
+    /// izlenen her torrent burada birikir ve yalnızca kullanıcı boşaltır.
+    func clearTorrentPoints() {
+        points.removeAll { $0.kind == .torrent }
+        persist()
     }
 
     private func upsert(_ point: ResumePoint) {
@@ -147,5 +170,8 @@ final class PlaybackResumeStore {
         persist()
     }
 
-    private func persist() { file.replace(with: ResumeData(points: points)) }
+    private func persist() {
+        file.replace(with: ResumeData(points: points.filter { $0.kind != .torrent }))
+        torrentFile.replace(with: ResumeData(points: points.filter { $0.kind == .torrent }))
+    }
 }
