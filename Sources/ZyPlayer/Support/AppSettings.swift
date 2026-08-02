@@ -179,11 +179,14 @@ struct SettingsData: Codable {
         // with episodes on a separate one. There is one index now, so a stored
         // YTS address is replaced — by whatever the user had set for episodes if
         // they changed it, otherwise the default.
+        //
+        // Ayrıca Torrentio'nun `/lite/…` yolu ve eski mirror alan adları artık
+        // 404/çözümsüz: kayıtlı adres bunlardan biriyse torrent araması hiç
+        // sonuç döndürmez, bu yüzden sessizce varsayılana çevrilir.
         let stored = c.value(.torrentAPIBase, "")
-        let legacy = try? decoder.container(keyedBy: LegacyKeys.self)
-        let series = ((try? legacy?.decodeIfPresent(String.self, forKey: .seriesTorrentAPIBase))
-                      ?? nil) ?? ""
-        if stored.isEmpty || stored.localizedCaseInsensitiveContains("yts") || !stored.contains("providers=") {
+        if stored.isEmpty
+            || stored.localizedCaseInsensitiveContains("yts")
+            || TorrentioClient.isDeadLegacyBase(stored) {
             torrentAPIBase = TorrentioClient.defaultBase
         } else {
             torrentAPIBase = stored

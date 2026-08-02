@@ -90,35 +90,76 @@ struct TorrentioClient {
 
     var base: String
 
-    static let defaultBase = "https://torrentio.strem.fun/lite/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy"
+    /// Torrentio'nun kendi sunucusu. Ayar alanı boş bırakıldığında bu kullanılır;
+    /// yapılandırma (`providers=…`) adrese `configuredBase` içinde eklenir.
+    static let defaultBase = "https://torrentio.strem.fun"
 
-    /// Bölge engellemesini aşmak için sırayla denenen Torrentio Lite ve mirror sunucuları.
-    private static let fallbackMirrors = [
-        "https://torrentio.strem.fun/lite/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy",
-        "https://stremio.torrentio.strem.fun/lite/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy",
-        "https://torrentio.stremio.strem.fun/lite/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy",
-        "https://torrentio.elfhosted.com/lite/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy",
-        "https://torrentio.run/lite/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy"
-    ]
+    /// Eski sürümlerde kullanılan `/lite/…` yolu artık 404 dönüyor; ayarlarda
+    /// böyle bir adres duruyorsa varsayılana çevrilmesi için tanınması gerekir.
+    static func isDeadLegacyBase(_ value: String) -> Bool {
+        let lowered = value.lowercased()
+        return lowered.contains("/lite/")
+            || lowered.contains("stremio.torrentio.strem.fun")
+            || lowered.contains("torrentio.stremio.strem.fun")
+            || lowered.contains("torrentio.elfhosted.com")
+            || lowered.contains("torrentio.run")
+    }
 
     /// Seçili 7 ana provider (YTS, EZTV, RARBG, 1337x, ThePirateBay, KickassTorrents, TorrentGalaxy)
     private static let providers = [
         "yts", "eztv", "rarbg", "1337x", "thepiratebay", "kickasstorrents", "torrentgalaxy"
     ]
 
+    /// `https://torrentio.strem.fun/configure` sayfasının ürettiği yapılandırma
+    /// dizesinin aynısı: seçenekler `|` ile ayrılır ve adresin ilk yol parçası
+    /// olur. `qualityfilter` cam/screener/etiketsiz sürümleri sunucu tarafında
+    /// eler, `sort=qualitysize` en iyi kaliteyi en üste alır.
+    private static let configuration = [
+        "providers=" + providers.joined(separator: ","),
+        "qualityfilter=cam,scr,unknown",
+        "sort=qualitysize",
+        "limit=20"
+    ].joined(separator: "|")
+
     /// Only these are offered. A 720p or an unlabelled release is not worth a
     /// swarm's wait, and cam/telesync/screener rips are worth less than that.
     private static let acceptedQualityRanks: Set<Int> = [0, 1]
 
-    /// The base with the provider selection appended.
-    private var configuredBase: String {
-        var trimmed = base.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// `|` karakteri bir URL yolunda geçersizdir — kodlanmazsa `URL(string:)`
+    /// nil döner ve istek hiç kurulmaz.
+    private static func escaping(_ configuration: String) -> String {
+        configuration.replacingOccurrences(of: "|", with: "%7C")
+    }
+
+    /// Ayardaki adresten `/configure` ve `/manifest.json` eklerini atar.
+    private static func host(of value: String) -> String {
+        var trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        for suffix in ["/configure", "/manifest.json"] where trimmed.hasSuffix(suffix) {
+        for suffix in ["/configure", "/manifest.json"] where trimmed.lowercased().hasSuffix(suffix) {
             trimmed = String(trimmed.dropLast(suffix.count))
         }
-        if trimmed.contains("=") { return trimmed }
-        return trimmed + "/providers=" + Self.providers.joined(separator: ",")
+        return trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    /// Sorgulanacak adresler, sırayla: kullanıcının kendi yapılandırması,
+    /// yapılandırılmış varsayılan, sonra hiç seçenek içermeyen sade adres.
+    /// Sonuncusu yapılandırma biçimi bir gün yine değişirse elde kalan yoldur —
+    /// `/stream/movie/tt….json` Torrentio'da her zaman doğrudan yanıt verir.
+    private var candidateBases: [String] {
+        let configuredDefault = Self.defaultBase + "/" + Self.escaping(Self.configuration)
+        let trimmed = Self.host(of: base)
+
+        guard !trimmed.isEmpty, !Self.isDeadLegacyBase(trimmed),
+              trimmed.lowercased() != Self.defaultBase.lowercased() else {
+            return [configuredDefault, Self.defaultBase]
+        }
+
+        // Kullanıcı `/configure` sayfasından kendi yapılandırmasını yapıştırmışsa
+        // (adreste `providers=` gibi bir seçenek varsa) olduğu gibi kullanılır.
+        let userBase = trimmed.contains("=")
+            ? Self.escaping(trimmed)
+            : trimmed + "/" + Self.escaping(Self.configuration)
+        return [userBase, configuredDefault, Self.defaultBase]
     }
 
     /// Trackers added to every magnet. An addon hands over an info hash and
@@ -132,34 +173,17 @@ struct TorrentioClient {
         "udp://tracker.openbittorrent.com:6969/announce"
     ]
 
-    /// Verilen temel adres için torrent listesi getirir. Bölge engellemesini
-    /// aşmak için birden fazla public instance sırayla denenir; ilk başarılı
-    /// yanıt döner. Eğer tüm mirror'lar başarısız olursa veya boş dönerse
-    /// doğrudan YTS API'ye (YIFY Official API) hem IMDb ID hem de başlık/yıl ile başvurur.
+    /// Torrent listesini getirir. Önce Torrentio (kullanıcının yapılandırması,
+    /// sonra varsayılan, sonra sade adres) denenir; Torrentio hiç yanıt vermezse
+    /// sırayla EZTV, The Pirate Bay ve — filmlerde — YTS API'sine düşülür.
     func streams(imdbID: String, title: String? = nil, year: Int? = nil, season: Int?, episode: Int?) async throws -> [TorrentOption] {
-        let trimmedBase = base.trimmingCharacters(in: .whitespacesAndNewlines)
-        let isCustomBase = !trimmedBase.isEmpty
-            && trimmedBase.lowercased() != Self.defaultBase.lowercased()
-            && trimmedBase.lowercased() != "https://torrentio.strem.fun"
-
-        if isCustomBase {
-            if let customResults = try? await fetchStreams(from: configuredBase, imdbID: imdbID, season: season, episode: episode, timeout: 5), !customResults.isEmpty {
-                return customResults
-            }
-        }
-
-        // 1. Torrentio mirror'larını dene (Cloudflare 522/DNS engelinde hızlıca atlar)
-        for mirror in Self.fallbackMirrors {
-            let mirrorBase = mirror.trimmingCharacters(in: .whitespacesAndNewlines)
-                .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-
+        // 1. Torrentio. Adresler birbirinin yedeği olduğundan ilk dolu yanıt kazanır.
+        for candidate in candidateBases {
             do {
-                let results = try await fetchStreams(from: mirrorBase, imdbID: imdbID,
-                                                    season: season, episode: episode,
-                                                    timeout: 3)
-                if !results.isEmpty {
-                    return results
-                }
+                let results = try await fetchStreams(from: candidate, imdbID: imdbID,
+                                                     season: season, episode: episode,
+                                                     timeout: 12)
+                if !results.isEmpty { return results }
             } catch {
                 continue
             }
@@ -209,10 +233,15 @@ struct TorrentioClient {
         }
 
         let decoded = try JSONDecoder().decode(StreamResponse.self, from: data)
-        return (decoded.streams ?? [])
+        let all = (decoded.streams ?? [])
             .compactMap(Self.option(from:))
-            .filter(Self.isWorthOffering)
-            .sorted { ($0.qualityRank, -$0.seeds) < ($1.qualityRank, -$1.seeds) }
+            .filter { !$0.isTelescreen }
+
+        let preferred = all.filter { Self.acceptedQualityRanks.contains($0.qualityRank) }
+        // Eski film ve az bilinen dizilerde 1080p sürüm hiç olmayabilir; liste
+        // tamamen boş dönmektense elde ne varsa gösterilir.
+        let offered = preferred.isEmpty ? all : preferred
+        return offered.sorted { ($0.qualityRank, -$0.seeds) < ($1.qualityRank, -$1.seeds) }
     }
 
     /// Doğrudan YTS.mx (YIFY Official REST API) üzerinden torrent sonuçlarını çeker.
