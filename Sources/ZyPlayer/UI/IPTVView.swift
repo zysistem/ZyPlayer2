@@ -10,6 +10,8 @@ struct IPTVView: View {
     var onPlayChannel: (IPTVChannel, [IPTVChannel]) -> Void
     var onPlayMovie: (IPTVMovie) -> Void
     var onOpenSeries: (IPTVSeries) -> Void
+    /// Kaldığı yer ve izlendi durumu kartlarda gösteriliyor.
+    var resume: PlaybackResumeStore?
 
     @State private var section: IPTVSection = .live
     @State private var categoryID: String?
@@ -270,8 +272,11 @@ struct IPTVView: View {
                         }
                     case .movies:
                         ForEach(filteredMovies) { movie in
+                            let point = resume?.point(forKey: "iptv:movie:\(movie.id)")
                             PosterTile(title: movie.name, imageURL: movie.iconURL,
-                                       rating: movie.rating) {
+                                       rating: movie.rating,
+                                       progress: point?.progress ?? 0,
+                                       isWatched: point?.isFinished ?? false) {
                                 onPlayMovie(movie)
                             }
                             .contextMenu {
@@ -462,6 +467,10 @@ private struct PosterTile: View {
     let title: String
     let imageURL: URL?
     let rating: Double?
+    /// 0–1 arası izlenen kısım. İzlendi ayrı bir işaret: sona yaklaşan bir
+    /// içerik de izlenmiş sayılıyor ve şerit yerine tik gösteriliyor.
+    var progress: Double = 0
+    var isWatched: Bool = false
     let action: () -> Void
 
     @State private var isHovering = false
@@ -497,6 +506,29 @@ private struct PosterTile: View {
                 }
                 .aspectRatio(2.0 / 3.0, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(alignment: .bottom) {
+                    if progress > 0.01 && !isWatched {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Rectangle().fill(.black.opacity(0.55))
+                                Rectangle().fill(Color.accentColor)
+                                    .frame(width: geo.size.width * progress)
+                            }
+                        }
+                        .frame(height: 4)
+                        .clipShape(RoundedRectangle(cornerRadius: 2))
+                        .padding(.horizontal, 6)
+                        .padding(.bottom, 6)
+                    }
+                }
+                .overlay(alignment: .topLeading) {
+                    if isWatched {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 15))
+                            .foregroundStyle(.white, .green)
+                            .padding(6)
+                    }
+                }
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .strokeBorder(isHovering ? Color.accentColor : .white.opacity(0.08),

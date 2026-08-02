@@ -521,7 +521,16 @@ struct RootView: View {
                 onPlayMovie: playIPTVMovie,
                 onPlayEpisode: { episode, name in
                     playIPTVEpisode(episode, seriesName: name)
-                }
+                },
+                onTrailer: { tmdbID, isMovie in
+                    if isMovie {
+                        playTrailer(movieID: tmdbID, title: "")
+                    } else {
+                        playTrailer(tvID: tmdbID, title: "")
+                    }
+                },
+                isTrailerLoading: isTrailerLoading,
+                resume: resumeStore
             )
 
         case .remote(let title):
@@ -643,7 +652,8 @@ struct RootView: View {
                                  store: iptv, settings: settings,
                                  onPlayChannel: playChannel,
                                  onPlayMovie: { route = .iptv(.movie($0)) },
-                                 onOpenSeries: { route = .iptv(.series($0)) }
+                                 onOpenSeries: { route = .iptv(.series($0)) },
+                                 resume: resumeStore
                              )
             case .music:     MusicView()
             case .games:     GamesView()
@@ -909,14 +919,22 @@ struct RootView: View {
                             resumeKey: "iptv:live:\(favorite.streamID)")
             }
         case .movie:
-            guard let url = iptv.url(for: favorite) else { return }
-            let key = "iptv:movie:\(favorite.streamID)"
-            let title = IPTVNaming.split(favorite.name).name
-            resumeStore.begin(ResumePoint(id: key, kind: .stream, title: title,
-                                          posterURLString: favorite.iconURLString))
-            player.open(url, title: title,
-                        resumeAt: resumeStore.position(forKey: key), resumeKey: key,
-                        preferredSubtitle: resumeStore.point(forKey: key)?.subtitleLabel)
+            // Doğrudan oynatmak yerine detay açılıyor: kullanıcı favoriye
+            // aldığı bir filmi çoğu zaman önce görmek, sonra başlatmak istiyor.
+            if let movie = iptv.movie(withID: favorite.streamID) {
+                route = .iptv(.movie(movie))
+            } else {
+                // Katalogdan düşmüş olabilir; elde yalnızca favori kaydı varsa
+                // oynatmaktan başka yapılacak bir şey yok.
+                guard let url = iptv.url(for: favorite) else { return }
+                let key = "iptv:movie:\(favorite.streamID)"
+                let title = IPTVNaming.split(favorite.name).name
+                resumeStore.begin(ResumePoint(id: key, kind: .stream, title: title,
+                                              posterURLString: favorite.iconURLString))
+                player.open(url, title: title,
+                            resumeAt: resumeStore.position(forKey: key), resumeKey: key,
+                            preferredSubtitle: resumeStore.point(forKey: key)?.subtitleLabel)
+            }
         }
     }
 

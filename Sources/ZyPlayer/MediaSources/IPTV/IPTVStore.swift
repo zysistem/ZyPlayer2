@@ -347,6 +347,10 @@ final class IPTVStore {
         catalog.channels.first { $0.id == id }
     }
 
+    func movie(withID id: Int) -> IPTVMovie? {
+        catalog.movies.first { $0.id == id }
+    }
+
     func series(withID id: Int) -> IPTVSeries? {
         catalog.series.first { $0.id == id }
     }

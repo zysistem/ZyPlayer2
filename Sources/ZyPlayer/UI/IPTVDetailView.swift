@@ -16,6 +16,12 @@ struct IPTVDetailView: View {
     let onBack: () -> Void
     let onPlayMovie: (IPTVMovie) -> Void
     let onPlayEpisode: (IPTVEpisode, String) -> Void
+    /// Fragman TMDB'den geliyor: sağlayıcının `youtube_trailer` alanı
+    /// kataloğun tamamında boş. Kimlik bildirilmemişse düğme hiç çıkmıyor.
+    var onTrailer: ((Int, Bool) -> Void)?
+    var isTrailerLoading: Bool = false
+    /// Kaldığı yer ve izlendi durumu.
+    var resume: PlaybackResumeStore?
 
     @State private var detail: IPTVDetail?
     @State private var episodes: [Int: [IPTVEpisode]] = [:]
@@ -199,16 +205,40 @@ struct IPTVDetailView: View {
 
             HStack(spacing: 10) {
                 if case .movie(let movie) = target {
+                    let point = resume?.point(forKey: "iptv:movie:\(movie.id)")
                     Button {
                         onPlayMovie(movie)
                     } label: {
-                        Label("Oynat", systemImage: "play.fill")
+                        Label(point.map { $0.isFinished ? "Yeniden Oynat" : "Devam Et" } ?? "Oynat",
+                              systemImage: "play.fill")
                             .font(.system(size: 13, weight: .semibold))
                             .padding(.horizontal, 18)
                             .frame(height: 34)
                     }
                     .buttonStyle(.borderedProminent)
                     .focusEffectDisabled()
+                }
+
+                if let tmdbID = detail?.tmdbID, let onTrailer {
+                    Button {
+                        if case .movie = target { onTrailer(tmdbID, true) }
+                        else { onTrailer(tmdbID, false) }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isTrailerLoading {
+                                ProgressView().controlSize(.small).scaleEffect(0.7)
+                            } else {
+                                Image(systemName: "play.rectangle")
+                            }
+                            Text("Fragman")
+                        }
+                        .font(.system(size: 13, weight: .medium))
+                        .padding(.horizontal, 14)
+                        .frame(height: 34)
+                    }
+                    .buttonStyle(.bordered)
+                    .focusEffectDisabled()
+                    .disabled(isTrailerLoading)
                 }
 
                 let isFavorite = store.isFavorite(favorite)
@@ -293,7 +323,10 @@ struct IPTVDetailView: View {
         } else {
             LazyVStack(spacing: 10) {
                 ForEach(episodes[currentSeason] ?? []) { episode in
-                    EpisodeRow(episode: episode) {
+                    let point = resume?.point(forKey: "iptv:episode:\(episode.id)")
+                    EpisodeRow(episode: episode,
+                               progress: point?.progress ?? 0,
+                               isWatched: point?.isFinished ?? false) {
                         onPlayEpisode(episode, title)
                     }
                 }
@@ -307,6 +340,10 @@ struct IPTVDetailView: View {
     /// Tek bölüm: solda ekran fotoğrafı, sağda adı ve özeti.
     private struct EpisodeRow: View {
         let episode: IPTVEpisode
+        /// 0–1 arası izlenen kısım; izlendi işareti ayrı, çünkü sona yaklaşan
+        /// bir bölüm de "izlendi" sayılıyor.
+        var progress: Double = 0
+        var isWatched: Bool = false
         let action: () -> Void
 
         @State private var isHovering = false
@@ -340,6 +377,27 @@ struct IPTVDetailView: View {
                     }
                     .frame(width: 168, height: 95)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(alignment: .bottom) {
+                        // Kaldığı yer, ekran fotoğrafının altında ince bir şerit.
+                        if progress > 0.01 && !isWatched {
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Rectangle().fill(.black.opacity(0.55))
+                                    Rectangle().fill(Color.accentColor)
+                                        .frame(width: geo.size.width * progress)
+                                }
+                            }
+                            .frame(height: 4)
+                        }
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        if isWatched {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 15))
+                                .foregroundStyle(.white, .green)
+                                .padding(5)
+                        }
+                    }
                     .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .strokeBorder(isHovering ? Color.accentColor : .white.opacity(0.08),
                                       lineWidth: isHovering ? 2 : 1))
