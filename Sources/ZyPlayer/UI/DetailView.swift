@@ -579,114 +579,159 @@ struct DetailHeader: View {
     var isSearchingStreams: Bool = false
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            backdrop
-
-            VStack(alignment: .leading, spacing: 0) {
-                Button(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .font(.headline)
-                        .padding(9)
-                        .background(.black.opacity(0.4), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .padding(20)
-
-                Spacer(minLength: 90)
-
-                HStack(alignment: .bottom, spacing: 20) {
-                    poster
-                        .frame(width: 150)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .shadow(radius: 12)
-                        .contextMenu { watchActions }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(title)
-                            .font(.system(size: 30, weight: .bold))
-                            .shadow(radius: 6)
-
-                        if !tagline.isEmpty {
-                            Text(tagline)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        if !genres.isEmpty {
-                            Text(genres.prefix(3).joined(separator: " · "))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        let ratings = RatingRow(rating: rating, imdbID: imdbID)
-                        if !ratings.isEmpty {
-                            ratings.padding(.top, 2)
-                        }
-
-                        HStack(spacing: 10) {
-                            if let onPlay {
-                                Button(action: onPlay) {
-                                    Label(resumeLabel, systemImage: "play.fill")
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.large)
-                            }
-
-                            if let onTrailer {
-                                trailerButton(onTrailer)
-                            }
-
-                            // The star is not library-only: a title the user does
-                            // not own can be favourited too.
-                            if let onToggleFavorite {
-                                Button(action: onToggleFavorite) {
-                                    Image(systemName: isFavorite ? "star.fill" : "star")
-                                        .foregroundStyle(isFavorite ? .yellow : .white)
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.large)
-                                .help(isFavorite ? "Favorilerden çıkar" : "Favorilere ekle")
-                            }
-
-                            if let onSearchStreams {
-                                Button(action: onSearchStreams) {
-                                    if isSearchingStreams {
-                                        ProgressView().controlSize(.small)
-                                    } else {
-                                        Label("Akışlarda Ara", systemImage: "antenna.radiowaves.left.and.right")
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.large)
-                                .disabled(isSearchingStreams)
-                                .help("Bu yapımı açık akış kaynaklarında ara")
-                            }
-
-                            if showsLibraryControls {
-                                Button(action: { onEditMatch?() }) {
-                                    Image(systemName: "pencil")
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.large)
-                                .help("Bilgileri düzenle")
-                            }
-                        }
-                        .padding(.top, 6)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 24)
-
-                if let overview, !overview.isEmpty {
-                    Text(overview)
-                        .font(.callout)
-                        .foregroundStyle(.primary.opacity(0.85))
-                        .padding(.horizontal, 24)
-                        .padding(.top, 18)
-                        .frame(maxWidth: 760, alignment: .leading)
-                }
+        // Yapı IPTV detayıyla aynı: arka plan bir `background` katmanı ve
+        // kırpılıyor. Eskiden görsel bir yığının altına serilip `fill` ile
+        // büyütülüyordu; taşan görsel geri düğmesini örtüyor, sabit yükseklik
+        // de özet uzayınca künyeyi sıkıştırıyordu.
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                backButton
+                Spacer(minLength: 0)
             }
-            .padding(.bottom, 20)
+            .padding(20)
+
+            Spacer(minLength: 30)
+
+            HStack(alignment: .bottom, spacing: 18) {
+                poster
+                    .frame(width: 150, height: 225)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(.white.opacity(0.12), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.5), radius: 12, y: 6)
+                    .contextMenu { watchActions }
+
+                info
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 22)
+        }
+        .frame(maxWidth: .infinity, minHeight: 430, alignment: .topLeading)
+        // `backdrop` karartmayı kendi içinde uyguluyor; burada ikinci bir
+        // gradient eklemek görseli gereksiz yere koyulaştırırdı.
+        .background { backdrop }
+        .clipped()
+    }
+
+    private var backButton: some View {
+        Button(action: onBack) {
+            HStack(spacing: 5) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 12, weight: .bold))
+                Text("Geri")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .frame(height: 30)
+            .background(.black.opacity(0.55), in: Capsule())
+            .overlay(Capsule().strokeBorder(.white.opacity(0.18), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .keyboardShortcut(.cancelAction)
+    }
+
+    /// Afişin sağındaki künye: başlık, bilgi çipleri, özet ve düğmeler.
+    private var info: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 27, weight: .bold))
+                .foregroundStyle(.white)
+                .lineLimit(2)
+
+            HStack(spacing: 10) {
+                if !tagline.isEmpty { metaChip(tagline) }
+                ForEach(genres.prefix(3), id: \.self) { metaChip($0) }
+                let ratings = RatingRow(rating: rating, imdbID: imdbID)
+                if !ratings.isEmpty { ratings }
+            }
+
+            if let overview, !overview.isEmpty {
+                Text(overview)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(4)
+                    .frame(maxWidth: 560, alignment: .leading)
+            }
+
+            actionRow
+                .padding(.top, 4)
+        }
+    }
+
+    private func metaChip(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.white.opacity(0.9))
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.white.opacity(0.16), in: Capsule())
+    }
+
+    private var actionRow: some View {
+        HStack(spacing: 10) {
+            if let onPlay {
+                Button(action: onPlay) {
+                    Label(resumeLabel, systemImage: "play.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .padding(.horizontal, 16)
+                        .frame(height: 34)
+                }
+                .buttonStyle(.borderedProminent)
+                .focusEffectDisabled()
+            }
+
+            if let onTrailer {
+                trailerButton(onTrailer)
+            }
+
+            // The star is not library-only: a title the user does not own can be
+            // favourited too.
+            if let onToggleFavorite {
+                Button(action: onToggleFavorite) {
+                    Label(isFavorite ? "Favorilerde" : "Favorilere Ekle",
+                          systemImage: isFavorite ? "star.fill" : "star")
+                        .font(.system(size: 13, weight: .medium))
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                }
+                .buttonStyle(.bordered)
+                .focusEffectDisabled()
+                .help(isFavorite ? "Favorilerden çıkar" : "Favorilere ekle")
+            }
+
+            if let onSearchStreams {
+                Button(action: onSearchStreams) {
+                    HStack(spacing: 6) {
+                        if isSearchingStreams {
+                            ProgressView().controlSize(.small).scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                        }
+                        Text("Akışlarda Ara")
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                    .padding(.horizontal, 12)
+                    .frame(height: 34)
+                }
+                .buttonStyle(.bordered)
+                .focusEffectDisabled()
+                .disabled(isSearchingStreams)
+                .help("Bu yapımı açık akış kaynaklarında ara")
+            }
+
+            if showsLibraryControls {
+                Button(action: { onEditMatch?() }) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 13))
+                        .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.bordered)
+                .focusEffectDisabled()
+                .help("Bilgileri düzenle")
+            }
         }
     }
 

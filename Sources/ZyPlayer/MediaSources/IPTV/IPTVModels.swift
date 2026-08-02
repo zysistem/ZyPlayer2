@@ -152,6 +152,22 @@ enum IPTVNaming {
     /// yayınlar; ek atılmıyor, rozete alınıyor ki ayrım korunsun.
     private static let qualityTags = ["4K", "UHD", "FHD", "HD", "SD"]
 
+    /// Adın sonundaki yıl: "Batman: Pelerinli Savaşçı (2024)" → (ad, 2024).
+    /// TMDB'de aramak için gerekiyor — sağlayıcı dizilerde kimlik bildirmiyor,
+    /// ad da yılla birlikte geldiği için doğrudan aratmak sonuç düşürüyor.
+    static func splitYear(_ raw: String) -> (name: String, year: Int?) {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        guard let regex = try? NSRegularExpression(pattern: #"^(.+?)\s*\((\d{4})\)\s*$"#),
+              let match = regex.firstMatch(in: trimmed,
+                                           range: NSRange(trimmed.startIndex..., in: trimmed)),
+              match.numberOfRanges > 2,
+              let nameRange = Range(match.range(at: 1), in: trimmed),
+              let yearRange = Range(match.range(at: 2), in: trimmed)
+        else { return (trimmed, nil) }
+        return (String(trimmed[nameRange]).trimmingCharacters(in: .whitespaces),
+                Int(trimmed[yearRange]))
+    }
+
     static func splitQuality(_ name: String) -> (name: String, quality: String?) {
         var base = name.trimmingCharacters(in: .whitespaces)
         for tag in qualityTags where base.uppercased().hasSuffix(" " + tag) {

@@ -245,7 +245,7 @@ final class IPTVStore {
         let key = "movie:\(movie.id)"
         if let cached = detailCache[key] { return cached }
         guard var detail = try? await client.movieDetail(vodID: movie.id) else { return nil }
-        await enrich(&detail, kind: .movie)
+        await enrich(&detail, kind: .movie, name: movie.name)
         detailCache[key] = detail
         return detail
     }
@@ -257,7 +257,7 @@ final class IPTVStore {
         if let cached = detailCache[key] {
             return (cached, result.episodes)
         }
-        await enrich(&result.detail, kind: .tv)
+        await enrich(&result.detail, kind: .tv, name: series.name)
         detailCache[key] = result.detail
         episodeCache[series.id] = result.episodes
         return (result.detail, result.episodes)
@@ -265,9 +265,25 @@ final class IPTVStore {
 
     /// TMDB'den yalnızca görseller alınıyor: metinler zaten Türkçe geliyor ve
     /// sağlayıcının kendi özeti çoğu zaman daha eksiksiz.
-    private func enrich(_ detail: inout IPTVDetail, kind: RemoteKind) async {
-        guard let tmdbID = detail.tmdbID, settings.hasTMDBToken else { return }
+    private func enrich(_ detail: inout IPTVDetail, kind: RemoteKind, name: String) async {
+        guard settings.hasTMDBToken else { return }
         let client = TMDBClient(token: settings.tmdbToken, language: settings.metadataLanguage)
+
+        // Sağlayıcı filmlerde `tmdb_id` bildiriyor ama dizilerde bildirmiyor;
+        // o zaman ad ve yıldan aranıyor. Ad "… (2024)" biçiminde geldiği için
+        // yıl ayrılmadan aratmak sonuç düşürüyor.
+        if detail.tmdbID == nil {
+            let parts = IPTVNaming.splitYear(IPTVNaming.split(name).name)
+            switch kind {
+            case .tv:
+                detail.tmdbID = (try? await client.searchTV(name: parts.name))?.first?.id
+            case .movie:
+                detail.tmdbID = (try? await client.searchMovie(title: parts.name,
+                                                              year: parts.year ?? detail.year))?.first?.id
+            }
+        }
+
+        guard let tmdbID = detail.tmdbID else { return }
         switch kind {
         case .movie:
             guard let found = try? await client.movieDetail(id: tmdbID) else { return }
