@@ -66,35 +66,55 @@ struct IPTVDetailView: View {
 
     // MARK: - Üst bölüm
 
+    /// Arka plan bir `background` katmanı: içeriğin üstüne yerleştirilen sabit
+    /// yükseklikli bir yığında, `fill` ile büyüyen görsel çerçeveden taşıp
+    /// altındaki bölüm listesini bozuyor ve geri düğmesini örtüyordu. Yükseklik
+    /// de sabit değil — özet ve oyuncu satırları uzayınca künye sıkışıyordu.
     private var hero: some View {
-        ZStack(alignment: .topLeading) {
-            backdrop
-            LinearGradient(colors: [.black.opacity(0.15), .black.opacity(0.9)],
-                           startPoint: .top, endPoint: .bottom)
-
-            VStack(alignment: .leading, spacing: 0) {
-                Button(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 30, height: 30)
-                        .background(.black.opacity(0.45), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .padding(20)
-
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                backButton
                 Spacer(minLength: 0)
+            }
+            .padding(20)
 
-                HStack(alignment: .bottom, spacing: 18) {
-                    poster
-                    info
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 22)
+            Spacer(minLength: 30)
+
+            HStack(alignment: .bottom, spacing: 18) {
+                poster
+                info
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 22)
+        }
+        .frame(maxWidth: .infinity, minHeight: 430, alignment: .topLeading)
+        .background {
+            ZStack {
+                backdrop
+                LinearGradient(colors: [.black.opacity(0.25), .black.opacity(0.92)],
+                               startPoint: .top, endPoint: .bottom)
             }
         }
-        .frame(height: 420)
+        .clipped()
+    }
+
+    private var backButton: some View {
+        Button(action: onBack) {
+            HStack(spacing: 5) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 12, weight: .bold))
+                Text("Geri")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .frame(height: 30)
+            .background(.black.opacity(0.55), in: Capsule())
+            .overlay(Capsule().strokeBorder(.white.opacity(0.18), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .keyboardShortcut(.cancelAction)
     }
 
     @ViewBuilder
@@ -103,7 +123,8 @@ struct IPTVDetailView: View {
             CachedAsyncImage(url: url) { image in
                 image.resizable().aspectRatio(contentMode: .fill)
             } placeholder: {
-                Color.black
+                LinearGradient(colors: [Color(white: 0.2), Color(white: 0.08)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
             }
         } else {
             LinearGradient(colors: [Color(white: 0.2), Color(white: 0.08)],
@@ -220,7 +241,15 @@ struct IPTVDetailView: View {
 
     @ViewBuilder
     private var seasonPicker: some View {
-        if seasonNumbers.count > 1 {
+        if seasonNumbers.count == 1, let only = seasonNumbers.first {
+            // Tek sezonluk dizide sekme çizmenin anlamı yok ama başlıksız da
+            // kalmamalı: aşağıdaki listenin neye ait olduğu yazsın.
+            Text("Sezon \(only) · \(episodes[only]?.count ?? 0) bölüm")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+        } else if seasonNumbers.count > 1 {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(seasonNumbers, id: \.self) { number in
