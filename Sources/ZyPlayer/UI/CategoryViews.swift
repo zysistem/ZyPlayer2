@@ -686,7 +686,10 @@ struct ContinueWatchingRow: View {
                             point: point,
                             // Kayıtta geri dönülecek yapım yoksa (eski kayıtlar)
                             // açılacak sayfa da yok; kart oynatmaya düşer.
-                            onOpenDetail: (point.remoteTitle != nil || point.streamHit != nil)
+                            // IPTV kayıtlarında yapım nesnesi tutulmuyor, kimlik
+                            // anahtarın içinde duruyor.
+                            onOpenDetail: (point.remoteTitle != nil || point.streamHit != nil
+                                           || point.id.hasPrefix("iptv:"))
                                 ? { onOpenResumeDetail?(point) }
                                 : nil,
                             onPlay: {

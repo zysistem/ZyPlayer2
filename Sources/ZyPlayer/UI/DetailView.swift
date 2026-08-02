@@ -536,6 +536,37 @@ struct EpisodeRow: View {
     }
 }
 
+/// Fragman düğmesi.
+///
+/// Tek bir yerde duruyor çünkü iki ayrı yerde iki farklı biçimde çiziliyordu:
+/// biri "film" simgesiyle ve oynat düğmesinin varlığına göre dolu ya da boş,
+/// öteki "play.rectangle" ile her zaman boş. Aynı işi yapan düğme her sayfada
+/// aynı görünmeli.
+struct TrailerButton: View {
+    var isLoading: Bool = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if isLoading {
+                    ProgressView().controlSize(.small).scaleEffect(0.7)
+                } else {
+                    Image(systemName: "film")
+                }
+                Text("Fragman")
+            }
+            .font(.system(size: 13, weight: .semibold))
+            .padding(.horizontal, 14)
+            .frame(height: 34)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.blue)
+        .focusEffectDisabled()
+        .disabled(isLoading)
+    }
+}
+
 struct DetailHeader: View {
     let backdropFileName: String?
     let posterFileName: String?
@@ -755,24 +786,7 @@ struct DetailHeader: View {
     /// bordered otherwise.
     @ViewBuilder
     private func trailerButton(_ action: @escaping () -> Void) -> some View {
-        let label = Group {
-            if isTrailerLoading {
-                ProgressView().controlSize(.small)
-            } else {
-                Label("Fragman", systemImage: "film")
-            }
-        }
-        if onPlay != nil {
-            Button(action: action) { label }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .disabled(isTrailerLoading)
-        } else {
-            Button(action: action) { label }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(isTrailerLoading)
-        }
+        TrailerButton(isLoading: isTrailerLoading, action: action)
     }
 
     private var backdropDim: some View {

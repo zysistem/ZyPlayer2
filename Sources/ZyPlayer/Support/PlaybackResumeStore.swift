@@ -32,6 +32,10 @@ struct ResumePoint: Codable, Identifiable, Hashable {
     /// eskisi gibi doğrudan oynatır.
     var remoteTitle: RemoteTitle?
     var streamHit: StreamHit?
+    /// IPTV bölümlerinde dizinin kimliği. Bölümün kendi kimliğinden dizisine
+    /// ulaşmanın yolu yok; devam kartından dizinin sayfasına dönebilmek için
+    /// kayda yazılıyor.
+    var iptvSeriesID: Int?
     var updatedAt: Date = Date()
 
     var progress: Double { duration > 0 ? min(max(position / duration, 0), 1) : 0 }
@@ -49,13 +53,15 @@ struct ResumePoint: Codable, Identifiable, Hashable {
     init(id: String, kind: ResumeKind, title: String,
          posterURLString: String? = nil, providerID: String? = nil, pageURL: String? = nil,
          magnet: String? = nil, fileIndex: Int? = nil, subtitleLabel: String? = nil,
-         remoteTitle: RemoteTitle? = nil, streamHit: StreamHit? = nil) {
+         remoteTitle: RemoteTitle? = nil, streamHit: StreamHit? = nil,
+         iptvSeriesID: Int? = nil) {
         self.id = id; self.kind = kind; self.title = title
         self.posterURLString = posterURLString
         self.providerID = providerID; self.pageURL = pageURL
         self.magnet = magnet; self.fileIndex = fileIndex
         self.subtitleLabel = subtitleLabel
         self.remoteTitle = remoteTitle; self.streamHit = streamHit
+        self.iptvSeriesID = iptvSeriesID
     }
 
     init(from decoder: Decoder) throws {
@@ -73,6 +79,7 @@ struct ResumePoint: Codable, Identifiable, Hashable {
         subtitleLabel = c.optional(.subtitleLabel)
         remoteTitle = c.optional(.remoteTitle)
         streamHit = c.optional(.streamHit)
+        iptvSeriesID = c.optional(.iptvSeriesID)
         updatedAt = c.value(.updatedAt, Date())
     }
 }
@@ -138,6 +145,7 @@ final class PlaybackResumeStore {
             // yazılsa kart bir daha detay sayfasını açamazdı.
             if p.remoteTitle == nil { p.remoteTitle = existing.remoteTitle }
             if p.streamHit == nil { p.streamHit = existing.streamHit }
+            if p.iptvSeriesID == nil { p.iptvSeriesID = existing.iptvSeriesID }
             // Altyazı seçimi de öyle. Oynatmayı başlatan kod bu kaydı kurup
             // hemen ardından altyazıyı buradan okuyor; korunmadığı için okuduğu
             // şey kendi az önce sildiği değerdi ve seçim hiçbir zaman geri

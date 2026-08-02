@@ -220,25 +220,10 @@ struct IPTVDetailView: View {
                 }
 
                 if let tmdbID = detail?.tmdbID, let onTrailer {
-                    Button {
+                    TrailerButton(isLoading: isTrailerLoading) {
                         if case .movie = target { onTrailer(tmdbID, true) }
                         else { onTrailer(tmdbID, false) }
-                    } label: {
-                        HStack(spacing: 6) {
-                            if isTrailerLoading {
-                                ProgressView().controlSize(.small).scaleEffect(0.7)
-                            } else {
-                                Image(systemName: "play.rectangle")
-                            }
-                            Text("Fragman")
-                        }
-                        .font(.system(size: 13, weight: .medium))
-                        .padding(.horizontal, 14)
-                        .frame(height: 34)
                     }
-                    .buttonStyle(.bordered)
-                    .focusEffectDisabled()
-                    .disabled(isTrailerLoading)
                 }
 
                 let isFavorite = store.isFavorite(favorite)

@@ -129,23 +129,47 @@ enum IPTVNaming {
 
     /// "[TR] HABER" → ("TR", "HABER");  "TR: TRT 1" → ("TR", "TRT 1")
     static func split(_ raw: String) -> (code: String?, name: String) {
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        let patterns = [
+        var name = raw.trimmingCharacters(in: .whitespaces)
+        var code: String?
+
+        // Baştaki önek: "[TR] HABER", "TR: TRT 1"
+        let leading = [
             #"^[\[\|\(]\s*([A-Za-z]{2,4})\s*[\]\|\)]\s*(.+)$"#,
             #"^([A-Za-z]{2,4})\s*:\s*(.+)$"#
         ]
-        for pattern in patterns {
+        for pattern in leading {
             guard let regex = try? NSRegularExpression(pattern: pattern),
-                  let match = regex.firstMatch(in: trimmed,
-                                               range: NSRange(trimmed.startIndex..., in: trimmed)),
+                  let match = regex.firstMatch(in: name,
+                                               range: NSRange(name.startIndex..., in: name)),
                   match.numberOfRanges > 2,
-                  let codeRange = Range(match.range(at: 1), in: trimmed),
-                  let nameRange = Range(match.range(at: 2), in: trimmed)
+                  let codeRange = Range(match.range(at: 1), in: name),
+                  let nameRange = Range(match.range(at: 2), in: name)
             else { continue }
-            return (String(trimmed[codeRange]).uppercased(),
-                    String(trimmed[nameRange]).trimmingCharacters(in: .whitespaces))
+            code = String(name[codeRange]).uppercased()
+            name = String(name[nameRange]).trimmingCharacters(in: .whitespaces)
+            break
         }
-        return (nil, trimmed)
+
+        // Sondaki etiketler: "Silo |TR|", "WondLa |4K|", bazen art arda birkaçı.
+        // Bunlar temizlenmediğinde yalnızca ekranda çirkin durmuyorlar —
+        // TMDB araması da adı bulamıyor, dolayısıyla fragman ve afiş gelmiyor.
+        if let regex = try? NSRegularExpression(
+            pattern: #"\s*[\[\|\(]\s*([A-Za-z0-9]{1,5})\s*[\]\|\)]\s*$"#
+        ) {
+            while true {
+                let range = NSRange(name.startIndex..., in: name)
+                guard let match = regex.firstMatch(in: name, range: range),
+                      match.numberOfRanges > 1,
+                      let tagRange = Range(match.range(at: 1), in: name),
+                      let whole = Range(match.range, in: name)
+                else { break }
+                if code == nil { code = String(name[tagRange]).uppercased() }
+                name = String(name[name.startIndex..<whole.lowerBound])
+                    .trimmingCharacters(in: .whitespaces)
+            }
+        }
+
+        return (code, name)
     }
 
     /// Kanal adının sonundaki kalite eki. "TRT 1 HD" ve "TRT 1 FHD" ayrı

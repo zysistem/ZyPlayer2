@@ -418,6 +418,8 @@ struct RootView: View {
                     route = .stream(hit)
                 } else if let remote = point.remoteTitle {
                     route = .remote(remote)
+                } else if let target = iptvTarget(for: point) {
+                    route = .iptv(target)
                 }
             }
         )
@@ -520,7 +522,12 @@ struct RootView: View {
                 onBack: { self.route = nil },
                 onPlayMovie: playIPTVMovie,
                 onPlayEpisode: { episode, name in
-                    playIPTVEpisode(episode, seriesName: name)
+                    if case .series(let series) = target {
+                        playIPTVEpisode(episode, seriesName: name,
+                                        seriesID: series.id, poster: series.coverURLString)
+                    } else {
+                        playIPTVEpisode(episode, seriesName: name)
+                    }
                 },
                 onTrailer: { tmdbID, isMovie in
                     if isMovie {
@@ -903,6 +910,20 @@ struct RootView: View {
         player.open(url, title: channel.name, resumeKey: "iptv:live:\(channel.id)")
     }
 
+    /// Bir devam kaydının IPTV karşılığı. Kimlik kaydın anahtarında duruyor
+    /// ("iptv:movie:123"); bölümlerde dizinin kimliği ayrıca yazılıyor, çünkü
+    /// bölüm kimliğinden dizisine ulaşmanın yolu yok.
+    private func iptvTarget(for point: ResumePoint) -> IPTVDetailView.Target? {
+        if let seriesID = point.iptvSeriesID, let series = iptv.series(withID: seriesID) {
+            return .series(series)
+        }
+        guard point.id.hasPrefix("iptv:movie:"),
+              let id = Int(point.id.replacingOccurrences(of: "iptv:movie:", with: "")),
+              let movie = iptv.movie(withID: id)
+        else { return nil }
+        return .movie(movie)
+    }
+
     /// Favorilerden gelen IPTV içeriği. Dizi doğrudan oynatılamaz; katalogdaki
     /// karşılığı bulunup bölüm listesi açılıyor.
     private func playIPTVFavorite(_ favorite: IPTVFavorite) {
@@ -965,11 +986,18 @@ struct RootView: View {
                     preferredSubtitle: resumeStore.point(forKey: key)?.subtitleLabel)
     }
 
-    private func playIPTVEpisode(_ episode: IPTVEpisode, seriesName: String) {
+    private func playIPTVEpisode(_ episode: IPTVEpisode, seriesName: String,
+                                 seriesID: Int? = nil, poster: String? = nil) {
         guard let url = iptv.url(for: episode) else { return }
         let key = "iptv:episode:\(episode.id)"
         let title = "\(IPTVNaming.split(seriesName).name) · S\(episode.season)B\(episode.episode)"
-        resumeStore.begin(ResumePoint(id: key, kind: .stream, title: title))
+        // Bölümün kendi ekran fotoğrafı devam kartında görünüyor; yoksa dizinin
+        // afişine düşülüyor. Dizi kimliği de kartın sayfaya dönebilmesi için.
+        resumeStore.begin(ResumePoint(
+            id: key, kind: .stream, title: title,
+            posterURLString: episode.stillURLString ?? poster,
+            iptvSeriesID: seriesID
+        ))
         player.open(url, title: title,
                     resumeAt: resumeStore.position(forKey: key), resumeKey: key,
                     preferredSubtitle: resumeStore.point(forKey: key)?.subtitleLabel)
