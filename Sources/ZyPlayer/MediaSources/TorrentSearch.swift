@@ -274,6 +274,7 @@ struct TorrentioClient {
                 }
                 struct YTSMovie: Decodable {
                     let title: String?
+                    let imdb_code: String?
                     let torrents: [YTSTorrent]?
                 }
                 struct YTSTorrent: Decodable {
@@ -286,9 +287,15 @@ struct TorrentioClient {
                 }
             }
 
+            // YTS aradığı yapımı bulamadığında hata döndürmüyor: sorguyu yok
+            // sayıp listenin başındaki filmleri veriyor. Doğrulamadan alınırsa
+            // bambaşka bir filmin sürümleri "bu film" diye sunuluyor — aranan
+            // yapımın IMDb kimliğini taşıyan kayıt yoksa buradan bir şey çıkmaz.
             if let decoded = try? JSONDecoder().decode(YTSResponse.self, from: data),
                let movies = decoded.data?.movies,
-               let movie = movies.first,
+               let movie = movies.first(where: {
+                   ($0.imdb_code ?? "").caseInsensitiveCompare(imdbID) == .orderedSame
+               }),
                let torrents = movie.torrents, !torrents.isEmpty {
 
                 let options = torrents.compactMap { torrent -> TorrentOption? in
@@ -316,11 +323,12 @@ struct TorrentioClient {
     /// apibay.org (The Pirate Bay Official REST API) üzerinden doğrudan torrent akışlarını çeker.
     /// Cloudflare 522 veya Torrentio engellerine karşı %100 dayanıklı ve kesintisizdir.
     private func fetchPirateBayStreams(imdbID: String, title: String?) async -> [TorrentOption] {
-        var queryTerms: [String] = []
-        if !imdbID.isEmpty { queryTerms.append(imdbID) }
-        if let title = title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
-            queryTerms.append(title)
-        }
+        // Yalnızca IMDb kimliğiyle aranıyor. Başlıkla arama kolayca başka
+        // yapımlara kayıyor ve dönen kayıtların aranan filme ait olduğunu
+        // doğrulamanın bir yolu yok — alakasız sürümlerin sunulmasının
+        // sebeplerinden biri buydu.
+        guard !imdbID.isEmpty else { return [] }
+        let queryTerms = [imdbID]
 
         let trackersQuery = Self.trackers.map { "tr=" + $0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)! }.joined(separator: "&")
 
@@ -331,6 +339,9 @@ struct TorrentioClient {
             let seeders: String
             let leechers: String
             let size: String
+            /// apibay her kaydın IMDb kimliğini veriyor; kayıt eşleşmiyorsa
+            /// listelenmemeli. Bazı kayıtlarda boş geliyor.
+            let imdb: String?
         }
 
         var results: [TorrentOption] = []
@@ -346,7 +357,20 @@ struct TorrentioClient {
                   let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { continue }
 
             if let items = try? JSONDecoder().decode([TPBItem].self, from: data) {
-                let validItems = items.filter { $0.name != "No results found" && !$0.info_hash.isEmpty }
+                // apibay sonuç bulamadığında hata değil, "No results returned"
+                // adlı ve hash'i baştan sona sıfır olan tek bir kayıt döndürüyor.
+                // Eski süzgeç bunu tanımıyordu (metni "No results found" sanıyor,
+                // sıfırlardan oluşan hash'i de "boş değil" sayıyordu), böylece
+                // oynatılamayan bir sürüm gerçek sonuç gibi listeleniyordu.
+                let validItems = items.filter { item in
+                    guard !item.name.lowercased().hasPrefix("no results"),
+                          item.info_hash.contains(where: { $0 != "0" })
+                    else { return false }
+                    // Kimliği bildirilmiş bir kayıt başka bir yapıma aitse elenir.
+                    let itemIMDb = (item.imdb ?? "").trimmingCharacters(in: .whitespaces)
+                    guard !itemIMDb.isEmpty else { return true }
+                    return itemIMDb.caseInsensitiveCompare(imdbID) == .orderedSame
+                }
                 for item in validItems {
                     let seeds = Int(item.seeders) ?? 0
                     let bytes = Int64(item.size) ?? 0
