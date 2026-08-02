@@ -55,6 +55,11 @@ final class BluetoothRemoteManager: @unchecked Sendable {
 
             let isPlayerOpen = (self.activePlayer != nil)
 
+            // Sistem ses ve parlaklık tuşları oynatıcıya hiç uğramaz: burada
+            // yakalanınca hem sistemde ses değişmiyor hem de oynatıcının kontrol
+            // çubuğu her basışta açılıyordu.
+            if KeyboardContext.isSystemMediaKey(event) { return event }
+
             // 1. System Defined (Donanım Medya Tuşları: Play/Pause, Next, Prev)
             if event.type == .systemDefined && event.subtype.rawValue == 8 {
                 let keyCode = Int32(event.data1) >> 16 & 0xFF
@@ -67,20 +72,11 @@ final class BluetoothRemoteManager: @unchecked Sendable {
                         case 16, 100: // Play / Pause (NX_KEYTYPE_PLAY)
                             self.togglePauseWithDebounce()
                             return nil
-                        case 0: // Sound Up (Ses Artır)
-                            if let p = self.activePlayer { p.setVolume(min(100, p.volume + 5)) }
-                            return nil
-                        case 1: // Sound Down (Ses Azalt)
-                            if let p = self.activePlayer { p.setVolume(max(0, p.volume - 5)) }
-                            return nil
                         case 17, 19, 9: // Next / Fast Forward
                             self.activePlayer?.seek(by: 10)
                             return nil
                         case 18, 20, 10: // Prev / Rewind
                             self.activePlayer?.seek(by: -10)
-                            return nil
-                        case 7: // Mute
-                            if let p = self.activePlayer { p.setVolume(p.volume > 0 ? 0 : 100) }
                             return nil
                         default:
                             break

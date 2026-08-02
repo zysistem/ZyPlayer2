@@ -823,6 +823,10 @@ final class PlayerKeyMonitor {
 
         // 2. Local Key Event Monitor for Keyboard / HID Remote Events
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .systemDefined]) { event in
+            // Sistem ses ve parlaklık tuşları olduğu gibi geçer: kontrol çubuğu
+            // uyanmaz, ses de gerçekten sistemde değişir.
+            if KeyboardContext.isSystemMediaKey(event) { return event }
+
             onKeyInteraction()
 
             // ── Bluetooth / Medya Tuşları (.systemDefined) ──
@@ -835,7 +839,7 @@ final class PlayerKeyMonitor {
 
                     if keyDown {
                         switch keyCode {
-                        case 16, 0, 100: // Play/Pause (Toggle)
+                        case 16, 100: // Play/Pause (NX_KEYTYPE_PLAY)
                             model.togglePause()
                             return nil
                         case 17: // Next
@@ -850,9 +854,7 @@ final class PlayerKeyMonitor {
                         case 20, 10: // Rewind
                             model.seek(by: -10)
                             return nil
-                        case 7: // Mute
-                            model.setVolume(model.volume > 0 ? 0 : 100)
-                            return nil
+                        // Sessize alma sisteme ait; yukarıda zaten elenmiş oluyor.
                         default:
                             break
                         }

@@ -18,6 +18,24 @@ enum KeyboardContext {
     /// oynatıcıya kaçıyordu. Paneli açan kod zaten açık olduğunu bilir.
     static var isPanelOpen = false
 
+    /// macOS'un kendi ses ve parlaklık tuşları.
+    ///
+    /// Oynatıcıyı ilgilendirmezler ve yakalanmamaları gerekir: yakalanan bir
+    /// olay sisteme ulaşmadığı için ses gerçekte değişmez, üstelik kontrol
+    /// çubuğunu boşuna uyandırır. Kodlar `IOKit/hidsystem/ev_keymap.h`'ten.
+    static func isSystemMediaKey(_ event: NSEvent) -> Bool {
+        guard event.type == .systemDefined, event.subtype.rawValue == 8 else { return false }
+        let keyCode = Int32(event.data1) >> 16 & 0xFF
+        switch keyCode {
+        case 0, 1, 7:    // SOUND_UP, SOUND_DOWN, MUTE
+            return true
+        case 21, 22:     // ILLUMINATION_UP, ILLUMINATION_DOWN
+            return true
+        default:
+            return false
+        }
+    }
+
     /// Tuşun kısayol değil, girdi sayılması gereken bir bağlamda olup olmadığı.
     static var isTyping: Bool {
         if isPanelOpen { return true }
