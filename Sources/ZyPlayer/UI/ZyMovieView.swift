@@ -11,6 +11,10 @@ struct ZyMovieView: View {
     let torrents: TorrentStore
     
     var selectedIndex: Int = -1
+    /// Kumandanın seçim tuşu sayacı. Hangi içeriğin seçili olduğunu bu ekran
+    /// bilir (arama süzgeci listeyi değiştiriyor), bu yüzden seçimi RootView
+    /// yapamaz: yalnızca "seç" der, öğeyi buradaki liste belirler.
+    var selectTick: Int = 0
     var onOpenRemoteTitle: (RemoteTitle) -> Void = { _ in }
     
     @State private var hoveredHit: ZyMovieHit?
@@ -100,7 +104,11 @@ struct ZyMovieView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 
-                                PosterGrid(items: filteredFavorites, selectedIndex: selectedIndex, embedsInScrollView: false) { hit, isGamepadSelected in
+                                // İmleç yalnızca aşağıdaki ana listede gezinir.
+                                // Aynı indeksi buraya da vermek iki ızgarada
+                                // birden kart vurguluyor, hangisinin seçileceği
+                                // belirsiz kalıyordu.
+                                PosterGrid(items: filteredFavorites, selectedIndex: -1, embedsInScrollView: false) { hit, isGamepadSelected in
                                     ZStack(alignment: .topTrailing) {
                                         Button {
                                             selectedHit = hit
@@ -208,6 +216,13 @@ struct ZyMovieView: View {
         }
         .task {
             await store.refresh(settings: settings)
+        }
+        .onChange(of: selectTick) { _, _ in
+            // İmleç ana listenin üzerinde geziniyor; vurgulanan kart hangisiyse
+            // o açılır. Kırpma PosterGrid'dekiyle aynı olmalı, yoksa görünen
+            // kart ile açılan içerik ayrışır.
+            guard selectedIndex >= 0, !combinedHits.isEmpty else { return }
+            selectedHit = combinedHits[min(selectedIndex, combinedHits.count - 1)]
         }
         .onChange(of: searchText) { _, newValue in
             let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)

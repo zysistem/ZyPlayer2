@@ -259,17 +259,24 @@ struct PosterGrid<Item: Identifiable, Content: View>: View {
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 10)
 
+    /// Vurgulanacak kart. İmleç listenin sonunu aştığında hiçbir kart eşleşmez
+    /// ve kumanda "kayboldu" gibi görünür — indeks her zaman listenin içine
+    /// kırpılır, böylece son karta yaslanıp orada durur.
+    private var highlightedIndex: Int {
+        guard selectedIndex >= 0, !items.isEmpty else { return -1 }
+        return min(selectedIndex, items.count - 1)
+    }
+
     var body: some View {
         if embedsInScrollView {
             ScrollViewReader { proxy in
                 ScrollView {
                     gridBody
                 }
-                .onChange(of: selectedIndex) { _, newIndex in
-                    if newIndex >= 0 {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            proxy.scrollTo(newIndex, anchor: .center)
-                        }
+                .onChange(of: highlightedIndex) { _, newIndex in
+                    guard newIndex >= 0, newIndex < items.count else { return }
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        proxy.scrollTo(items[newIndex].id, anchor: .center)
                     }
                 }
             }
@@ -281,7 +288,7 @@ struct PosterGrid<Item: Identifiable, Content: View>: View {
     private var gridBody: some View {
         LazyVGrid(columns: columns, spacing: 22) {
             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                content(item, index == selectedIndex)
+                content(item, index == highlightedIndex)
                     .id(item.id)
             }
         }

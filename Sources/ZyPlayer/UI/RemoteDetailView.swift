@@ -22,6 +22,13 @@ struct RemoteDetailView: View {
     /// Akış aramasından seçilen sonucun detayını açar.
     var onOpenStream: (StreamHit) -> Void = { _ in }
 
+    /// Kumandanın dikey imleci. İki kademe var: bir bölüm açık değilken bölüm
+    /// listesinde, açıkken o bölümün kalite listesinde gezer — oynatma orada.
+    var gamepadIndex: Int = 0
+    var gamepadSelectTick: Int = 0
+    /// Sezon adımı: sağa basınca artan, sola basınca azalan bir sayaç.
+    var gamepadSeasonStep: Int = 0
+
     @State private var loader = RemoteDetailLoader()
     @State private var credits = CreditsLoader()
     @State private var streams = StreamLookupLoader()
@@ -29,6 +36,8 @@ struct RemoteDetailView: View {
     /// Which episode has its torrent list open. One at a time keeps the page
     /// from turning into a wall of lists.
     @State private var expandedEpisode: Int?
+    /// Bir bölüm açıldığı andaki imleç değeri; kalite listesinin sıfır noktası.
+    @State private var focusBaseline = 0
 
     private var ownedMovie: MediaItem? {
         title.kind == .movie ? library.movie(tmdbID: title.tmdbID) : nil
@@ -61,7 +70,10 @@ struct RemoteDetailView: View {
                             settings: settings,
                             streamer: streamer,
                             onPlay: { onStreamTorrent($0, loader.displayTitle ?? title.title, title.posterPath) },
-                            onDownload: { onDownloadTorrent($0, loader.displayTitle ?? title.title) }
+                            onDownload: { onDownloadTorrent($0, loader.displayTitle ?? title.title) },
+                            // Filmde ara kademe yok: imleç doğrudan kalitelerde.
+                            gamepadIndex: gamepadIndex,
+                            gamepadSelectTick: gamepadSelectTick
                         )
                         .padding(.horizontal, 24)
                         .padding(.top, 22)
@@ -116,18 +128,57 @@ struct RemoteDetailView: View {
                     .padding(.top, 16)
             }
 
-            ForEach(loader.episodes[current] ?? [], id: \.id) { episode in
-                episodeRow(episode, season: current)
+            ForEach(Array((loader.episodes[current] ?? []).enumerated()), id: \.element.id) { index, episode in
+                episodeRow(episode, season: current,
+                           isGamepadFocused: GamepadManager.shared.isConnected
+                                && expandedEpisode == nil
+                                && index == focusedEpisodeIndex(in: current))
             }
         }
         .padding(.bottom, 26)
         .task(id: "\(title.id)-\(current)") {
             await loader.loadSeason(current, of: title, settings: settings)
         }
+        .onChange(of: gamepadSeasonStep) { old, new in
+            // Sezon sekmeleri yatayda gezilir; adım farkı kadar ilerlenir.
+            guard numbers.count > 1,
+                  let position = numbers.firstIndex(of: current) else { return }
+            let next = max(0, min(position + (new - old), numbers.count - 1))
+            selectedSeason = numbers[next]
+            expandedEpisode = nil
+        }
+        .onChange(of: gamepadSelectTick) { _, _ in
+            // Bir bölüm zaten açıksa seçim ona ait kalite listesine aittir;
+            // TorrentPickerView kendi satırını oynatır, burada yapılacak iş yok.
+            guard expandedEpisode == nil else { return }
+            let episodes = loader.episodes[current] ?? []
+            guard !episodes.isEmpty else { return }
+            let index = focusedEpisodeIndex(in: current)
+            focusBaseline = gamepadIndex
+            withAnimation(.easeOut(duration: 0.15)) {
+                expandedEpisode = episodes[index].episodeNumber ?? 0
+            }
+        }
+    }
+
+    /// Kumandanın üzerinde durduğu bölüm, listeye kırpılmış.
+    private func focusedEpisodeIndex(in season: Int) -> Int {
+        let count = (loader.episodes[season] ?? []).count
+        guard count > 0 else { return 0 }
+        return max(0, min(gamepadIndex, count - 1))
+    }
+
+    /// Bölüm açıldıktan sonraki imleç, kalite listesinin başından sayılır.
+    ///
+    /// Dışarıdan tek bir sayaç geliyor; bölüm seçildiği andaki değeri sıfır
+    /// noktası kabul edilir, böylece aşağı basmak kaliteler arasında gezer.
+    private var qualityFocusIndex: Int {
+        max(0, gamepadIndex - focusBaseline)
     }
 
     @ViewBuilder
-    private func episodeRow(_ episode: EpisodeDetail, season: Int) -> some View {
+    private func episodeRow(_ episode: EpisodeDetail, season: Int,
+                            isGamepadFocused: Bool = false) -> some View {
         let number = episode.episodeNumber ?? 0
         let isExpanded = expandedEpisode == number
 
@@ -174,6 +225,17 @@ struct RemoteDetailView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .background {
+                if isGamepadFocused {
+                    Rectangle()
+                        .fill(Color.accentColor.opacity(0.16))
+                        .overlay(alignment: .leading) {
+                            Rectangle()
+                                .fill(Color.accentColor)
+                                .frame(width: 3)
+                        }
+                }
+            }
 
             if isExpanded {
                 if let imdbID = loader.imdbID, !imdbID.isEmpty {
@@ -187,7 +249,9 @@ struct RemoteDetailView: View {
                         },
                         onDownload: { option in
                             onDownloadTorrent(option, "\(loader.displayTitle ?? title.title) · S\(season)B\(number)")
-                        }
+                        },
+                        gamepadIndex: qualityFocusIndex,
+                        gamepadSelectTick: gamepadSelectTick
                     )
                     .padding(.leading, 186)
                     .padding(.trailing, 24)

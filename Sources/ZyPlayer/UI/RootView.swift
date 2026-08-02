@@ -48,6 +48,18 @@ struct RootView: View {
 
     @State private var focusZone: GamepadFocusZone = .sidebar
     @State private var focusedPosterIndex: Int = 0
+    /// Kumandanın seçim tuşu sayacı. Ekranlar bunu izleyip kendi listelerinden
+    /// doğru öğeyi açar — hangi içeriğin göründüğünü (arama süzgeci, sıralama)
+    /// buradan bilmek mümkün değil.
+    @State private var gamepadSelectTick = 0
+    /// Bir detay ekranı açıkken kumanda oraya sürer: kenar çubuğu ve poster
+    /// ızgarası artık görünmüyor, yön tuşlarının bölüm ve kalite listelerine
+    /// gitmesi gerekiyor.
+    @State private var detailFocusIndex = 0
+    @State private var detailSelectTick = 0
+    /// Sezon değişimi: sağa basınca artar, sola basınca azalır. Hangi sezona
+    /// denk düştüğünü ekran kendi listesinden bulur.
+    @State private var detailSeasonStep = 0
     @State private var selection: SidebarItem = .home
     @State private var searchText = ""
     @State private var route: DetailRoute?
@@ -185,6 +197,7 @@ struct RootView: View {
             
             let sidebarItems = SidebarItem.allCases
             GamepadManager.shared.onNavigateDown = {
+                if route != nil { detailFocusIndex += 1; return }
                 if focusZone == .sidebar {
                     if let idx = sidebarItems.firstIndex(of: selection), idx < sidebarItems.count - 1 {
                         selection = sidebarItems[idx + 1]
@@ -197,6 +210,7 @@ struct RootView: View {
                 }
             }
             GamepadManager.shared.onNavigateUp = {
+                if route != nil { detailFocusIndex = max(0, detailFocusIndex - 1); return }
                 if focusZone == .sidebar {
                     if let idx = sidebarItems.firstIndex(of: selection), idx > 0 {
                         selection = sidebarItems[idx - 1]
@@ -215,7 +229,12 @@ struct RootView: View {
                 }
             }
             GamepadManager.shared.onNavigateRight = {
+                if route != nil { detailSeasonStep += 1; return }
                 if focusZone == .sidebar {
+                    // İmleci olmayan ekranlarda içerik alanına geçilmez: hiçbir
+                    // kart vurgulanmadığı için kumanda kaybolmuş gibi olur ve
+                    // seçim tuşu da bir şey açmaz. Kenar çubuğunda kalınır.
+                    guard supportsGamepadGrid else { return }
                     withAnimation(.easeOut(duration: 0.15)) {
                         focusZone = .content
                         focusedPosterIndex = 0
@@ -227,6 +246,7 @@ struct RootView: View {
                 }
             }
             GamepadManager.shared.onNavigateLeft = {
+                if route != nil { detailSeasonStep -= 1; return }
                 if focusZone == .content {
                     if focusedPosterIndex % 10 == 0 || focusedPosterIndex == 0 {
                         withAnimation(.easeOut(duration: 0.15)) {
@@ -240,6 +260,7 @@ struct RootView: View {
                 }
             }
             GamepadManager.shared.onSelectKey = {
+                if route != nil { detailSelectTick += 1; return }
                 if focusZone == .sidebar {
                     selectFromSidebar(selection)
                 } else if focusZone == .content {
@@ -260,11 +281,11 @@ struct RootView: View {
                         if focusedPosterIndex >= 0 && focusedPosterIndex < bollywood.all.count {
                             actions.selectRemote(bollywood.all[focusedPosterIndex])
                         }
-                    case .zyMovie:
-                        // Selection doesn't navigate yet, but we could play torrent directly
-                        break
                     default:
-                        BluetoothRemoteManager.shared.simulateSelectClick()
+                        // Ekran kendi listesinden seçer: burada hangi içeriğin
+                        // göründüğü bilinmiyor (arama süzgeci listeyi değiştirir),
+                        // indeksle tahmin etmek yanlış içeriği açardı.
+                        gamepadSelectTick += 1
                     }
                 }
             }
@@ -274,6 +295,7 @@ struct RootView: View {
                 }
             }
             GamepadManager.shared.onShoulderRight = {
+                guard supportsGamepadGrid else { return }
                 withAnimation(.spring(duration: 0.2)) {
                     focusZone = .content
                     focusedPosterIndex = 0
@@ -283,6 +305,11 @@ struct RootView: View {
         }
         .onDisappear {
             keyMonitor.stop()
+        }
+        .onChange(of: route) { _, _ in
+            // Yeni bir detay ekranı önceki ekranın imlecini miras almasın.
+            detailFocusIndex = 0
+            detailSeasonStep = 0
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { _ in
             isFullscreen = true
@@ -374,6 +401,19 @@ struct RootView: View {
 
     /// A sidebar click always lands on the browser, even when it is the row that
     /// is already selected — that is how "Ana Ekran" doubles as a back button.
+    /// Kumanda imlecinin gezinebildiği ekranlar: içerikleri tek bir düz ızgara.
+    ///
+    /// Ötekiler (ana ekran, favoriler, ZyStream) birden çok bölümden oluşuyor —
+    /// raflar, "Diziler"/"Filmler" başlıkları — ve tek bir indeksle
+    /// modellenemiyor: aynı sayı iki ızgarada birden kart vurgular, seçimin
+    /// hangisine gideceği belirsiz kalır. O ekranlarda imleç hiç çizilmiyor.
+    private var supportsGamepadGrid: Bool {
+        switch selection {
+        case .movies, .shows, .appleTV, .bollywood, .zyMovie: true
+        default: false
+        }
+    }
+
     private func selectFromSidebar(_ item: SidebarItem) {
         selection = item
         route = nil
@@ -468,7 +508,10 @@ struct RootView: View {
                     }
                 },
                 isTrailerLoading: isTrailerLoading,
-                onOpenStream: { self.route = .stream($0) }
+                onOpenStream: { self.route = .stream($0) },
+                gamepadIndex: detailFocusIndex,
+                gamepadSelectTick: detailSelectTick,
+                gamepadSeasonStep: detailSeasonStep
             )
         case .person(let person):
             PersonDetailView(
@@ -544,7 +587,7 @@ struct RootView: View {
             case .bollywood: BollywoodView(library: library, store: bollywood,
                                            settings: settings, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .zyMovie:   ZyMovieView(library: library, store: zyMovieStore,
-                                         settings: settings, player: player, streamer: streamer, torrents: torrents, selectedIndex: focusZone == .content ? focusedPosterIndex : -1, onOpenRemoteTitle: { route = .remote($0) })
+                                         settings: settings, player: player, streamer: streamer, torrents: torrents, selectedIndex: focusZone == .content ? focusedPosterIndex : -1, selectTick: gamepadSelectTick, onOpenRemoteTitle: { route = .remote($0) })
             case .downloads: DownloadsView(library: library, torrents: torrents, settings: settings)
             case .settings:  SettingsView(library: library, smb: smb, drive: drive,
                                           torrents: torrents, settings: settings,

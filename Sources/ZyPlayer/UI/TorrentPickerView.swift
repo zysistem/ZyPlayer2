@@ -66,6 +66,12 @@ struct TorrentPickerView: View {
     /// Hands the release off to the download engine. Optional so callers that
     /// only stream (nothing does today) can omit it.
     var onDownload: ((TorrentOption) -> Void)?
+    /// Kumandanın üzerinde durduğu satır; -1 ise kumanda başka yerde.
+    var gamepadIndex: Int = -1
+    /// Seçim tuşu sayacı. Hangi sürümün seçili olduğunu bu görünüm bilir —
+    /// liste kalite süzgecinden geçiyor, dışarıdan indekslemek yanlış sürümü
+    /// oynatırdı.
+    var gamepadSelectTick: Int = 0
 
     @State private var model = TorrentPickerModel()
     /// Which quality bucket the list is filtered to; nil shows everything.
@@ -121,8 +127,8 @@ struct TorrentPickerView: View {
                     .foregroundStyle(.secondary)
             }
 
-            ForEach(visibleTorrents) { torrent in
-                row(torrent)
+            ForEach(Array(visibleTorrents.enumerated()), id: \.element.id) { index, torrent in
+                row(torrent, isGamepadFocused: index == highlightedIndex)
             }
 
             if showsHeader, !model.torrents.isEmpty {
@@ -135,6 +141,22 @@ struct TorrentPickerView: View {
             guard isReady else { return }
             await model.load(request, settings: settings)
         }
+        .onChange(of: gamepadSelectTick) { _, _ in
+            guard gamepadIndex >= 0, highlightedIndex >= 0 else { return }
+            guard TorrentStreamer.isAvailable else { return }
+            onPlay(visibleTorrents[highlightedIndex])
+        }
+    }
+
+    /// Kumandanın vurguladığı satır, listeye kırpılmış. Kalite süzgeci listeyi
+    /// kısaltabildiği için imleç dışarıda kalabilir; son satıra yaslanır.
+    ///
+    /// Kumanda bağlı değilken imleç diye bir şey yok: indeks sıfırdan başladığı
+    /// için ilk satır durup dururken çerçeveli görünüyordu.
+    private var highlightedIndex: Int {
+        guard GamepadManager.shared.isConnected,
+              gamepadIndex >= 0, !visibleTorrents.isEmpty else { return -1 }
+        return min(gamepadIndex, visibleTorrents.count - 1)
     }
 
     /// A frosted dropdown that filters the list by quality — only shown once the
@@ -185,7 +207,7 @@ struct TorrentPickerView: View {
     }
 
     @ViewBuilder
-    private func row(_ torrent: TorrentOption) -> some View {
+    private func row(_ torrent: TorrentOption, isGamepadFocused: Bool = false) -> some View {
         let isActive = streamer.activeHash == torrent.id
 
         VStack(alignment: .leading, spacing: 6) {
@@ -253,6 +275,17 @@ struct TorrentPickerView: View {
             }
         }
         .padding(.vertical, 6)
+        .padding(.horizontal, isGamepadFocused ? 8 : 0)
+        .background {
+            if isGamepadFocused {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.accentColor.opacity(0.16))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(Color.accentColor, lineWidth: 2)
+                    )
+            }
+        }
     }
 
     private func swarmLine(_ torrent: TorrentOption) -> String {
