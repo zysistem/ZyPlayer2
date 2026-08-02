@@ -25,6 +25,7 @@
 		31631D4F5523EFEF05E95B85 /* MPVGLView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E09491C644E4453F7207441B /* MPVGLView.swift */; };
 		33B3D2BBF6943AEFB3360544 /* OpenSubtitlesHash.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12921A4926595DE0D95E846F /* OpenSubtitlesHash.swift */; };
 		38CE0F0EA204B4207F6DBC14 /* SubtitleTranslation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6C6119A71A034A4651F86D5 /* SubtitleTranslation.swift */; };
+		39721230DA91502587063F36 /* KeyboardContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48BFE0615A9D78F52D610A8C /* KeyboardContext.swift */; };
 		3A8B99FF98F29C2D39634E16 /* IMDbID.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA5A0711AE976ED842AF7E91 /* IMDbID.swift */; };
 		3BE3A06057ED683060F7D7C6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6B1565BD0E26C53948455EB0 /* Assets.xcassets */; };
 		3C13148E4533B2BAD431C9B9 /* MetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107297AA174541F1FF0505C6 /* MetadataService.swift */; };
@@ -57,6 +58,7 @@
 		7B1322A0BCFBE55ECA3417A2 /* BollywoodStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A55BC2436C24F2044B1C668 /* BollywoodStore.swift */; };
 		7DDF79A972A6C4B6ACDAD264 /* SMBSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF2A53E12F4731EC197C9684 /* SMBSettingsView.swift */; };
 		840AF4A808D9E8D845954769 /* ZyMovieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6632CD8938AC3179DA14E5 /* ZyMovieView.swift */; };
+		84F463DD8546ACB9369607F7 /* StreamDomainTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02CE70BE30673C9A0C7519B5 /* StreamDomainTracker.swift */; };
 		880629B197DDAE4BD2E48CEA /* StreamProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5182396E453E4A29DBB9909F /* StreamProvider.swift */; };
 		8C15D6892D3F8BB4B164C1BB /* PlaybackResumeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19071F1C106F47B7C69E03F3 /* PlaybackResumeStore.swift */; };
 		8D894E186591E2F60A74439D /* StreamDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D74AB70B669E1000817395 /* StreamDetailView.swift */; };
@@ -103,6 +105,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		02CE70BE30673C9A0C7519B5 /* StreamDomainTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamDomainTracker.swift; sourceTree = "<group>"; };
 		033B091E03A51B441F007F30 /* ZyStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZyStreamView.swift; sourceTree = "<group>"; };
 		0751D5968748550F613C1F88 /* SubtitleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleStyle.swift; sourceTree = "<group>"; };
 		0858A1F8A95153B23771ED18 /* CinemaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaStore.swift; sourceTree = "<group>"; };
@@ -131,6 +134,7 @@
 		40FD3E2AB53B9F702817F9E6 /* TorrentEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentEngine.swift; sourceTree = "<group>"; };
 		4494905006B6546FFF7DBBF1 /* TorrentPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentPickerView.swift; sourceTree = "<group>"; };
 		476AF8E4538B8FC70B84AD9F /* PeopleViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeopleViews.swift; sourceTree = "<group>"; };
+		48BFE0615A9D78F52D610A8C /* KeyboardContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardContext.swift; sourceTree = "<group>"; };
 		4B7FFE279126CF05A9C0F608 /* OpenSubtitlesClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenSubtitlesClient.swift; sourceTree = "<group>"; };
 		50B23BF3D16A8682FEFC7EB3 /* YouTubeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeStore.swift; sourceTree = "<group>"; };
 		5182396E453E4A29DBB9909F /* StreamProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamProvider.swift; sourceTree = "<group>"; };
@@ -258,6 +262,7 @@
 				0FD3E2DFFE68414148F4E381 /* AppSettings.swift */,
 				F15F448972CECECE120651E4 /* CachedAsyncImage.swift */,
 				9CC84E156BB6320A07CDADA5 /* ImageCacheManager.swift */,
+				48BFE0615A9D78F52D610A8C /* KeyboardContext.swift */,
 				FFDE9F11281381575C40527D /* Keychain.swift */,
 				7461948CFBAE0244D14B9B39 /* LocalStore.swift */,
 				12921A4926595DE0D95E846F /* OpenSubtitlesHash.swift */,
@@ -292,6 +297,7 @@
 			children = (
 				BA3CCF5F860BB62E0B6B5CA1 /* DizipalProvider.swift */,
 				C1E44F3F65ECC48778DC2ACB /* HdFilmCehennemiProvider.swift */,
+				02CE70BE30673C9A0C7519B5 /* StreamDomainTracker.swift */,
 				8625FBEACF2508D7B83D8ACC /* StreamImageLoader.swift */,
 				3F1A058DBE636CB89E35C023 /* StreamLookup.swift */,
 				ED78B38A12A01F8A80A8EF16 /* StreamModels.swift */,
@@ -509,6 +515,7 @@
 				3A8B99FF98F29C2D39634E16 /* IMDbID.swift in Sources */,
 				CC585B3E916C7879DC1A2896 /* IMDbRatingStore.swift in Sources */,
 				A5F697D09EB64895D43603EE /* ImageCacheManager.swift in Sources */,
+				39721230DA91502587063F36 /* KeyboardContext.swift in Sources */,
 				410F3E8F7B2D87DD41E33F84 /* Keychain.swift in Sources */,
 				63FBBC646AD46F479B5FE71A /* LibraryScanner.swift in Sources */,
 				1386F79D3DA1E5C5971D508B /* LibraryStore.swift in Sources */,
@@ -539,6 +546,7 @@
 				F7498692799870BA175DFCCB /* SMBStore.swift in Sources */,
 				CEB3D54389940486D655F44F /* SettingsView.swift in Sources */,
 				8D894E186591E2F60A74439D /* StreamDetailView.swift in Sources */,
+				84F463DD8546ACB9369607F7 /* StreamDomainTracker.swift in Sources */,
 				937EB942119082A901706CCD /* StreamImageLoader.swift in Sources */,
 				BD1FFD8794184A71512F1014 /* StreamLookup.swift in Sources */,
 				6FCA2ED777C9D9D71569047E /* StreamModels.swift in Sources */,
@@ -651,7 +659,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.64;
+				MARKETING_VERSION = 1.0.69;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -737,7 +745,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.64;
+				MARKETING_VERSION = 1.0.69;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

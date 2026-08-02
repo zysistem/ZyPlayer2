@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Xcode
+DerivedData/
+build/
+*.xcuserdatad/
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+# Claude Code çalışma dosyaları
+.zcode/
+
+# Not: Vendor/TorrentStream/node_modules bilerek depoda tutulur —
+# yamalanmış bir WebTorrent kopyasıdır, ayrıntılar PATCHES.md'de.
