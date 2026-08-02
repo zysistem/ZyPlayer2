@@ -234,6 +234,54 @@ final class IPTVStore {
         }.map(\.item)
     }
 
+    // MARK: - Ayrıntılar
+
+    @ObservationIgnored private var detailCache: [String: IPTVDetail] = [:]
+
+    /// Bir filmin ayrıntıları. Sağlayıcı özet, oyuncu ve türü Türkçe veriyor;
+    /// afiş ve arka plan ise düşük çözünürlüklü ve kendi sunucusundan geliyor,
+    /// bu yüzden bildirdiği TMDB kimliğiyle oradan tazeleniyor.
+    func detail(for movie: IPTVMovie) async -> IPTVDetail? {
+        let key = "movie:\(movie.id)"
+        if let cached = detailCache[key] { return cached }
+        guard var detail = try? await client.movieDetail(vodID: movie.id) else { return nil }
+        await enrich(&detail, kind: .movie)
+        detailCache[key] = detail
+        return detail
+    }
+
+    /// Bir dizinin ayrıntıları ve bölümleri; tek istekte geliyor.
+    func detail(for series: IPTVSeries) async -> (detail: IPTVDetail, episodes: [Int: [IPTVEpisode]])? {
+        let key = "series:\(series.id)"
+        guard var result = try? await client.seriesDetail(seriesID: series.id) else { return nil }
+        if let cached = detailCache[key] {
+            return (cached, result.episodes)
+        }
+        await enrich(&result.detail, kind: .tv)
+        detailCache[key] = result.detail
+        episodeCache[series.id] = result.episodes
+        return (result.detail, result.episodes)
+    }
+
+    /// TMDB'den yalnızca görseller alınıyor: metinler zaten Türkçe geliyor ve
+    /// sağlayıcının kendi özeti çoğu zaman daha eksiksiz.
+    private func enrich(_ detail: inout IPTVDetail, kind: RemoteKind) async {
+        guard let tmdbID = detail.tmdbID, settings.hasTMDBToken else { return }
+        let client = TMDBClient(token: settings.tmdbToken, language: settings.metadataLanguage)
+        switch kind {
+        case .movie:
+            guard let found = try? await client.movieDetail(id: tmdbID) else { return }
+            detail.tmdbPosterPath = found.posterPath
+            detail.tmdbBackdropPath = found.backdropPath
+            if detail.plot?.isEmpty ?? true { detail.plot = found.overview }
+        case .tv:
+            guard let found = try? await client.tvDetail(id: tmdbID) else { return }
+            detail.tmdbPosterPath = found.posterPath
+            detail.tmdbBackdropPath = found.backdropPath
+            if detail.plot?.isEmpty ?? true { detail.plot = found.overview }
+        }
+    }
+
     /// Bir dizinin bölümleri; ilk istekte sunucudan çekilip saklanıyor.
     func episodes(for series: IPTVSeries) async -> [Int: [IPTVEpisode]] {
         if let cached = episodeCache[series.id] { return cached }

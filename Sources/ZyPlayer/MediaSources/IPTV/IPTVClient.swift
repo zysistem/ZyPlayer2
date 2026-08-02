@@ -197,14 +197,56 @@ struct IPTVClient {
         }
     }
 
+    /// Bir filmin ayrıntıları.
+    func movieDetail(vodID: Int) async throws -> IPTVDetail {
+        let raw = try await data(action: "get_vod_info",
+                                 extra: [URLQueryItem(name: "vod_id", value: String(vodID))],
+                                 timeout: 30)
+        let object = (try? JSONSerialization.jsonObject(with: raw)) as? [String: Any] ?? [:]
+        return Self.detail(from: object["info"] as? [String: Any] ?? [:])
+    }
+
+    /// Bir dizinin ayrıntıları ve bölümleri tek istekte gelir.
+    func seriesDetail(seriesID: Int) async throws -> (detail: IPTVDetail, episodes: [Int: [IPTVEpisode]]) {
+        let raw = try await data(action: "get_series_info",
+                                 extra: [URLQueryItem(name: "series_id", value: String(seriesID))],
+                                 timeout: 45)
+        let object = (try? JSONSerialization.jsonObject(with: raw)) as? [String: Any] ?? [:]
+        let detail = Self.detail(from: object["info"] as? [String: Any] ?? [:])
+        return (detail, Self.episodes(from: object))
+    }
+
+    private static func detail(from info: [String: Any]) -> IPTVDetail {
+        // `backdrop_path` dizi olarak geliyor; ilki alınıyor.
+        let backdrop = (info["backdrop_path"] as? [String])?.first
+            ?? (info["backdrop_path"] as? String)
+        return IPTVDetail(
+            plot: string(info, "plot") ?? string(info, "description"),
+            cast: string(info, "cast") ?? string(info, "actors"),
+            director: string(info, "director"),
+            genre: string(info, "genre"),
+            rating: double(info, "rating"),
+            releaseDate: string(info, "releasedate") ?? string(info, "release_date")
+                ?? string(info, "releaseDate"),
+            durationText: string(info, "duration"),
+            coverURLString: string(info, "movie_image") ?? string(info, "cover")
+                ?? string(info, "cover_big"),
+            backdropURLString: backdrop,
+            tmdbID: int(info, "tmdb_id")
+        )
+    }
+
     /// Bir dizinin bölümleri, sezona göre gruplanmış.
     func episodes(seriesID: Int) async throws -> [Int: [IPTVEpisode]] {
         let raw = try await data(action: "get_series_info",
                                  extra: [URLQueryItem(name: "series_id", value: String(seriesID))],
                                  timeout: 45)
-        guard let object = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
-              let seasons = object["episodes"] as? [String: Any]
-        else { return [:] }
+        let object = (try? JSONSerialization.jsonObject(with: raw)) as? [String: Any] ?? [:]
+        return Self.episodes(from: object)
+    }
+
+    private static func episodes(from object: [String: Any]) -> [Int: [IPTVEpisode]] {
+        guard let seasons = object["episodes"] as? [String: Any] else { return [:] }
 
         var result: [Int: [IPTVEpisode]] = [:]
         for (key, value) in seasons {
@@ -217,8 +259,15 @@ struct IPTVClient {
                     ?? (row["episode_num"] as? Int) ?? 0
                 let title = (row["title"] as? String) ?? "Bölüm \(number)"
                 let ext = (row["container_extension"] as? String) ?? "mp4"
-                return IPTVEpisode(id: id, title: title, season: seasonNumber,
-                                   episode: number, containerExtension: ext)
+                // Bölümün kendi görseli, özeti ve süresi `info` altında geliyor.
+                let info = row["info"] as? [String: Any] ?? [:]
+                return IPTVEpisode(
+                    id: id, title: title, season: seasonNumber,
+                    episode: number, containerExtension: ext,
+                    stillURLString: string(info, "movie_image"),
+                    plot: string(info, "plot"),
+                    durationText: string(info, "duration")
+                )
             }
             if !episodes.isEmpty {
                 result[seasonNumber] = episodes.sorted { $0.episode < $1.episode }

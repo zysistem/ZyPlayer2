@@ -15,6 +15,8 @@ enum DetailRoute: Hashable {
     case stream(StreamHit)
     /// A category genre filter page.
     case genre(CategoryGenre)
+    /// IPTV film ve dizilerinin detay sayfası.
+    case iptv(IPTVDetailView.Target)
 }
 
 extension MatchTarget: Identifiable {
@@ -75,8 +77,6 @@ struct RootView: View {
     @State private var isTrailerLoading = false
     @State private var trailerMessage: String?
     @State private var showSubtitleSearch = false
-    /// Bölüm listesi açılan IPTV dizisi.
-    @State private var iptvSeries: IPTVSeries?
     /// Canlı yayın izlenirken oynatıcıdaki kanal listesini besleyen durum:
     /// kanal hangi listeden açıldıysa o liste, ve açık olan kanal.
     @State private var iptvChannelList: [IPTVChannel] = []
@@ -343,13 +343,6 @@ struct RootView: View {
                 onDone: { matchTarget = nil }
             )
         }
-        .sheet(item: $iptvSeries) { series in
-            IPTVEpisodePicker(
-                series: series, store: iptv,
-                onPlay: { playIPTVEpisode($0, seriesName: series.name) },
-                onClose: { iptvSeries = nil }
-            )
-        }
         .sheet(isPresented: $showSubtitleSearch) {
             SubtitleSearchPanel(
                 model: player,
@@ -520,6 +513,17 @@ struct RootView: View {
                     isTrailerLoading: isTrailerLoading
                 )
             }
+        case .iptv(let target):
+            IPTVDetailView(
+                target: target,
+                store: iptv,
+                onBack: { self.route = nil },
+                onPlayMovie: playIPTVMovie,
+                onPlayEpisode: { episode, name in
+                    playIPTVEpisode(episode, seriesName: name)
+                }
+            )
+
         case .remote(let title):
             RemoteDetailView(
                 title: title,
@@ -544,8 +548,8 @@ struct RootView: View {
                 gamepadSelectTick: detailSelectTick,
                 gamepadSeasonStep: detailSeasonStep,
                 iptv: iptv,
-                onPlayIPTVMovie: playIPTVMovie,
-                onOpenIPTVSeries: { iptvSeries = $0 }
+                onPlayIPTVMovie: { self.route = .iptv(.movie($0)) },
+                onOpenIPTVSeries: { self.route = .iptv(.series($0)) }
             )
         case .person(let person):
             PersonDetailView(
@@ -601,8 +605,8 @@ struct RootView: View {
                 onPlayYouTube: playYouTube,
                     iptv: iptv,
                     onPlayIPTVChannel: playChannel,
-                    onPlayIPTVMovie: playIPTVMovie,
-                    onOpenIPTVSeries: { iptvSeries = $0 }
+                    onPlayIPTVMovie: { route = .iptv(.movie($0)) },
+                    onOpenIPTVSeries: { route = .iptv(.series($0)) }
             )
         } else {
             switch selection {
@@ -638,8 +642,8 @@ struct RootView: View {
             case .iptv:      IPTVView(
                                  store: iptv, settings: settings,
                                  onPlayChannel: playChannel,
-                                 onPlayMovie: playIPTVMovie,
-                                 onOpenSeries: { iptvSeries = $0 }
+                                 onPlayMovie: { route = .iptv(.movie($0)) },
+                                 onOpenSeries: { route = .iptv(.series($0)) }
                              )
             case .music:     MusicView()
             case .games:     GamesView()
@@ -894,7 +898,9 @@ struct RootView: View {
     private func playIPTVFavorite(_ favorite: IPTVFavorite) {
         switch favorite.kind {
         case .series:
-            if let series = iptv.series(withID: favorite.streamID) { iptvSeries = series }
+            if let series = iptv.series(withID: favorite.streamID) {
+                route = .iptv(.series(series))
+            }
         case .channel:
             if let channel = iptv.channel(withID: favorite.streamID) {
                 playChannel(channel, iptv.channels(categoryID: nil))
@@ -943,7 +949,6 @@ struct RootView: View {
 
     private func playIPTVEpisode(_ episode: IPTVEpisode, seriesName: String) {
         guard let url = iptv.url(for: episode) else { return }
-        iptvSeries = nil
         let key = "iptv:episode:\(episode.id)"
         let title = "\(IPTVNaming.split(seriesName).name) · S\(episode.season)B\(episode.episode)"
         resumeStore.begin(ResumePoint(id: key, kind: .stream, title: title))

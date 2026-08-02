@@ -69,6 +69,56 @@ struct IPTVEpisode: Identifiable, Codable, Hashable {
     var season: Int
     var episode: Int
     var containerExtension: String
+    /// Bölümün kendi ekran fotoğrafı, özeti ve süresi — sağlayıcı bunları
+    /// bölüm listesiyle birlikte veriyor, ayrıca TMDB'ye gitmeye gerek yok.
+    var stillURLString: String?
+    var plot: String?
+    var durationText: String?
+
+    var stillURL: URL? { stillURLString.flatMap(URL.init(string:)) }
+}
+
+/// Bir film ya da dizinin ayrıntıları. Sağlayıcı ikisini de aynı alanlarla
+/// veriyor, tek bir tür ikisine de yetiyor.
+struct IPTVDetail: Codable, Hashable {
+    var plot: String?
+    var cast: String?
+    var director: String?
+    var genre: String?
+    var rating: Double?
+    var releaseDate: String?
+    var durationText: String?
+    var coverURLString: String?
+    var backdropURLString: String?
+    /// Sağlayıcının bildirdiği TMDB kimliği. Afiş ve arka planı oradan almak
+    /// için kullanılıyor: sağlayıcının kendi görselleri düşük çözünürlüklü ve
+    /// kendi sunucusundan geliyor.
+    var tmdbID: Int?
+    /// TMDB'den alınan, sağlayıcınınkinin yerine geçen görseller.
+    var tmdbPosterPath: String?
+    var tmdbBackdropPath: String?
+
+    var year: Int? {
+        guard let releaseDate, releaseDate.count >= 4 else { return nil }
+        return Int(releaseDate.prefix(4))
+    }
+
+    var posterURL: URL? {
+        if let path = tmdbPosterPath { return TMDBClient.imageURL(path: path, size: "w500") }
+        return coverURLString.flatMap(URL.init(string:))
+    }
+
+    var backdropURL: URL? {
+        if let path = tmdbBackdropPath { return TMDBClient.imageURL(path: path, size: "w1280") }
+        return backdropURLString.flatMap(URL.init(string:))
+    }
+
+    /// Virgülle ayrılmış oyuncu listesini kırpar.
+    var castNames: [String] {
+        (cast ?? "").split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
 }
 
 /// Sağlayıcı adlara ülke kodunu ve kalite ekini gömüyor: kategoriler

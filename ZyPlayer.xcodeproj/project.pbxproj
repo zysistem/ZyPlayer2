@@ -95,6 +95,7 @@
 		CFF502482EF5679764FF55FA /* DriveFolderPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5D0AD762528ACE2AFF4508D /* DriveFolderPicker.swift */; };
 		D4D36DB58291DE30F3769430 /* OpenSubtitlesClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7FFE279126CF05A9C0F608 /* OpenSubtitlesClient.swift */; };
 		D652FCE77B656D7F617A7DC5 /* StreamResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B578293A8A138D9F57C232E9 /* StreamResolver.swift */; };
+		D79FD4ECF9E7E9F6EC05ACE2 /* IPTVDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A1A274CAA76E1DA2993100 /* IPTVDetailView.swift */; };
 		D8D0D14DCE842F55DDA21849 /* StreamPageRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24DBC5F11BFA55AEBA268B0E /* StreamPageRenderer.swift */; };
 		DBFCB58BA30B78EE266DC386 /* SMBMounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E115145FB7577588A3EAFE07 /* SMBMounter.swift */; };
 		DF9936A6DBCF9A2E4F024CBF /* ArtworkCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAA05673F84542AC68B812F /* ArtworkCache.swift */; };
@@ -109,6 +110,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		01A1A274CAA76E1DA2993100 /* IPTVDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPTVDetailView.swift; sourceTree = "<group>"; };
 		02CE70BE30673C9A0C7519B5 /* StreamDomainTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamDomainTracker.swift; sourceTree = "<group>"; };
 		033B091E03A51B441F007F30 /* ZyStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZyStreamView.swift; sourceTree = "<group>"; };
 		0751D5968748550F613C1F88 /* SubtitleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleStyle.swift; sourceTree = "<group>"; };
@@ -369,6 +371,7 @@
 				81C0225881ABC74B7F585B0A /* DownloadsView.swift */,
 				B5D0AD762528ACE2AFF4508D /* DriveFolderPicker.swift */,
 				1B3568E1587FDDFD2C6BBFB4 /* GoogleDriveSettingsView.swift */,
+				01A1A274CAA76E1DA2993100 /* IPTVDetailView.swift */,
 				3F55DF1E23A16EDA34A6FCBE /* IPTVView.swift */,
 				ADD284AA5CF2F1696D92B59A /* LibraryViews.swift */,
 				F463C1984F9D48215E353A09 /* MatchPickerView.swift */,
@@ -535,6 +538,7 @@
 				3A8B99FF98F29C2D39634E16 /* IMDbID.swift in Sources */,
 				CC585B3E916C7879DC1A2896 /* IMDbRatingStore.swift in Sources */,
 				4A586F491BFA21841BE2A50F /* IPTVClient.swift in Sources */,
+				D79FD4ECF9E7E9F6EC05ACE2 /* IPTVDetailView.swift in Sources */,
 				AB9F8172F3F8892B2B356EF7 /* IPTVModels.swift in Sources */,
 				33AF150E7260A645E1906F47 /* IPTVStore.swift in Sources */,
 				19A23F6BD8854328913C3F3A /* IPTVView.swift in Sources */,
@@ -683,7 +687,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.84;
+				MARKETING_VERSION = 1.0.85;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -769,7 +773,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.84;
+				MARKETING_VERSION = 1.0.85;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
