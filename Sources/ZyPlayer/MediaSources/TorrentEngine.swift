@@ -99,9 +99,32 @@ actor TorrentEngine {
 
     // MARK: - Lifecycle
 
+    /// Uygulamanın başlattığı `aria2c` süreçleri uygulamayla birlikte ölmez:
+    /// ayrı bir süreç olarak RPC dinledikleri için ana süreç gittiğinde arkada
+    /// indirmeye — ve diski doldurmaya — devam ederler. Her açılış yenisini
+    /// başlattığından bunlar birikir.
+    ///
+    /// Eşleşme oturum dosyasının tam yolu üzerinden yapılır; o yol yalnızca
+    /// ZyPlayer'ın başlattığı komut satırlarında geçer, kullanıcının kendi
+    /// aria2 kurulumuna dokunulmaz.
+    nonisolated static func terminateStrayProcesses() {
+        let marker = "save-session=" + AppPaths.file("aria2.session").path
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        task.arguments = ["-f", marker]
+        task.standardOutput = FileHandle.nullDevice
+        task.standardError = FileHandle.nullDevice
+        try? task.run()
+        task.waitUntilExit()
+    }
+
     func start(downloadDirectory: String) async throws {
         if isRunning { return }
         guard let binary = Self.binaryURL else { throw EngineError.binaryMissing }
+
+        // Önceki oturumlardan sarkan süreçler varsa, yenisini eklemeden önce
+        // temizlenir — yoksa aynı indirmeyi birden çok aria2 aynı klasöre yazar.
+        Self.terminateStrayProcesses()
 
         port = try Self.freePort()
         secret = UUID().uuidString
@@ -149,9 +172,21 @@ actor TorrentEngine {
         throw EngineError.startFailed
     }
 
-    func stop() {
-        process?.terminate()
+    /// Motoru kapatır. Önce aria2'nin kendi kapanma yolu denenir — oturumu
+    /// kaydedip eş bağlantılarını düzgünce kapatır — sonra süreç öldürülür ve
+    /// sarkan bir kopya kalmadığı doğrulanır.
+    func stop() async {
+        _ = try? await call("aria2.forceShutdown", params: [])
+        if let process {
+            let deadline = Date().addingTimeInterval(2)
+            while process.isRunning && Date() < deadline {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            if process.isRunning { process.terminate() }
+        }
         process = nil
+        port = 0
+        Self.terminateStrayProcesses()
     }
 
     func setDownloadDirectory(_ path: String) async {

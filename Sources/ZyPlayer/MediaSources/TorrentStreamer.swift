@@ -96,6 +96,27 @@ final class TorrentStreamer {
         try? FileManager.default.removeItem(at: cacheDirectory)
     }
 
+    /// Yardımcıyı öldürür ve **öldüğü kesinleştikten sonra** önbelleği siler.
+    ///
+    /// Sıra burada her şeydir: `terminate()` yalnızca SIGTERM gönderir, süreç o
+    /// anda ölmez. Hemen ardından silinen klasörü hâlâ yazmakta olan WebTorrent
+    /// yeniden yaratır ve indirdiği parçalar diskte kalır — kapatılan her
+    /// içerikten geriye gigabaytlar birikmesinin sebebi budur.
+    private static func shutDown(_ process: Process, then finish: (() -> Void)? = nil) {
+        process.terminate()
+        // Takılmış bir sürecin arkasında süresiz beklenmez.
+        let deadline = Date().addingTimeInterval(4)
+        while process.isRunning && Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        if process.isRunning {
+            kill(process.processIdentifier, SIGKILL)
+            process.waitUntilExit()
+        }
+        clearCache()
+        finish?()
+    }
+
     /// `torrent-stream.log`, next to mpv's own log. Truncated per run.
     private static func errorLogHandle() -> FileHandle? {
         let url = AppPaths.file("torrent-stream.log")
@@ -201,37 +222,72 @@ final class TorrentStreamer {
         fail("Eş bulunamadı — bu sürümü paylaşan kimse yok gibi görünüyor. Başka bir kalite deneyin.")
     }
 
-    /// Kills the helper without touching the visible state.
+    /// Yardımcıyı bu nesneden koparır ve çalışan süreci geri verir; kapatma
+    /// kararını çağıran verir (arka planda mı, beklenerek mi).
     @MainActor
-    private func terminate() {
+    private func detachHelper() -> Process? {
         watchdog?.cancel()
         watchdog = nil
-        if let process {
-            (process.standardOutput as? Pipe)?.fileHandleForReading.readabilityHandler = nil
-            process.terminationHandler = nil
-            process.terminate()
+        let running = process
+        if let running {
+            (running.standardOutput as? Pipe)?.fileHandleForReading.readabilityHandler = nil
+            running.terminationHandler = nil
         }
         process = nil
         streamURL = nil
         onReady = nil
+        return running
+    }
+
+    /// Kills the helper without touching the visible state.
+    ///
+    /// Süreç arka planda kapatılır: ölmesini beklemek arayüzü dondurur, ama
+    /// önbelleğin silinmesi o beklemenin bitmesine bağlıdır.
+    @MainActor
+    private func terminate() {
+        guard let running = detachHelper() else { return }
+        DispatchQueue.global(qos: .utility).async { Self.shutDown(running) }
+    }
+
+    /// Uygulama kapanırken kullanılır: süreç ölene ve önbellek silinene kadar
+    /// bekler. Arka plana atılan bir temizlik, uygulama sonlandığı anda yarıda
+    /// kalır ve klasör diskte kalırdı.
+    @MainActor
+    func stopAndWait() {
+        let running = detachHelper()
+        resetState()
+        if let running {
+            let done = DispatchSemaphore(value: 0)
+            DispatchQueue.global(qos: .userInitiated).async {
+                Self.shutDown(running) { done.signal() }
+            }
+            _ = done.wait(timeout: .now() + 6)
+        }
+        Self.clearCache()
     }
 
     /// Called when playback ends or the app quits.
     @MainActor
     func stop() {
         terminate()
+        resetState()
+        Self.clearCache()
+    }
+
+    @MainActor
+    private func resetState() {
         stdoutBuffer = Data()
         handedOver = false
         isPlayable = false
         bufferProgress = 0
         activeHash = nil
+        activeFileIndex = nil
         title = ""
         peers = 0
         speed = 0
         progress = 0
         downloaded = 0
         phase = .idle
-        Self.clearCache()
     }
 
     // MARK: - Helper protocol

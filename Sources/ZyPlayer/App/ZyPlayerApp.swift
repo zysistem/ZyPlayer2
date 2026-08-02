@@ -10,6 +10,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let iconImage = NSImage(named: "AppIcon") {
             NSApp.applicationIconImage = iconImage
         }
+        // Çökme ya da eski sürümlerden sarkan indirme motorları: uygulama daha
+        // kendi motorunu başlatmadan temizlenir. Burada, çünkü bu geri çağrı
+        // oturumda tam olarak bir kez ve her şeyden önce çalışır.
+        TorrentEngine.terminateStrayProcesses()
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
@@ -19,9 +23,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Torrent streaming keeps its data in a cache directory that must not
     /// outlive the session — the helper process goes down with it.
+    ///
+    /// `aria2c` de burada kapatılır: ayrı bir süreç olduğundan uygulama
+    /// kapandığında kendiliğinden ölmez, arkada indirmeye devam eder.
     func applicationWillTerminate(_ notification: Notification) {
-        Self.streamer?.stop()
+        Self.streamer?.stopAndWait()
         TorrentStreamer.clearCache()
+        TorrentEngine.terminateStrayProcesses()
     }
 }
 
@@ -64,6 +72,10 @@ struct ZyPlayerApp: App {
                     // Removed eager loading to improve launch performance.
                     // HomeView will fetch its own content when it appears.
                     // Heavy file sync runs concurrently in background
+                    // Akış siteleri birkaç günde bir alan adı değiştiriyor.
+                    // Açılışta denetlenir ki kullanıcı ZyStream'e girdiğinde
+                    // adres çoktan güncel olsun.
+                    Task { await StreamDomainTracker.refreshAll(settings: settings) }
                     Task {
                         await smb.remountAll(library: library)
                         if !library.folders.isEmpty { await library.rescan() }
