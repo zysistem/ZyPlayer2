@@ -647,6 +647,8 @@ struct ContinueWatchingRow: View {
     var onResumeStream: ((ResumePoint) -> Void)?
     /// Kaldır seçeneği için callback
     var onRemoveResumePoint: ((ResumePoint) -> Void)?
+    /// Karta basıldığında yapımın detay sayfasını açar.
+    var onOpenResumeDetail: ((ResumePoint) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -671,6 +673,7 @@ struct ContinueWatchingRow: View {
                             item: item,
                             watchState: library.state(for: item) ?? WatchState(),
                             meta: item.seriesKey.flatMap { library.meta(forSeriesKey: $0) },
+                            onOpenDetail: { actions.openDetail(item) },
                             onPlay: { actions.play(item) },
                             onRemove: { library.removeFromContinueWatching(item) },
                             onMarkWatched: { actions.markWatched(item, true) }
@@ -681,6 +684,11 @@ struct ContinueWatchingRow: View {
                     ForEach(resumePoints) { point in
                         ResumePointCard(
                             point: point,
+                            // Kayıtta geri dönülecek yapım yoksa (eski kayıtlar)
+                            // açılacak sayfa da yok; kart oynatmaya düşer.
+                            onOpenDetail: (point.remoteTitle != nil || point.streamHit != nil)
+                                ? { onOpenResumeDetail?(point) }
+                                : nil,
                             onPlay: {
                                 if point.kind == .torrent {
                                     onResumeTorrent?(point)
@@ -708,6 +716,9 @@ struct ContinueWatchingCard: View {
     let item: MediaItem
     let watchState: WatchState
     let meta: SeriesMeta?
+    /// Karta basmak detay ekranını açar; oynatmaya oradan devam edilir.
+    /// Doğrudan oynatma "…" menüsünde duruyor.
+    let onOpenDetail: () -> Void
     let onPlay: () -> Void
     let onRemove: () -> Void
     let onMarkWatched: () -> Void
@@ -739,7 +750,7 @@ struct ContinueWatchingCard: View {
     }
 
     var body: some View {
-        Button(action: onPlay) {
+        Button(action: onOpenDetail) {
             ZStack(alignment: .bottom) {
                 // Background Artwork
                 artwork
@@ -845,6 +856,9 @@ struct ContinueWatchingCard: View {
 /// Stream ve torrent devam noktaları için kart — aynı stil, uzak poster veya renk gradient.
 struct ResumePointCard: View {
     let point: ResumePoint
+    /// Karta basmak detay ekranını açar. Kayıtta geri dönülecek yapım yoksa
+    /// (eski kayıtlar) açılacak bir sayfa da yok; o durumda oynatmaya düşer.
+    var onOpenDetail: (() -> Void)?
     let onPlay: () -> Void
     let onRemove: () -> Void
     let settings: AppSettings
@@ -873,7 +887,7 @@ struct ResumePointCard: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            Button(action: onPlay) {
+            Button(action: { (onOpenDetail ?? onPlay)() }) {
                 ZStack(alignment: .bottom) {
                     // Poster / gradient background
                     Group {

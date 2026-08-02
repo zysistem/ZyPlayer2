@@ -21,6 +21,11 @@ struct LibraryActions {
     var setSeriesWatchlist: (Series, Bool) -> Void = { _, _ in }
     /// Resume a torrent from a saved ResumePoint.
     var resumeTorrent: (ResumePoint) -> Void = { _ in }
+    /// Bir kütüphane öğesinin detay ekranı. Bölümler kendi başlarına bir
+    /// sayfaya sahip değil; dizisinin sayfası açılır, bölüm listesi orada.
+    var openDetail: (MediaItem) -> Void = { _ in }
+    /// Bir devam kaydının detay ekranı (torrent ya da ZyStream yapımı).
+    var openResumeDetail: (ResumePoint) -> Void = { _ in }
 }
 
 /// Home shows the trailer hero + categories on top, then the ZyStream
@@ -95,7 +100,8 @@ struct HomeView: View {
                         resumePoints: resumePoints,
                         onResumeTorrent: { point in actions.resumeTorrent(point) },
                         onResumeStream: { point in stream.resumeStream(point) },
-                        onRemoveResumePoint: { point in resume.remove(key: point.id) }
+                        onRemoveResumePoint: { point in resume.remove(key: point.id) },
+                        onOpenResumeDetail: { point in actions.openResumeDetail(point) }
                     )
                 }
 

@@ -253,7 +253,10 @@ final class ZyStreamStore {
             resume?.begin(ResumePoint(
                 id: pageURL, kind: .stream, title: title,
                 posterURLString: posterURL?.absoluteString,
-                providerID: providerID, pageURL: pageURL
+                providerID: providerID, pageURL: pageURL,
+                // Devam kartından bu yapımın sayfasına dönebilmek için.
+                // `activeDetails` birkaç satır aşağıda kapanıyor, hit'i şimdi alınır.
+                streamHit: activeDetails?.hit
             ))
             let resumeAt = resume?.position(forKey: pageURL) ?? 0
             let subtitle = resume?.point(forKey: pageURL)?.subtitleLabel

@@ -26,6 +26,12 @@ struct ResumePoint: Codable, Identifiable, Hashable {
     var fileIndex: Int?
     /// The subtitle language the user last watched with, re-selected on resume.
     var subtitleLabel: String?
+    /// Karttan detay ekranına dönebilmek için yapımın kendisi saklanır.
+    /// Devam kaydında yalnızca magnet ya da sayfa adresi olması, geri dönülecek
+    /// sayfayı bulmaya yetmiyor. Eski kayıtlarda boş kalır; o zaman kart
+    /// eskisi gibi doğrudan oynatır.
+    var remoteTitle: RemoteTitle?
+    var streamHit: StreamHit?
     var updatedAt: Date = Date()
 
     var progress: Double { duration > 0 ? min(max(position / duration, 0), 1) : 0 }
@@ -42,12 +48,14 @@ struct ResumePoint: Codable, Identifiable, Hashable {
 
     init(id: String, kind: ResumeKind, title: String,
          posterURLString: String? = nil, providerID: String? = nil, pageURL: String? = nil,
-         magnet: String? = nil, fileIndex: Int? = nil, subtitleLabel: String? = nil) {
+         magnet: String? = nil, fileIndex: Int? = nil, subtitleLabel: String? = nil,
+         remoteTitle: RemoteTitle? = nil, streamHit: StreamHit? = nil) {
         self.id = id; self.kind = kind; self.title = title
         self.posterURLString = posterURLString
         self.providerID = providerID; self.pageURL = pageURL
         self.magnet = magnet; self.fileIndex = fileIndex
         self.subtitleLabel = subtitleLabel
+        self.remoteTitle = remoteTitle; self.streamHit = streamHit
     }
 
     init(from decoder: Decoder) throws {
@@ -63,6 +71,8 @@ struct ResumePoint: Codable, Identifiable, Hashable {
         magnet = c.optional(.magnet)
         fileIndex = c.optional(.fileIndex)
         subtitleLabel = c.optional(.subtitleLabel)
+        remoteTitle = c.optional(.remoteTitle)
+        streamHit = c.optional(.streamHit)
         updatedAt = c.value(.updatedAt, Date())
     }
 }
@@ -123,6 +133,11 @@ final class PlaybackResumeStore {
         if let existing = self.point(forKey: p.id) {
             p.position = existing.position
             p.duration = existing.duration
+            // Detay bilgisi bir kez kazanıldıysa korunur: yeniden başlatma
+            // (devam etme) sırasında kurulan kayıt onu taşımıyor ve üzerine
+            // yazılsa kart bir daha detay sayfasını açamazdı.
+            if p.remoteTitle == nil { p.remoteTitle = existing.remoteTitle }
+            if p.streamHit == nil { p.streamHit = existing.streamHit }
         }
         p.updatedAt = Date()
         upsert(p)
