@@ -140,3 +140,59 @@ struct IPTVCatalog: Codable {
         updatedAt = c.optional(.updatedAt)
     }
 }
+
+/// Favoriye alınmış bir IPTV içeriği.
+///
+/// Öğenin kendisi değil, yeniden kurmaya yetecek kadarı saklanıyor: katalog
+/// tazelendiğinde nesneler değişiyor ama akış kimliği sabit kalıyor.
+struct IPTVFavorite: Codable, Identifiable, Hashable {
+    enum Kind: String, Codable { case channel, movie, series }
+
+    var kind: Kind
+    var streamID: Int
+    var name: String
+    var iconURLString: String?
+    /// Filmlerde oynatma adresi bu uzantıyla kuruluyor.
+    var containerExtension: String?
+    var addedAt: Date = Date()
+
+    var id: String { "\(kind.rawValue):\(streamID)" }
+
+    var kindLabel: String {
+        switch kind {
+        case .channel: "Canlı yayın"
+        case .movie: "Film"
+        case .series: "Dizi"
+        }
+    }
+    var iconURL: URL? { iconURLString.flatMap(URL.init(string:)) }
+
+    init(kind: Kind, streamID: Int, name: String,
+         iconURLString: String? = nil, containerExtension: String? = nil) {
+        self.kind = kind
+        self.streamID = streamID
+        self.name = name
+        self.iconURLString = iconURLString
+        self.containerExtension = containerExtension
+    }
+
+    /// Eski kayıtlarda eksik alan olabilir; hiçbiri zorunlu değil.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        kind = c.value(.kind, Kind.channel)
+        streamID = c.value(.streamID, 0)
+        name = c.value(.name, "")
+        iconURLString = c.optional(.iconURLString)
+        containerExtension = c.optional(.containerExtension)
+        addedAt = c.value(.addedAt, Date())
+    }
+}
+
+struct IPTVFavoritesData: Codable {
+    var items: [IPTVFavorite] = []
+    init(items: [IPTVFavorite] = []) { self.items = items }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        items = c.value(.items, [])
+    }
+}

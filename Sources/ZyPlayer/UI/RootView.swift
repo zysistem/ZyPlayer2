@@ -617,7 +617,9 @@ struct RootView: View {
             case .movies:    MoviesView(library: library, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .shows:     ShowsView(library: library, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .favorites: FavoritesView(library: library, actions: actions, stream: streamStore,
-                                           onSelectStream: { route = .stream($0) })
+                                           onSelectStream: { route = .stream($0) },
+                                           iptv: iptv,
+                                           onPlayIPTVFavorite: playIPTVFavorite)
             case .appleTV:   AppleTVView(library: library, appleTV: appleTV, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .bollywood: BollywoodView(library: library, store: bollywood,
                                            settings: settings, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
@@ -749,8 +751,15 @@ struct RootView: View {
                             link: hit.rssLink,
                             fileIndex: file.index
                         )
+                        // Kararlı kimlik: akış adresi her oynatmada değişiyor
+                        // (yerel bağlantı noktası) — altyazı seçimi ona
+                        // bağlanırsa bir daha hatırlanmaz.
+                        let key = "zymovie:\(hit.rssLink)#\(file.index)"
                         streamer.start(option, title: title) { url, _ in
-                            player.open(url, title: title, resumeAt: 0)
+                            player.open(url, title: title,
+                                        resumeAt: resumeStore.position(forKey: key),
+                                        resumeKey: key,
+                                        preferredSubtitle: resumeStore.point(forKey: key)?.subtitleLabel)
                         }
                     }
                 )
@@ -871,7 +880,35 @@ struct RootView: View {
         guard let url = iptv.url(for: channel) else { return }
         iptvChannelList = list
         iptvCurrentChannel = channel
-        player.open(url, title: channel.name)
+        // Kararlı kimlik veriliyor: altyazı seçimi ve eklenen altyazılar bu
+        // anahtarla hatırlanıyor. Adresin kendisi anahtar olarak kullanılamaz —
+        // içinde abonelik bilgisi geçiyor ve sağlayıcı değişince kayıt kopardı.
+        player.open(url, title: channel.name, resumeKey: "iptv:live:\(channel.id)")
+    }
+
+    /// Favorilerden gelen IPTV içeriği. Dizi doğrudan oynatılamaz; katalogdaki
+    /// karşılığı bulunup bölüm listesi açılıyor.
+    private func playIPTVFavorite(_ favorite: IPTVFavorite) {
+        switch favorite.kind {
+        case .series:
+            if let series = iptv.series(withID: favorite.streamID) { iptvSeries = series }
+        case .channel:
+            if let channel = iptv.channel(withID: favorite.streamID) {
+                playChannel(channel, iptv.channels(categoryID: nil))
+            } else if let url = iptv.url(for: favorite) {
+                player.open(url, title: favorite.name,
+                            resumeKey: "iptv:live:\(favorite.streamID)")
+            }
+        case .movie:
+            guard let url = iptv.url(for: favorite) else { return }
+            let key = "iptv:movie:\(favorite.streamID)"
+            let title = IPTVNaming.split(favorite.name).name
+            resumeStore.begin(ResumePoint(id: key, kind: .stream, title: title,
+                                          posterURLString: favorite.iconURLString))
+            player.open(url, title: title,
+                        resumeAt: resumeStore.position(forKey: key), resumeKey: key,
+                        preferredSubtitle: resumeStore.point(forKey: key)?.subtitleLabel)
+        }
     }
 
     /// Oynatıcının kanal seçicisi. Yalnızca canlı yayın açıkken doluyor;
@@ -890,13 +927,26 @@ struct RootView: View {
 
     private func playIPTVMovie(_ movie: IPTVMovie) {
         guard let url = iptv.url(for: movie) else { return }
-        player.open(url, title: movie.name)
+        let key = "iptv:movie:\(movie.id)"
+        let title = IPTVNaming.split(movie.name).name
+        resumeStore.begin(ResumePoint(
+            id: key, kind: .stream, title: title,
+            posterURLString: movie.iconURLString
+        ))
+        player.open(url, title: title,
+                    resumeAt: resumeStore.position(forKey: key), resumeKey: key,
+                    preferredSubtitle: resumeStore.point(forKey: key)?.subtitleLabel)
     }
 
     private func playIPTVEpisode(_ episode: IPTVEpisode, seriesName: String) {
         guard let url = iptv.url(for: episode) else { return }
         iptvSeries = nil
-        player.open(url, title: "\(seriesName) · S\(episode.season)B\(episode.episode)")
+        let key = "iptv:episode:\(episode.id)"
+        let title = "\(IPTVNaming.split(seriesName).name) · S\(episode.season)B\(episode.episode)"
+        resumeStore.begin(ResumePoint(id: key, kind: .stream, title: title))
+        player.open(url, title: title,
+                    resumeAt: resumeStore.position(forKey: key), resumeKey: key,
+                    preferredSubtitle: resumeStore.point(forKey: key)?.subtitleLabel)
     }
 
     /// Streams a torrent instead of downloading it: the helper buffers a few
@@ -1087,22 +1137,22 @@ struct SearchResultsView: View {
                     let total = iptvHits.channels.count + iptvHits.movies.count
                         + iptvHits.series.count
                     SectionBlock(title: "IP Tv’de Bulunanlar", total: total,
-                                 onShowAll: nil, columns: 6) {
+                                 onShowAll: nil) {
                         ForEach(iptvHits.channels) { channel in
                             IPTVSearchCard(title: channel.name, imageURL: channel.iconURL,
-                                           badge: "CANLI", badgeColor: .red) {
+                                           kindLabel: "Canlı yayın") {
                                 onPlayIPTVChannel?(channel, iptvHits.channels)
                             }
                         }
                         ForEach(iptvHits.movies) { movie in
                             IPTVSearchCard(title: movie.name, imageURL: movie.iconURL,
-                                           badge: "FİLM", badgeColor: .blue) {
+                                           kindLabel: "Film") {
                                 onPlayIPTVMovie?(movie)
                             }
                         }
                         ForEach(iptvHits.series) { item in
                             IPTVSearchCard(title: item.name, imageURL: item.coverURL,
-                                           badge: "DİZİ", badgeColor: .purple) {
+                                           kindLabel: "Dizi") {
                                 onOpenIPTVSeries?(item)
                             }
                         }

@@ -16,6 +16,7 @@ final class IPTVStore {
     private(set) var statusMessage = ""
     /// Abonelik durumu — bitmiş bir hesapta liste boş kalır, sebebi söylenmeli.
     private(set) var accountLine = ""
+    private(set) var favorites: [IPTVFavorite] = []
 
     @ObservationIgnored private let file = LocalStore(
         fileName: "iptv-catalog.json", defaultValue: IPTVCatalog()
@@ -32,6 +33,8 @@ final class IPTVStore {
     init(settings: AppSettings) {
         self.settings = settings
         catalog = file.value
+        favorites = favoritesFile.value.items
+        rebuildIndex()
     }
 
     var credentials: IPTVCredentials { settings.iptvCredentials }
@@ -106,6 +109,7 @@ final class IPTVStore {
 
             catalog = fresh
             file.replace(with: fresh)
+            rebuildIndex()
             episodeCache.removeAll()
         } catch {
             statusMessage = error.localizedDescription
@@ -127,31 +131,75 @@ final class IPTVStore {
 
     // MARK: - Kategoriler ve listeler
 
-    /// Ülke süzgeci. Sağlayıcı kataloğunda onlarca ülkenin yayını var; ayar
-    /// açıkken yalnızca TR olanlar listeleniyor.
-    ///
-    /// Karar kategoriye bakarak veriliyor: kanal adları ülkeyi taşıyor
-    /// ("TR: TRT 1") ama film ve dizi adları taşımıyor ("O da Bir Şey mi?"),
-    /// onların ülkesi ancak kategorisinden ("|TR| 2026 FiLMLERi") anlaşılıyor.
-    /// Ülkesi hiç belirtilmemiş kategoriler eleniyormuş gibi davranılmıyor —
-    /// belirsizlik yüzünden içerik gizlemek, fazladan içerik göstermekten kötü.
-    private func isAllowed(categoryID: String?, in section: IPTVSection) -> Bool {
-        guard settings.iptvOnlyTurkish else { return true }
-        guard let categoryID,
-              let category = allCategories(for: section).first(where: { $0.id == categoryID }),
-              let code = IPTVNaming.split(category.name).code
-        else { return true }
-        return code == "TR"
+    // MARK: - Dizin
+    //
+    // Ülke kararı ve arama için ad normalizasyonu düzenli ifade ve Unicode
+    // katlama çalıştırıyor. Yirmi binden fazla kayıt üzerinde her tuş
+    // vuruşunda yeniden hesaplanınca arama kutusu kilitleniyordu; ikisi de
+    // katalog yüklendiğinde bir kez hesaplanıp burada tutuluyor.
+
+    /// Bir kaydın süzme için gereken, önceden çıkarılmış bilgileri.
+    private struct Indexed<Item> {
+        let item: Item
+        /// Aramada karşılaştırılan ad: harf ve şapka duyarsız.
+        let folded: String
+        /// Adın kendi ülke öneki ("TR: TRT 1" → "TR"), varsa.
+        let code: String?
+        let categoryID: String?
     }
 
-    private func isAllowed(name: String, categoryID: String?, in section: IPTVSection) -> Bool {
+    @ObservationIgnored private var indexedChannels: [Indexed<IPTVChannel>] = []
+    @ObservationIgnored private var indexedMovies: [Indexed<IPTVMovie>] = []
+    @ObservationIgnored private var indexedSeries: [Indexed<IPTVSeries>] = []
+    /// Ülkesi TR olan (ya da hiç belirtilmemiş) kategorilerin kimlikleri.
+    @ObservationIgnored private var allowedCategoryIDs: [IPTVSection: Set<String>] = [:]
+
+    private static let searchLocale = Locale(identifier: "tr_TR")
+
+    private static func fold(_ text: String) -> String {
+        text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: searchLocale)
+    }
+
+    private func rebuildIndex() {
+        indexedChannels = catalog.channels.map {
+            Indexed(item: $0, folded: Self.fold($0.name),
+                    code: IPTVNaming.split($0.name).code, categoryID: $0.categoryID)
+        }
+        indexedMovies = catalog.movies.map {
+            Indexed(item: $0, folded: Self.fold($0.name),
+                    code: IPTVNaming.split($0.name).code, categoryID: $0.categoryID)
+        }
+        indexedSeries = catalog.series.map {
+            Indexed(item: $0, folded: Self.fold($0.name),
+                    code: IPTVNaming.split($0.name).code, categoryID: $0.categoryID)
+        }
+        for section in IPTVSection.allCases {
+            allowedCategoryIDs[section] = Set(
+                allCategories(for: section)
+                    .filter { category in
+                        // Ülkesi hiç belirtilmemiş kategori eleniyormuş gibi
+                        // davranılmıyor: belirsizlik yüzünden içerik gizlemek,
+                        // fazladan içerik göstermekten kötü.
+                        guard let code = IPTVNaming.split(category.name).code else { return true }
+                        return code == "TR"
+                    }
+                    .map(\.id)
+            )
+        }
+    }
+
+    /// Ülke süzgeci. Kanal adları ülkeyi taşıyor ("TR: TRT 1") ama film ve dizi
+    /// adları taşımıyor ("O da Bir Şey mi?"); onların ülkesi ancak
+    /// kategorisinden ("|TR| 2026 FiLMLERi") anlaşılıyor.
+    private func isAllowed<Item>(_ entry: Indexed<Item>, in section: IPTVSection) -> Bool {
         guard settings.iptvOnlyTurkish else { return true }
         // Adın kendi öneki varsa doğrudan karar veriyor: "FR: TF1" kategorisi
         // ne olursa olsun Fransız.
-        if let code = IPTVNaming.split(name).code, code.count == 2 || code.count == 3 {
+        if let code = entry.code, code.count == 2 || code.count == 3 {
             return code == "TR"
         }
-        return isAllowed(categoryID: categoryID, in: section)
+        guard let categoryID = entry.categoryID else { return true }
+        return allowedCategoryIDs[section]?.contains(categoryID) ?? true
     }
 
     private func allCategories(for section: IPTVSection) -> [IPTVCategory] {
@@ -163,28 +211,27 @@ final class IPTVStore {
     }
 
     func categories(for section: IPTVSection) -> [IPTVCategory] {
-        allCategories(for: section).filter { isAllowed(categoryID: $0.id, in: section) }
+        guard settings.iptvOnlyTurkish else { return allCategories(for: section) }
+        let allowed = allowedCategoryIDs[section] ?? []
+        return allCategories(for: section).filter { allowed.contains($0.id) }
     }
 
     func channels(categoryID: String?) -> [IPTVChannel] {
-        catalog.channels.filter { channel in
-            if let categoryID, channel.categoryID != categoryID { return false }
-            return isAllowed(name: channel.name, categoryID: channel.categoryID, in: .live)
-        }
+        indexedChannels.filter {
+            (categoryID == nil || $0.categoryID == categoryID) && isAllowed($0, in: .live)
+        }.map(\.item)
     }
 
     func movies(categoryID: String?) -> [IPTVMovie] {
-        catalog.movies.filter { movie in
-            if let categoryID, movie.categoryID != categoryID { return false }
-            return isAllowed(name: movie.name, categoryID: movie.categoryID, in: .movies)
-        }
+        indexedMovies.filter {
+            (categoryID == nil || $0.categoryID == categoryID) && isAllowed($0, in: .movies)
+        }.map(\.item)
     }
 
     func series(categoryID: String?) -> [IPTVSeries] {
-        catalog.series.filter { item in
-            if let categoryID, item.categoryID != categoryID { return false }
-            return isAllowed(name: item.name, categoryID: item.categoryID, in: .series)
-        }
+        indexedSeries.filter {
+            (categoryID == nil || $0.categoryID == categoryID) && isAllowed($0, in: .series)
+        }.map(\.item)
     }
 
     /// Bir dizinin bölümleri; ilk istekte sunucudan çekilip saklanıyor.
@@ -203,21 +250,73 @@ final class IPTVStore {
     -> (channels: [IPTVChannel], movies: [IPTVMovie], series: [IPTVSeries]) {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else { return ([], [], []) }
-        let needle = trimmed.folding(options: [.diacriticInsensitive, .caseInsensitive],
-                                     locale: Locale(identifier: "tr_TR"))
+        let needle = Self.fold(trimmed)
 
-        func matches(_ name: String) -> Bool {
-            name.folding(options: [.diacriticInsensitive, .caseInsensitive],
-                         locale: Locale(identifier: "tr_TR")).contains(needle)
+        /// Aranan sayıya ulaşınca duruyor: tüm katalogda eşleşme toplayıp
+        /// sonunda kırpmak, ilk birkaç sonuç için yirmi bin kaydı taramak
+        /// demekti.
+        func take<Item>(_ entries: [Indexed<Item>], _ section: IPTVSection) -> [Item] {
+            var result: [Item] = []
+            for entry in entries where entry.folded.contains(needle) {
+                // Ülke süzgeci burada da geçerli: aramada gizlenen bir içeriğin
+                // çıkması, listede olmayan bir şeyi oynatmak demek olurdu.
+                guard isAllowed(entry, in: section) else { continue }
+                result.append(entry.item)
+                if result.count == limitPerSection { break }
+            }
+            return result
         }
 
-        // Ülke süzgeci burada da geçerli: aramada gizlenen bir içeriğin
-        // çıkması, listede olmayan bir şeyi oynatmak demek olurdu.
-        return (
-            Array(channels(categoryID: nil).filter { matches($0.name) }.prefix(limitPerSection)),
-            Array(movies(categoryID: nil).filter { matches($0.name) }.prefix(limitPerSection)),
-            Array(series(categoryID: nil).filter { matches($0.name) }.prefix(limitPerSection))
-        )
+        return (take(indexedChannels, .live),
+                take(indexedMovies, .movies),
+                take(indexedSeries, .series))
+    }
+
+    // MARK: - Favoriler
+
+    /// Favoriler kendi dosyasında: katalog 12 saatte bir baştan yazılıyor,
+    /// içine konsa her tazelemede silinirdi.
+    @ObservationIgnored private let favoritesFile = LocalStore(
+        fileName: "iptv-favorites.json", defaultValue: IPTVFavoritesData()
+    )
+
+    func isFavorite(_ favorite: IPTVFavorite) -> Bool {
+        favorites.contains { $0.id == favorite.id }
+    }
+
+    func toggleFavorite(_ favorite: IPTVFavorite) {
+        if let index = favorites.firstIndex(where: { $0.id == favorite.id }) {
+            favorites.remove(at: index)
+        } else {
+            favorites.append(favorite)
+        }
+        favoritesFile.replace(with: IPTVFavoritesData(items: favorites))
+    }
+
+    /// Favorideki kaydı güncel katalogdaki kanala bağlar — canlı yayın
+    /// oynatmak için kanal listesi de gerekiyor.
+    func channel(withID id: Int) -> IPTVChannel? {
+        catalog.channels.first { $0.id == id }
+    }
+
+    func series(withID id: Int) -> IPTVSeries? {
+        catalog.series.first { $0.id == id }
+    }
+
+    /// Favori kaydından doğrudan oynatma adresi. Katalogda artık bulunmayan
+    /// bir içerik için de çalışıyor: adres yalnızca kimlik ve uzantıdan kuruluyor.
+    func url(for favorite: IPTVFavorite) -> URL? {
+        switch favorite.kind {
+        case .channel:
+            return client.liveURL(IPTVChannel(id: favorite.streamID, name: favorite.name))
+        case .movie:
+            return client.movieURL(IPTVMovie(
+                id: favorite.streamID, name: favorite.name,
+                containerExtension: favorite.containerExtension ?? "mp4"
+            ))
+        case .series:
+            return nil   // Dizi doğrudan oynatılmıyor; bölüm listesi açılıyor.
+        }
     }
 
     // MARK: - Oynatma adresleri

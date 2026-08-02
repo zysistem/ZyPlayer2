@@ -253,6 +253,9 @@ struct FavoritesView: View {
     /// Passed so favourited ZyStream titles can open from the Favourites screen.
     var stream: ZyStreamStore?
     var onSelectStream: ((StreamHit) -> Void)?
+    /// Favoriye alınmış IPTV içerikleri buradan da oynatılabiliyor.
+    var iptv: IPTVStore?
+    var onPlayIPTVFavorite: ((IPTVFavorite) -> Void)?
 
     var body: some View {
         if !library.hasFavorites {
@@ -292,6 +295,28 @@ struct FavoritesView: View {
                                      onShowAll: nil) {
                             ForEach(library.streamFavorites) { hit in
                                 StreamHitCard(hit: hit, store: stream, onOpen: onSelectStream, library: library)
+                            }
+                        }
+                    }
+
+                    // Favoriye alınmış IPTV içerikleri. Kanal ve film doğrudan
+                    // açılıyor, dizi bölüm listesini getiriyor.
+                    if let iptv, !iptv.favorites.isEmpty {
+                        SectionBlock(title: "IP Tv", total: iptv.favorites.count,
+                                     onShowAll: nil) {
+                            ForEach(iptv.favorites) { favorite in
+                                IPTVSearchCard(
+                                    title: favorite.name,
+                                    imageURL: favorite.iconURL,
+                                    kindLabel: favorite.kindLabel
+                                ) {
+                                    onPlayIPTVFavorite?(favorite)
+                                }
+                                .contextMenu {
+                                    Button("Favorilerden Çıkar", systemImage: "star.slash") {
+                                        iptv.toggleFavorite(favorite)
+                                    }
+                                }
                             }
                         }
                     }

@@ -203,8 +203,11 @@ struct ZyMovieDetailView: View {
             link: hit.rssLink,
             fileIndex: fileIndex
         )
+        // Kararlı kimlik: yerel akış adresi her oynatmada değişiyor, altyazı
+        // seçimi ona bağlanırsa bir sonraki açılışta hatırlanmaz.
+        let key = "zymovie:\(hit.rssLink)#\(fileIndex.map(String.init) ?? "0")"
         streamer.start(option, title: title) { url, _ in
-            player.open(url, title: title, resumeAt: 0)
+            player.open(url, title: title, resumeAt: 0, resumeKey: key)
         }
     }
     

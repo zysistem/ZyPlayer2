@@ -226,6 +226,10 @@ struct PosterBadge {
 
     static let inLibrary = PosterBadge(text: "Kütüphanede", systemImage: "checkmark", tint: .blue)
     static let trending = PosterBadge(text: "Trend", systemImage: "flame.fill", tint: .orange)
+    /// IPTV aboneliğinden gelen içerik.
+    static let iptv = PosterBadge(text: "IP TV",
+                                  systemImage: "antenna.radiowaves.left.and.right",
+                                  tint: Color(red: 0.15, green: 0.55, blue: 0.35), tintOpacity: 1)
 
     /// Names the streaming source a card can be played from — "Zysistem",
     /// "ZySeries". Each source brings its own fill (from `StreamRegistry`) so they

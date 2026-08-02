@@ -261,6 +261,12 @@ struct IPTVView: View {
                             ChannelTile(channel: channel) {
                                 onPlayChannel(channel, filteredChannels)
                             }
+                            .contextMenu {
+                                favoriteButton(IPTVFavorite(
+                                    kind: .channel, streamID: channel.id, name: channel.name,
+                                    iconURLString: channel.iconURLString
+                                ))
+                            }
                         }
                     case .movies:
                         ForEach(filteredMovies) { movie in
@@ -268,12 +274,25 @@ struct IPTVView: View {
                                        rating: movie.rating) {
                                 onPlayMovie(movie)
                             }
+                            .contextMenu {
+                                favoriteButton(IPTVFavorite(
+                                    kind: .movie, streamID: movie.id, name: movie.name,
+                                    iconURLString: movie.iconURLString,
+                                    containerExtension: movie.containerExtension
+                                ))
+                            }
                         }
                     case .series:
                         ForEach(filteredSeries) { item in
                             PosterTile(title: item.name, imageURL: item.coverURL,
                                        rating: item.rating) {
                                 onOpenSeries(item)
+                            }
+                            .contextMenu {
+                                favoriteButton(IPTVFavorite(
+                                    kind: .series, streamID: item.id, name: item.name,
+                                    iconURLString: item.coverURLString
+                                ))
                             }
                         }
                     }
@@ -291,6 +310,15 @@ struct IPTVView: View {
     private var columns: [GridItem] {
         let minimum: CGFloat = section == .live ? 230 : 165
         return [GridItem(.adaptive(minimum: minimum), spacing: 16)]
+    }
+
+    @ViewBuilder
+    private func favoriteButton(_ favorite: IPTVFavorite) -> some View {
+        let isFavorite = store.isFavorite(favorite)
+        Button(isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle",
+               systemImage: isFavorite ? "star.slash" : "star") {
+            store.toggleFavorite(favorite)
+        }
     }
 
     // MARK: - Süzme
@@ -540,7 +568,10 @@ struct IPTVEpisodePicker: View {
                     }
                 }
                 Spacer(minLength: 0)
-                Button("Kapat") { onClose() }.keyboardShortcut(.cancelAction)
+                Button("Kapat") { onClose() }
+                    .keyboardShortcut(.cancelAction)
+                    // AppKit bu düğmeye mavi bir odak halkası çiziyor.
+                    .focusEffectDisabled()
             }
 
             if isLoading {
@@ -629,69 +660,30 @@ struct IPTVEpisodePicker: View {
     }
 }
 
-/// Arama sonuçlarındaki IPTV kartı. Rozet zorunlu: aynı ad hem canlı kanal
-/// hem film olarak çıkabildiği için hangisine bastığın belli olmalı.
+/// Arama sonuçlarındaki IPTV kartı. Diğer kaynakların kartlarıyla aynı poster
+/// biçimini kullanıyor ki karışık bir sonuç listesinde hepsi aynı ızgarada
+/// otursun; rozet hangi kaynaktan geldiğini söylüyor, alt satır da türünü —
+/// aynı ad hem canlı kanal hem film olabiliyor.
 struct IPTVSearchCard: View {
     let title: String
     let imageURL: URL?
-    let badge: String
-    let badgeColor: Color
+    /// "Canlı yayın", "Film", "Dizi".
+    let kindLabel: String
     let action: () -> Void
 
-    @State private var isHovering = false
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 6) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.black.opacity(0.3))
-                    if let imageURL {
-                        CachedAsyncImage(url: imageURL) { image in
-                            image.resizable().aspectRatio(contentMode: .fit).padding(10)
-                        } placeholder: {
-                            Image(systemName: "antenna.radiowaves.left.and.right")
-                                .foregroundStyle(.tertiary)
-                        }
-                    } else {
-                        Image(systemName: "antenna.radiowaves.left.and.right")
-                            .foregroundStyle(.tertiary)
-                    }
-                    if isHovering {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(.black.opacity(0.35))
-                        Image(systemName: "play.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(.white)
-                    }
-                }
-                .frame(height: 108)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(isHovering ? Color.accentColor : .white.opacity(0.08),
-                                      lineWidth: isHovering ? 2 : 1)
-                )
-                .overlay(alignment: .topLeading) {
-                    Text(badge)
-                        .font(.system(size: 8.5, weight: .bold))
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(badgeColor, in: Capsule())
-                        .foregroundStyle(.white)
-                        .padding(6)
-                }
-
-                Text(IPTVNaming.split(title).name)
-                    .font(.system(size: 11))
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .scaleEffect(isHovering ? 1.03 : 1)
+            PosterCard(
+                title: IPTVNaming.split(title).name,
+                subtitle: kindLabel,
+                posterURL: imageURL,
+                badge: .iptv,
+                isFocused: isFocused
+            )
         }
         .buttonStyle(.plain)
-        .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
-        }
+        .focused($isFocused)
     }
 }
