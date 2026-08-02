@@ -1080,6 +1080,20 @@ struct SearchResultsView: View {
         return iptv.search(query)
     }
 
+    /// Arama sonucundaki bir IPTV kartının sağ tık menüsü. Favori durumu
+    /// depodan okunuyor: aynı içerik hem burada hem IP Tv bölümünde
+    /// görünebiliyor, ikisinin de aynı şeyi göstermesi gerekiyor.
+    @ViewBuilder
+    private func iptvFavoriteButton(_ favorite: IPTVFavorite) -> some View {
+        if let iptv {
+            let isFavorite = iptv.isFavorite(favorite)
+            Button(isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle",
+                   systemImage: isFavorite ? "star.slash" : "star") {
+                iptv.toggleFavorite(favorite)
+            }
+        }
+    }
+
     var body: some View {
         let local = library.search(query)
         let found = remoteResults
@@ -1143,17 +1157,36 @@ struct SearchResultsView: View {
                                            kindLabel: "Canlı yayın") {
                                 onPlayIPTVChannel?(channel, iptvHits.channels)
                             }
+                            .contextMenu {
+                                iptvFavoriteButton(IPTVFavorite(
+                                    kind: .channel, streamID: channel.id, name: channel.name,
+                                    iconURLString: channel.iconURLString
+                                ))
+                            }
                         }
                         ForEach(iptvHits.movies) { movie in
                             IPTVSearchCard(title: movie.name, imageURL: movie.iconURL,
                                            kindLabel: "Film") {
                                 onPlayIPTVMovie?(movie)
                             }
+                            .contextMenu {
+                                iptvFavoriteButton(IPTVFavorite(
+                                    kind: .movie, streamID: movie.id, name: movie.name,
+                                    iconURLString: movie.iconURLString,
+                                    containerExtension: movie.containerExtension
+                                ))
+                            }
                         }
                         ForEach(iptvHits.series) { item in
                             IPTVSearchCard(title: item.name, imageURL: item.coverURL,
                                            kindLabel: "Dizi") {
                                 onOpenIPTVSeries?(item)
+                            }
+                            .contextMenu {
+                                iptvFavoriteButton(IPTVFavorite(
+                                    kind: .series, streamID: item.id, name: item.name,
+                                    iconURLString: item.coverURLString
+                                ))
                             }
                         }
                     }
