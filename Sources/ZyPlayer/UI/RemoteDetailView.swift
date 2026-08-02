@@ -28,6 +28,11 @@ struct RemoteDetailView: View {
     var gamepadSelectTick: Int = 0
     /// Sezon adımı: sağa basınca artan, sola basınca azalan bir sayaç.
     var gamepadSeasonStep: Int = 0
+    /// "Akışlarda ara" IPTV aboneliğinde de arıyor; abonelik yoksa nil ve
+    /// o bölüm hiç çıkmıyor.
+    var iptv: IPTVStore?
+    var onPlayIPTVMovie: ((IPTVMovie) -> Void)?
+    var onOpenIPTVSeries: ((IPTVSeries) -> Void)?
 
     @State private var loader = RemoteDetailLoader()
     @State private var credits = CreditsLoader()
@@ -36,6 +41,9 @@ struct RemoteDetailView: View {
     /// Which episode has its torrent list open. One at a time keeps the page
     /// from turning into a wall of lists.
     @State private var expandedEpisode: Int?
+    /// IPTV aboneliğinde bulunan eşleşmeler. Arama yerel olduğu için sonuç
+    /// anında geliyor, ayrı bir yükleme durumu gerekmiyor.
+    @State private var iptvMatches: (movies: [IPTVMovie], series: [IPTVSeries]) = ([], [])
     /// Bir bölüm açıldığı andaki imleç değeri; kalite listesinin sıfır noktası.
     @State private var focusBaseline = 0
 
@@ -55,6 +63,8 @@ struct RemoteDetailView: View {
                 header
 
                 streamResults
+
+                iptvResults
 
                 PeopleStrip(people: credits.people, onSelect: onSelectPerson)
                     .padding(.top, 24)
@@ -321,9 +331,100 @@ struct RemoteDetailView: View {
         }
     }
 
+    /// IPTV aboneliğinde bulunan eşleşmeler, akış sonuçlarıyla aynı satır
+    /// biçiminde — rozet hangi kaynaktan geldiğini söylüyor.
+    @ViewBuilder
+    private var iptvResults: some View {
+        if !iptvMatches.movies.isEmpty || !iptvMatches.series.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("IP Tv’de Bulundu")
+                    .font(.system(size: 15, weight: .semibold))
+
+                ForEach(iptvMatches.movies) { movie in
+                    iptvRow(
+                        name: movie.name, kind: "Film",
+                        favorite: IPTVFavorite(
+                            kind: .movie, streamID: movie.id, name: movie.name,
+                            iconURLString: movie.iconURLString,
+                            containerExtension: movie.containerExtension
+                        )
+                    ) { onPlayIPTVMovie?(movie) }
+                }
+                ForEach(iptvMatches.series) { item in
+                    iptvRow(
+                        name: item.name, kind: "Dizi",
+                        favorite: IPTVFavorite(
+                            kind: .series, streamID: item.id, name: item.name,
+                            iconURLString: item.coverURLString
+                        )
+                    ) { onOpenIPTVSeries?(item) }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 18)
+        }
+    }
+
+    private func iptvRow(name: String, kind: String, favorite: IPTVFavorite,
+                         action: @escaping () -> Void) -> some View {
+        let isFavorite = iptv?.isFavorite(favorite) ?? false
+        return Button(action: action) {
+            HStack(spacing: 10) {
+                Text("IP TV")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color(red: 0.15, green: 0.55, blue: 0.35), in: Capsule())
+                    .foregroundStyle(.white)
+
+                Text(IPTVNaming.split(name).name)
+                    .lineLimit(1)
+
+                Text(kind)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer(minLength: 8)
+
+                // Favorideyse yıldız görünür duruyor: sağ tık menüsünü açmadan
+                // hangisini işaretlediğin belli olsun.
+                if isFavorite {
+                    Image(systemName: "star.fill")
+                        .font(.caption)
+                        .foregroundStyle(.yellow)
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(isFavorite ? "Favorilerde — sağ tıklayarak çıkarabilirsiniz"
+                         : "Sağ tıklayarak favorilere ekleyebilirsiniz")
+        .contextMenu {
+            if let iptv {
+                Button(isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle",
+                       systemImage: isFavorite ? "star.slash" : "star") {
+                    iptv.toggleFavorite(favorite)
+                }
+            }
+        }
+    }
+
     // MARK: - Akışlarda ara
 
     private func searchStreams() {
+        // IPTV kataloğu bellekte: aynı düğme aboneliği de tarıyor.
+        if let iptv, iptv.isConfigured {
+            let query = loader.displayTitle ?? title.title
+            let hits = iptv.search(query, limitPerSection: 6)
+            iptvMatches = (hits.movies, hits.series)
+        }
         Task {
             await streams.search(
                 title,

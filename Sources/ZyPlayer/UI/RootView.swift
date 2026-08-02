@@ -542,7 +542,10 @@ struct RootView: View {
                 onOpenStream: { self.route = .stream($0) },
                 gamepadIndex: detailFocusIndex,
                 gamepadSelectTick: detailSelectTick,
-                gamepadSeasonStep: detailSeasonStep
+                gamepadSeasonStep: detailSeasonStep,
+                iptv: iptv,
+                onPlayIPTVMovie: playIPTVMovie,
+                onOpenIPTVSeries: { iptvSeries = $0 }
             )
         case .person(let person):
             PersonDetailView(
