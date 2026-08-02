@@ -309,9 +309,15 @@ struct IPTVDetailView: View {
             LazyVStack(spacing: 10) {
                 ForEach(episodes[currentSeason] ?? []) { episode in
                     let point = resume?.point(forKey: "iptv:episode:\(episode.id)")
-                    EpisodeRow(episode: episode,
-                               progress: point?.progress ?? 0,
-                               isWatched: point?.isFinished ?? false) {
+                    DetailEpisodeRow(
+                        stillURL: episode.stillURL,
+                        number: episode.episode,
+                        title: episode.title,
+                        duration: episode.durationText,
+                        plot: episode.plot,
+                        progress: point?.progress ?? 0,
+                        isWatched: point?.isFinished ?? false
+                    ) {
                         onPlayEpisode(episode, title)
                     }
                 }
@@ -319,109 +325,6 @@ struct IPTVDetailView: View {
             .padding(.horizontal, 24)
             .padding(.top, 18)
             .padding(.bottom, 28)
-        }
-    }
-
-    /// Tek bölüm: solda ekran fotoğrafı, sağda adı ve özeti.
-    private struct EpisodeRow: View {
-        let episode: IPTVEpisode
-        /// 0–1 arası izlenen kısım; izlendi işareti ayrı, çünkü sona yaklaşan
-        /// bir bölüm de "izlendi" sayılıyor.
-        var progress: Double = 0
-        var isWatched: Bool = false
-        let action: () -> Void
-
-        @State private var isHovering = false
-
-        var body: some View {
-            Button(action: action) {
-                HStack(alignment: .top, spacing: 14) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Color(white: 0.14))
-                        if let still = episode.stillURL {
-                            CachedAsyncImage(url: still) { image in
-                                image.resizable().aspectRatio(contentMode: .fill)
-                            } placeholder: {
-                                Image(systemName: "photo")
-                                    .font(.system(size: 16))
-                                    .foregroundStyle(.tertiary)
-                            }
-                        } else {
-                            Image(systemName: "play.rectangle")
-                                .font(.system(size: 18))
-                                .foregroundStyle(.tertiary)
-                        }
-                        if isHovering {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(.black.opacity(0.4))
-                            Image(systemName: "play.circle.fill")
-                                .font(.system(size: 26))
-                                .foregroundStyle(.white)
-                        }
-                    }
-                    .frame(width: 168, height: 95)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay(alignment: .bottom) {
-                        // Kaldığı yer, ekran fotoğrafının altında ince bir şerit.
-                        if progress > 0.01 && !isWatched {
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    Rectangle().fill(.black.opacity(0.55))
-                                    Rectangle().fill(Color.accentColor)
-                                        .frame(width: geo.size.width * progress)
-                                }
-                            }
-                            .frame(height: 4)
-                        }
-                    }
-                    .overlay(alignment: .topTrailing) {
-                        if isWatched {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 15))
-                                .foregroundStyle(.white, .green)
-                                .padding(5)
-                        }
-                    }
-                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(isHovering ? Color.accentColor : .white.opacity(0.08),
-                                      lineWidth: isHovering ? 2 : 1))
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(spacing: 8) {
-                            Text("\(episode.episode). Bölüm")
-                                .font(.system(size: 13, weight: .semibold))
-                            if let duration = episode.durationText, !duration.isEmpty {
-                                Text(duration)
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        Text(episode.title)
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                        if let plot = episode.plot, !plot.isEmpty {
-                            Text(plot)
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(3)
-                                .multilineTextAlignment(.leading)
-                        }
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(10)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(isHovering ? Color.accentColor.opacity(0.10) : Color.gray.opacity(0.10))
-                )
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .onHover { hovering in
-                withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
-            }
         }
     }
 

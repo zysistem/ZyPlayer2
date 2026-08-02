@@ -193,60 +193,20 @@ struct RemoteDetailView: View {
         let isExpanded = expandedEpisode == number
 
         VStack(alignment: .leading, spacing: 0) {
-            Button {
+            DetailEpisodeRow(
+                stillURL: episode.stillPath.map { TMDBClient.imageURL(path: $0, size: "w500") },
+                number: number,
+                title: episode.name ?? "Bölüm \(number)",
+                duration: episode.airDate,
+                plot: episode.overview,
+                isHighlighted: isGamepadFocused
+            ) {
                 withAnimation(.easeOut(duration: 0.15)) {
                     expandedEpisode = isExpanded ? nil : number
                 }
-            } label: {
-                HStack(alignment: .top, spacing: 12) {
-                    still(episode)
-                        .frame(width: 150, height: 84)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 6) {
-                            Text("\(number).")
-                                .foregroundStyle(.secondary)
-                            Text(episode.name ?? "Bölüm \(number)")
-                                .fontWeight(.medium)
-                            if let air = episode.airDate, !air.isEmpty {
-                                Text(air)
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                        if let overview = episode.overview, !overview.isEmpty {
-                            Text(overview)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(3)
-                                .multilineTextAlignment(.leading)
-                        }
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Image(systemName: isExpanded ? "chevron.down" : "play.circle")
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 2)
-                }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 8)
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .background {
-                if isGamepadFocused {
-                    Rectangle()
-                        .fill(Color.accentColor.opacity(0.16))
-                        .overlay(alignment: .leading) {
-                            Rectangle()
-                                .fill(Color.accentColor)
-                                .frame(width: 3)
-                        }
-                }
-            }
-
+            .padding(.horizontal, 24)
+            .padding(.vertical, 4)
             if isExpanded {
                 if let imdbID = loader.imdbID, !imdbID.isEmpty {
                     TorrentPickerView(

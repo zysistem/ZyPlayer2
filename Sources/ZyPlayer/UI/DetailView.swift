@@ -455,6 +455,8 @@ struct RatingRow: View {
     }
 }
 
+/// Kütüphanedeki bir bölüm. Satırın kendisini ortak bileşen çiziyor; buradaki
+/// sarmalayıcı kütüphaneye özel sağ tık menüsünü ekliyor.
 struct EpisodeRow: View {
     let item: MediaItem
     let state: WatchState?
@@ -463,64 +465,20 @@ struct EpisodeRow: View {
     var library: LibraryStore?
 
     var body: some View {
-        Button {
+        DetailEpisodeRow(
+            stillImage: ArtworkCache.image(named: item.posterFileName),
+            number: item.episode ?? 0,
+            title: item.title,
+            duration: item.runtimeMinutes.map { "\($0) dk" },
+            plot: item.overview,
+            progress: state?.isInProgress == true ? state?.progress ?? 0 : 0,
+            isWatched: state?.isFinished ?? false,
+            isWatchlisted: state?.wantToWatch ?? false
+        ) {
             onPlay(item)
-        } label: {
-            HStack(alignment: .top, spacing: 12) {
-                ZStack {
-                    if let image = ArtworkCache.image(named: item.posterFileName) {
-                        Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
-                    } else {
-                        Rectangle().fill(Color(white: 0.16))
-                        Image(systemName: "play.rectangle")
-                            .foregroundStyle(.white.opacity(0.3))
-                    }
-                }
-                .frame(width: 150, height: 84)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .overlay(alignment: .bottom) {
-                    if let state, state.isInProgress {
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Rectangle().fill(.black.opacity(0.5))
-                                Rectangle().fill(.white).frame(width: geo.size.width * state.progress)
-                            }
-                        }
-                        .frame(height: 3)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text("\(item.episode ?? 0).")
-                            .foregroundStyle(.secondary)
-                        Text(item.title)
-                            .fontWeight(.medium)
-                        if state?.isFinished == true {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.blue)
-                                .font(.caption)
-                        } else if state?.wantToWatch == true {
-                            Image(systemName: "bookmark.fill")
-                                .foregroundStyle(.orange)
-                                .font(.caption)
-                        }
-                    }
-                    if let overview = item.overview, !overview.isEmpty {
-                        Text(overview)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(3)
-                            .multilineTextAlignment(.leading)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 4)
         .contextMenu {
             if let library {
                 let watched = state?.isFinished ?? false
@@ -531,6 +489,139 @@ struct EpisodeRow: View {
                 Button(listed ? "İzleyeceklerimden çıkar" : "İzleyeceğim") {
                     library.setWatchlist(item, !listed)
                 }
+            }
+        }
+    }
+}
+
+/// Dizi bölüm satırı: solda ekran fotoğrafı, sağda numara, ad, süre ve özet.
+///
+/// Tek bileşen, üç kaynak için: kütüphanedeki dizi, TMDB'den açılan dizi ve
+/// IPTV dizisi. Üçü de kendi satırını çiziyordu ve bölüm listeleri birbirinden
+/// farklı görünüyordu.
+struct DetailEpisodeRow: View {
+    /// Kütüphane bölümlerinin görseli diskte, ötekilerinki uzakta.
+    var stillImage: NSImage?
+    var stillURL: URL?
+    let number: Int
+    let title: String
+    var duration: String?
+    var plot: String?
+    /// 0–1 arası izlenen kısım. İzlendi ayrı bir işaret: sona yaklaşan bir
+    /// bölüm de izlenmiş sayılıyor ve şerit yerine tik gösteriliyor.
+    var progress: Double = 0
+    var isWatched: Bool = false
+    var isWatchlisted: Bool = false
+    /// Kumanda imleci bu satırın üzerindeyken. Fareyle aynı vurguyu kullanıyor.
+    var isHighlighted: Bool = false
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    private var isActive: Bool { isHovering || isHighlighted }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .top, spacing: 14) {
+                still
+                text
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isActive ? Color.accentColor.opacity(0.10) : Color.gray.opacity(0.10))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
+        }
+    }
+
+    private var still: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color(white: 0.14))
+
+            if let stillImage {
+                Image(nsImage: stillImage).resizable().aspectRatio(contentMode: .fill)
+            } else if let stillURL {
+                CachedAsyncImage(url: stillURL) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Image(systemName: "photo")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.tertiary)
+                }
+            } else {
+                Image(systemName: "play.rectangle")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.tertiary)
+            }
+
+            if isActive {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.black.opacity(0.4))
+                Image(systemName: "play.circle.fill")
+                    .font(.system(size: 26))
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(width: 168, height: 95)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(alignment: .bottom) {
+            if progress > 0.01 && !isWatched {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Rectangle().fill(.black.opacity(0.55))
+                        Rectangle().fill(Color.accentColor)
+                            .frame(width: geo.size.width * progress)
+                    }
+                }
+                .frame(height: 4)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if isWatched {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.white, .green)
+                    .padding(5)
+            } else if isWatchlisted {
+                Image(systemName: "bookmark.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.white, .orange)
+                    .padding(5)
+            }
+        }
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .strokeBorder(isActive ? Color.accentColor : .white.opacity(0.08),
+                          lineWidth: isActive ? 2 : 1))
+    }
+
+    private var text: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 8) {
+                Text("\(number). Bölüm")
+                    .font(.system(size: 13, weight: .semibold))
+                if let duration, !duration.isEmpty {
+                    Text(duration)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Text(title)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            if let plot, !plot.isEmpty {
+                Text(plot)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
             }
         }
     }
