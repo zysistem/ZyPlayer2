@@ -138,6 +138,11 @@ final class PlaybackResumeStore {
             // yazılsa kart bir daha detay sayfasını açamazdı.
             if p.remoteTitle == nil { p.remoteTitle = existing.remoteTitle }
             if p.streamHit == nil { p.streamHit = existing.streamHit }
+            // Altyazı seçimi de öyle. Oynatmayı başlatan kod bu kaydı kurup
+            // hemen ardından altyazıyı buradan okuyor; korunmadığı için okuduğu
+            // şey kendi az önce sildiği değerdi ve seçim hiçbir zaman geri
+            // gelmiyordu.
+            if p.subtitleLabel == nil { p.subtitleLabel = existing.subtitleLabel }
         }
         p.updatedAt = Date()
         upsert(p)
