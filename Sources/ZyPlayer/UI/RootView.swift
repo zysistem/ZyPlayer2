@@ -40,6 +40,7 @@ struct RootView: View {
     /// Netflix / Amazon Prime rafları için TMDB katalogları.
     @Bindable var providers: StreamingProviderStore
     @Bindable var settings: AppSettings
+    let iptv: IPTVStore
 
     enum GamepadFocusZone {
         case sidebar
@@ -74,6 +75,12 @@ struct RootView: View {
     @State private var isTrailerLoading = false
     @State private var trailerMessage: String?
     @State private var showSubtitleSearch = false
+    /// Bölüm listesi açılan IPTV dizisi.
+    @State private var iptvSeries: IPTVSeries?
+    /// Canlı yayın izlenirken oynatıcıdaki kanal listesini besleyen durum:
+    /// kanal hangi listeden açıldıysa o liste, ve açık olan kanal.
+    @State private var iptvChannelList: [IPTVChannel] = []
+    @State private var iptvCurrentChannel: IPTVChannel?
     /// Drives hiding the window toolbar only in fullscreen (where it shows as a
     /// grey strip), while keeping it — and the traffic-light buttons — in windowed
     /// mode.
@@ -93,7 +100,8 @@ struct RootView: View {
                     onNextEpisode: adjacentEpisode(offset: 1).map { episode in
                         { play(episode) }
                     },
-                    episodes: playerEpisodes
+                    episodes: playerEpisodes,
+                    channels: playerChannels
                 )
             } else {
                 NavigationSplitView {
@@ -335,6 +343,13 @@ struct RootView: View {
                 onDone: { matchTarget = nil }
             )
         }
+        .sheet(item: $iptvSeries) { series in
+            IPTVEpisodePicker(
+                series: series, store: iptv,
+                onPlay: { playIPTVEpisode($0, seriesName: series.name) },
+                onClose: { iptvSeries = nil }
+            )
+        }
         .sheet(isPresented: $showSubtitleSearch) {
             SubtitleSearchPanel(
                 model: player,
@@ -395,7 +410,23 @@ struct RootView: View {
             setWatchlist: { library.setWatchlist($0, $1) },
             markSeriesWatched: { library.markSeriesWatched(seriesKey: $0.id, watched: $1) },
             setSeriesWatchlist: { library.setSeriesWatchlist(seriesKey: $0.id, $1) },
-            resumeTorrent: resumeTorrent
+            resumeTorrent: resumeTorrent,
+            // Bir bölümün kendi detay sayfası yok: dizisinin sayfası açılır,
+            // kaldığı bölüm listenin içinde işaretli durur.
+            openDetail: { item in
+                if item.kind == .episode, let key = item.seriesKey {
+                    route = .series(key)
+                } else {
+                    route = .movie(item.id)
+                }
+            },
+            openResumeDetail: { point in
+                if let hit = point.streamHit {
+                    route = .stream(hit)
+                } else if let remote = point.remoteTitle {
+                    route = .remote(remote)
+                }
+            }
         )
     }
 
@@ -564,7 +595,11 @@ struct RootView: View {
                 onSelectRemote: { route = .remote($0) },
                 onSelectPerson: { route = .person($0) },
                 onSelectStream: { route = .stream($0) },
-                onPlayYouTube: playYouTube
+                onPlayYouTube: playYouTube,
+                    iptv: iptv,
+                    onPlayIPTVChannel: playChannel,
+                    onPlayIPTVMovie: playIPTVMovie,
+                    onOpenIPTVSeries: { iptvSeries = $0 }
             )
         } else {
             switch selection {
@@ -591,10 +626,16 @@ struct RootView: View {
             case .downloads: DownloadsView(library: library, torrents: torrents, settings: settings)
             case .settings:  SettingsView(library: library, smb: smb, drive: drive,
                                           torrents: torrents, settings: settings,
-                                          resume: resumeStore)
+                                          resume: resumeStore, iptv: iptv)
             case .stream:    ZyStreamView(store: streamStore, library: library,
                                           resume: resumeStore, settings: settings,
                                           onOpen: { route = .stream($0) })
+            case .iptv:      IPTVView(
+                                 store: iptv, settings: settings,
+                                 onPlayChannel: playChannel,
+                                 onPlayMovie: playIPTVMovie,
+                                 onOpenSeries: { iptvSeries = $0 }
+                             )
             case .music:     MusicView()
             case .games:     GamesView()
             }
@@ -822,6 +863,42 @@ struct RootView: View {
         }
     }
 
+    // MARK: - IPTV
+
+    /// Canlı yayın. Kanal listesi de veriliyor; oynatıcıdaki kanal seçici
+    /// bunun üzerinden kuruluyor.
+    private func playChannel(_ channel: IPTVChannel, _ list: [IPTVChannel]) {
+        guard let url = iptv.url(for: channel) else { return }
+        iptvChannelList = list
+        iptvCurrentChannel = channel
+        player.open(url, title: channel.name)
+    }
+
+    /// Oynatıcının kanal seçicisi. Yalnızca canlı yayın açıkken doluyor;
+    /// film ya da dizi izlenirken seçici hiç görünmüyor.
+    private var playerChannels: PlayerChannelList? {
+        guard iptvCurrentChannel != nil, !iptvChannelList.isEmpty else { return nil }
+        return PlayerChannelList(entries: iptvChannelList.map { channel in
+            PlayerChannelList.Entry(
+                id: channel.id,
+                name: channel.name,
+                isCurrent: channel.id == iptvCurrentChannel?.id,
+                play: { playChannel(channel, iptvChannelList) }
+            )
+        })
+    }
+
+    private func playIPTVMovie(_ movie: IPTVMovie) {
+        guard let url = iptv.url(for: movie) else { return }
+        player.open(url, title: movie.name)
+    }
+
+    private func playIPTVEpisode(_ episode: IPTVEpisode, seriesName: String) {
+        guard let url = iptv.url(for: episode) else { return }
+        iptvSeries = nil
+        player.open(url, title: "\(seriesName) · S\(episode.season)B\(episode.episode)")
+    }
+
     /// Streams a torrent instead of downloading it: the helper buffers a few
     /// megabytes, then the player opens the local HTTP URL it serves.
     private func streamTorrent(_ torrent: TorrentOption, title: String, posterURLString: String? = nil) {
@@ -829,10 +906,15 @@ struct RootView: View {
         let key = "torrent:\(torrent.id)"
         // Remembered by infohash so re-picking the same release resumes, and so
         // the Downloads screen can offer the last one.
+        // Torrent her zaman bir detay ekranından başlatılıyor; devam kartından
+        // o sayfaya dönebilmek için yapımın kendisi de kaydediliyor. Aksi hâlde
+        // elde yalnızca magnet kalıyor ve dönülecek bir sayfa olmuyor.
+        let openTitle: RemoteTitle? = if case .remote(let remote) = route { remote } else { nil }
         resumeStore.begin(ResumePoint(
             id: key, kind: .torrent, title: displayTitle,
             posterURLString: posterURLString,
-            magnet: torrent.link, fileIndex: torrent.fileIndex
+            magnet: torrent.link, fileIndex: torrent.fileIndex,
+            remoteTitle: openTitle
         ))
         let resumeAt = resumeStore.position(forKey: key)
         // The film's own name beats the release filename mpv would otherwise get.
@@ -879,6 +961,10 @@ struct RootView: View {
         
         player.close()
         streamer.stop()
+        // Kanal seçicisi yalnızca açık bir canlı yayına ait; oynatıcı
+        // kapandığında sonraki içeriğe sarkmamalı.
+        iptvCurrentChannel = nil
+        iptvChannelList = []
         
         Task { @MainActor in
             let favs = zyMovieStore.favorites
@@ -931,6 +1017,18 @@ struct SearchResultsView: View {
     let onSelectPerson: (PersonRef) -> Void
     let onSelectStream: (StreamHit) -> Void
     let onPlayYouTube: (YouTubeVideo) -> Void
+    /// IPTV kataloğu — abonelik yoksa nil ve bölüm hiç çıkmıyor.
+    var iptv: IPTVStore?
+    var onPlayIPTVChannel: ((IPTVChannel, [IPTVChannel]) -> Void)?
+    var onPlayIPTVMovie: ((IPTVMovie) -> Void)?
+    var onOpenIPTVSeries: ((IPTVSeries) -> Void)?
+
+    /// Aramaya karışan IPTV sonuçları. Katalog zaten bellekte olduğundan
+    /// arama yerel: ağ isteği yok, sonuçlar anında çıkıyor.
+    private var iptvHits: (channels: [IPTVChannel], movies: [IPTVMovie], series: [IPTVSeries]) {
+        guard let iptv, iptv.isConfigured else { return ([], [], []) }
+        return iptv.search(query)
+    }
 
     var body: some View {
         let local = library.search(query)
@@ -981,6 +1079,36 @@ struct SearchResultsView: View {
                     }
                 }
 
+                // IPTV aboneliğindekiler. Üç tür tek bölümde toplanıyor ama
+                // her kart hangi tür olduğunu rozetinde söylüyor: aynı ad hem
+                // canlı kanal hem film olarak çıkabiliyor.
+                if !iptvHits.channels.isEmpty || !iptvHits.movies.isEmpty
+                    || !iptvHits.series.isEmpty {
+                    let total = iptvHits.channels.count + iptvHits.movies.count
+                        + iptvHits.series.count
+                    SectionBlock(title: "IP Tv’de Bulunanlar", total: total,
+                                 onShowAll: nil, columns: 6) {
+                        ForEach(iptvHits.channels) { channel in
+                            IPTVSearchCard(title: channel.name, imageURL: channel.iconURL,
+                                           badge: "CANLI", badgeColor: .red) {
+                                onPlayIPTVChannel?(channel, iptvHits.channels)
+                            }
+                        }
+                        ForEach(iptvHits.movies) { movie in
+                            IPTVSearchCard(title: movie.name, imageURL: movie.iconURL,
+                                           badge: "FİLM", badgeColor: .blue) {
+                                onPlayIPTVMovie?(movie)
+                            }
+                        }
+                        ForEach(iptvHits.series) { item in
+                            IPTVSearchCard(title: item.name, imageURL: item.coverURL,
+                                           badge: "DİZİ", badgeColor: .purple) {
+                                onOpenIPTVSeries?(item)
+                            }
+                        }
+                    }
+                }
+
                 // YouTube yalnızca aramada çıkıyor: bazı diziler ve filmler
                 // (resmi kanallardan) orada tam olarak var. Kartlar 16:9 olduğu
                 // için satıra beş tane sığıyor, afiş raflarındaki on değil.
@@ -1000,7 +1128,8 @@ struct SearchResultsView: View {
                 }
 
                 if local.isEmpty && found.isEmpty && remote.people.isEmpty && stream.hits.isEmpty
-                    && youtube.videos.isEmpty {
+                    && youtube.videos.isEmpty && iptvHits.channels.isEmpty
+                    && iptvHits.movies.isEmpty && iptvHits.series.isEmpty {
                     if remote.isLoading || stream.isSearching || youtube.isSearching {
                         ProgressView("Aranıyor…")
                             .frame(maxWidth: .infinity)
@@ -1070,7 +1199,7 @@ struct SearchResultsView: View {
 }
 
 enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
-    case home, movies, shows, favorites, appleTV, bollywood, zyMovie, stream, downloads, settings, music, games
+    case home, movies, shows, favorites, appleTV, bollywood, zyMovie, iptv, stream, downloads, settings, music, games
 
     var id: String { rawValue }
 
@@ -1083,6 +1212,7 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
         case .appleTV: "Apple TV"
         case .bollywood: "Bollywood"
         case .zyMovie: "ZyMovie"
+        case .iptv: "IP Tv"
         case .stream: "ZyStream"
         case .downloads: "İndirilenler"
         case .settings: "Ayarlar"
@@ -1100,6 +1230,7 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
         case .appleTV: "appletv"
         case .bollywood: "movieclapper"
         case .zyMovie: "film.stack"
+        case .iptv: "antenna.radiowaves.left.and.right"
         case .stream: "play.tv"
         case .downloads: "arrow.down.circle"
         case .settings: "gearshape"
@@ -1118,7 +1249,7 @@ struct Sidebar: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 4) {
-                ForEach([SidebarItem.home, .movies, .shows, .favorites, .appleTV, .bollywood, .zyMovie]) { item in
+                ForEach([SidebarItem.home, .movies, .shows, .favorites, .appleTV, .bollywood, .zyMovie, .iptv]) { item in
                     row(item)
                 }
                 Divider()

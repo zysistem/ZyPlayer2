@@ -33,6 +33,24 @@ private struct MovingLayer<Content: View>: View {
     }
 }
 
+/// Canlı yayın izlenirken oynatıcıda açılan kanal listesi. Bölüm listesinden
+/// ayrı: kanallarda sezon/bölüm yok, buna karşılık liste binlerce satır
+/// olabildiği için arama şart.
+struct PlayerChannelList {
+    struct Entry: Identifiable {
+        let id: Int
+        let name: String
+        /// Şu an açık olan kanal — listede vurgulanıyor.
+        let isCurrent: Bool
+        let play: () -> Void
+    }
+
+    let entries: [Entry]
+
+    var isEmpty: Bool { entries.isEmpty }
+    var current: Entry? { entries.first(where: \.isCurrent) }
+}
+
 /// Player'ın sağ üstündeki bölüm seçicinin verisi.
 ///
 /// Kaynağı ne olursa olsun (kütüphanedeki dosyalar ya da bir akış sitesinin
@@ -82,6 +100,7 @@ struct PlayerView: View {
     var onNextEpisode: (() -> Void)?
     /// Oynayan içerik bir diziyse bölüm listesi; film ise nil ve seçici çıkmaz.
     var episodes: PlayerEpisodeList?
+    var channels: PlayerChannelList?
 
     @State private var controlsVisible = true
     @State private var hideTask: Task<Void, Never>?
@@ -90,6 +109,7 @@ struct PlayerView: View {
     /// Bölüm listesi açıkken kontroller kendiliğinden gizlenmiyor — gizlenirse
     /// listeyi taşıyan üst çubukla birlikte liste de kapanırdı.
     @State private var showEpisodes = false
+    @State private var showChannels = false
 
     var body: some View {
         ZStack {
@@ -191,6 +211,9 @@ struct PlayerView: View {
             Spacer()
 
             // Dizi izlerken sağ üstte bölüm seçici; filmde hiç görünmez.
+            if let channels, !channels.isEmpty {
+                ChannelPickerButton(list: channels, isPresented: $showChannels)
+            }
             if let episodes, !episodes.isEmpty {
                 EpisodePickerButton(list: episodes, isPresented: $showEpisodes)
             }
@@ -209,11 +232,20 @@ struct PlayerView: View {
         hideTask?.cancel()
         hideTask = Task {
             try? await Task.sleep(for: .seconds(3))
-            guard !Task.isCancelled, !model.isPaused, !showEpisodes else { return }
+            guard !Task.isCancelled, !model.isPaused, !showEpisodes, !showChannels else { return }
             withAnimation(.easeIn(duration: 0.4)) { controlsVisible = false }
-            // Self-balancing: AppKit restores the pointer on the next move, so
-            // this cannot leave the cursor stuck hidden.
-            NSCursor.setHiddenUntilMouseMoves(true)
+            // Tek bir çağrı yetmiyor: macOS bu bayrağı fare hiç oynamadan da
+            // düşürüyor (pencere odağı değişince, bildirim gelince), imleç de
+            // izlerken kendiliğinden beliriyordu. Kullanıcı fareyi oynatana
+            // kadar düzenli olarak yeniden uygulanıyor.
+            //
+            // Kendini dengeliyor: gerçek bir hareket `revealControls`'u
+            // çağırıyor, o da bu görevi iptal edip `unhide` ediyor — imleç
+            // gizli kalamaz.
+            while !Task.isCancelled {
+                NSCursor.setHiddenUntilMouseMoves(true)
+                try? await Task.sleep(for: .milliseconds(900))
+            }
         }
     }
 }
@@ -247,6 +279,90 @@ struct GlassButton: View {
 /// kullanılamıyor, burada sezon şeridi ve kaydırılabilir liste var. Liste açıkken
 /// `isPresented` dışarı da bildiriliyor, çünkü kontroller gizlenirse popover'ı
 /// taşıyan düğme de ekrandan kalkar.
+/// Kanal listesi düğmesi ve açılır listesi.
+struct ChannelPickerButton: View {
+    let list: PlayerChannelList
+    @Binding var isPresented: Bool
+
+    @State private var search = ""
+
+    private var visible: [PlayerChannelList.Entry] {
+        let trimmed = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return list.entries }
+        return list.entries.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
+    }
+
+    var body: some View {
+        Button {
+            isPresented.toggle()
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: "list.and.film")
+                    .font(.system(size: 12, weight: .medium))
+                Text("Kanallar")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(.white.opacity(0.14), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .help("Kanal seç")
+        .popover(isPresented: $isPresented, arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 8) {
+                TextField("Kanal ara", text: $search)
+                    .textFieldStyle(.roundedBorder)
+
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 2) {
+                            ForEach(visible) { entry in
+                                Button {
+                                    isPresented = false
+                                    entry.play()
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: entry.isCurrent
+                                              ? "dot.radiowaves.left.and.right" : "tv")
+                                            .font(.system(size: 11))
+                                            .foregroundStyle(entry.isCurrent
+                                                             ? AnyShapeStyle(.tint)
+                                                             : AnyShapeStyle(.secondary))
+                                            .frame(width: 16)
+                                        Text(entry.name)
+                                            .font(.system(size: 12,
+                                                          weight: entry.isCurrent ? .semibold : .regular))
+                                            .lineLimit(1)
+                                        Spacer(minLength: 0)
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(entry.isCurrent ? Color.accentColor.opacity(0.18) : .clear)
+                                    )
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .id(entry.id)
+                            }
+                        }
+                    }
+                    .onAppear {
+                        // Açılışta oynayan kanala kaydırılır: liste binlerce
+                        // satır, kullanıcı nerede olduğunu aramamalı.
+                        if let current = list.current { proxy.scrollTo(current.id, anchor: .center) }
+                    }
+                }
+            }
+            .padding(12)
+            .frame(width: 340, height: 420)
+        }
+    }
+}
+
 struct EpisodePickerButton: View {
     let list: PlayerEpisodeList
     @Binding var isPresented: Bool

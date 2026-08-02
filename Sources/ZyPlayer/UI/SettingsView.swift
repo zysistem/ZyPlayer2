@@ -3,8 +3,8 @@ import AppKit
 
 /// The settings panes, in the order they are listed.
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case appearance, library, drive, subtitles, openSubtitles, stream, youtube, downloads,
-         metadata, about
+    case appearance, library, drive, subtitles, openSubtitles, stream, iptv, youtube,
+         downloads, metadata, about
 
     var id: String { rawValue }
 
@@ -16,6 +16,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .subtitles: "Altyazı Görünümü"
         case .openSubtitles: "Altyazı Kaynakları"
         case .stream: "Akış Kaynakları"
+        case .iptv: "IP Tv"
         case .youtube: "YouTube"
         case .downloads: "İndirmeler"
         case .metadata: "Bilgi Kaynağı"
@@ -31,6 +32,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .subtitles: "captions.bubble"
         case .openSubtitles: "text.magnifyingglass"
         case .stream: "play.tv"
+        case .iptv: "antenna.radiowaves.left.and.right"
         case .youtube: "play.rectangle"
         case .downloads: "arrow.down.circle"
         case .metadata: "sparkles"
@@ -147,6 +149,7 @@ struct SettingsView: View {
     @Bindable var settings: AppSettings
     /// Torrent devam kayıtlarını temizleyebilmek için.
     var resume: PlaybackResumeStore?
+    var iptv: IPTVStore?
 
     /// Accordion: one pane open at a time. The old flat page showed every
     /// control at once, which is what made it hard to read.
@@ -163,6 +166,8 @@ struct SettingsView: View {
     @State private var torrentResumeClearedNote: String?
     @State private var isCheckingDomains = false
     @State private var domainCheckNote: String?
+    @State private var iptvInput = ""
+    @State private var iptvNote: String?
     @State private var currentImageCacheSize: String = ImageCacheManager.formattedCacheSize
 
     /// Hem çevirileri hem hatırlanan altyazı seçimlerini tek cümlede özetler.
@@ -235,6 +240,12 @@ struct SettingsView: View {
         case .stream:
             let active = settings.streamSources.filter(\.isEnabled).count
             return active == 0 ? "Kapalı" : "\(active) kaynak açık"
+        case .iptv:
+            guard settings.iptvCredentials.isConfigured else { return "Bağlı değil" }
+            let catalog = iptv?.catalog
+            let total = (catalog?.channels.count ?? 0) + (catalog?.movies.count ?? 0)
+                + (catalog?.series.count ?? 0)
+            return total == 0 ? "Bağlı · katalog yok" : "\(total) içerik"
         case .youtube:
             return settings.youtubeSearchEnabled ? "Aramada açık" : "Kapalı"
         case .downloads:
@@ -258,6 +269,7 @@ struct SettingsView: View {
         case .subtitles:      subtitleContent
         case .openSubtitles:  openSubtitlesContent
         case .stream:         streamContent
+        case .iptv:           iptvContent
         case .youtube:        youtubeContent
         case .downloads:      downloadsContent
         case .metadata:       metadataContent
@@ -966,6 +978,120 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    // MARK: - IP Tv
+
+    private var iptvContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Sağlayıcınızın verdiği adresi yapıştırın; kullanıcı adı ve parola "
+                 + "içinden okunur. İsterseniz üç alanı ayrı ayrı da doldurabilirsiniz.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                TextField("http://sunucu:8000/get.php?username=…&password=…", text: $iptvInput)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11, design: .monospaced))
+                Button("Çöz") {
+                    if let parsed = IPTVCredentials.parse(iptvInput) {
+                        settings.iptvCredentials = parsed
+                        iptvInput = ""
+                        iptvNote = "Bilgiler alındı: \(parsed.host)"
+                    } else {
+                        iptvNote = "Adres çözülemedi. İçinde username ve password olmalı."
+                    }
+                }
+                .controlSize(.small)
+                .disabled(iptvInput.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 8) {
+                GridRow {
+                    Text("Sunucu").font(.caption).foregroundStyle(.secondary)
+                    TextField("http://sunucu:8000", text: $settings.iptvCredentials.host)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 11, design: .monospaced))
+                }
+                GridRow {
+                    Text("Kullanıcı").font(.caption).foregroundStyle(.secondary)
+                    TextField("", text: $settings.iptvCredentials.username)
+                        .textFieldStyle(.roundedBorder)
+                }
+                GridRow {
+                    Text("Parola").font(.caption).foregroundStyle(.secondary)
+                    SecureField("", text: $settings.iptvCredentials.password)
+                        .textFieldStyle(.roundedBorder)
+                }
+            }
+            .frame(maxWidth: 460)
+
+            Divider().padding(.vertical, 2)
+
+            Toggle(isOn: $settings.iptvOnlyTurkish) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Yalnızca Türkçe içerik")
+                    Text("Sağlayıcı kataloğunda onlarca ülkenin yayını var. Açıkken TR "
+                         + "dışındaki kanal, film ve diziler listelerde ve aramada görünmez.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .toggleStyle(.switch)
+
+            Divider().padding(.vertical, 2)
+
+            HStack(spacing: 8) {
+                Button("İçerikleri Güncelle") {
+                    iptvNote = nil
+                    Task {
+                        await iptv?.load(force: true)
+                        let count = (iptv?.catalog.channels.count ?? 0)
+                            + (iptv?.catalog.movies.count ?? 0)
+                            + (iptv?.catalog.series.count ?? 0)
+                        iptvNote = count > 0
+                            ? "Güncellendi: \(count) içerik."
+                            : (iptv?.statusMessage ?? "İçerik alınamadı.")
+                    }
+                }
+                .controlSize(.small)
+                .disabled(!(iptv?.isConfigured ?? false) || (iptv?.isLoading ?? false))
+
+                if iptv?.isLoading == true {
+                    ProgressView().controlSize(.small)
+                } else if let note = iptvNote {
+                    Text(note).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+
+            Text(iptvStatusLine)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// Katalogda ne olduğu ve ne zaman tazelendiği.
+    private var iptvStatusLine: String {
+        guard let iptv, iptv.isConfigured else {
+            return "Bilgiler girilince “IP Tv” bölümü kenar çubuğunda içerik göstermeye başlar."
+        }
+        let catalog = iptv.catalog
+        if catalog.isEmpty {
+            return "Katalog henüz indirilmedi. Bölüme girdiğinizde ya da bu düğmeyle indirilir."
+        }
+        var line = "\(catalog.channels.count) kanal · \(catalog.movies.count) film · "
+            + "\(catalog.series.count) dizi"
+        if let updated = catalog.updatedAt {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            line += " · son güncelleme \(formatter.string(from: updated))"
+        }
+        return line + ". Katalog 12 saatte bir kendiliğinden tazelenir; sağlayıcı arada "
+            + "içerik eklediğinde bu düğmeyle hemen güncelleyebilirsiniz."
     }
 
     // MARK: - Metadata

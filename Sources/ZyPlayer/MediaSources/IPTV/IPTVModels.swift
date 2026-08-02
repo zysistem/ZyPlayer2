@@ -1,0 +1,142 @@
+import Foundation
+
+/// IPTV içeriğinin üç türü. Sağlayıcı üçünü ayrı uçlardan veriyor ve
+/// oynatma adresleri de ayrı biçimde kuruluyor.
+enum IPTVSection: String, CaseIterable, Identifiable, Codable {
+    case live, movies, series
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .live: "Canlı TV"
+        case .movies: "Filmler"
+        case .series: "Diziler"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .live: "dot.radiowaves.left.and.right"
+        case .movies: "film"
+        case .series: "tv"
+        }
+    }
+}
+
+struct IPTVCategory: Identifiable, Codable, Hashable {
+    var id: String
+    var name: String
+}
+
+struct IPTVChannel: Identifiable, Codable, Hashable {
+    var id: Int
+    var name: String
+    var iconURLString: String?
+    var categoryID: String?
+    /// Sağlayıcının EPG kimliği. Yayın akışı ileride buradan okunabilir.
+    var epgChannelID: String?
+
+    var iconURL: URL? { iconURLString.flatMap(URL.init(string:)) }
+}
+
+struct IPTVMovie: Identifiable, Codable, Hashable {
+    var id: Int
+    var name: String
+    var iconURLString: String?
+    var categoryID: String?
+    /// Oynatma adresi bu uzantıyla kuruluyor: sağlayıcı mkv/mp4 karışık veriyor.
+    var containerExtension: String
+    var rating: Double?
+
+    var iconURL: URL? { iconURLString.flatMap(URL.init(string:)) }
+}
+
+struct IPTVSeries: Identifiable, Codable, Hashable {
+    var id: Int
+    var name: String
+    var coverURLString: String?
+    var categoryID: String?
+    var plot: String?
+    var rating: Double?
+
+    var coverURL: URL? { coverURLString.flatMap(URL.init(string:)) }
+}
+
+struct IPTVEpisode: Identifiable, Codable, Hashable {
+    /// Bölüm kimliği metin: sağlayıcı kimi zaman sayı kimi zaman dize veriyor.
+    var id: String
+    var title: String
+    var season: Int
+    var episode: Int
+    var containerExtension: String
+}
+
+/// Sağlayıcı adlara ülke kodunu ve kalite ekini gömüyor: kategoriler
+/// "[TR] HABER" ya da "|TR| 2026 FiLMLERi", kanallar "TR: TRT 1 HD" biçiminde
+/// geliyor. Ekranda bu işaretler gürültü yapıyor ve her satırın başı birbirinin
+/// aynı oluyor; ayrıştırılıp rozete alınıyorlar, geriye okunur bir ad kalıyor.
+enum IPTVNaming {
+
+    /// "[TR] HABER" → ("TR", "HABER");  "TR: TRT 1" → ("TR", "TRT 1")
+    static func split(_ raw: String) -> (code: String?, name: String) {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        let patterns = [
+            #"^[\[\|\(]\s*([A-Za-z]{2,4})\s*[\]\|\)]\s*(.+)$"#,
+            #"^([A-Za-z]{2,4})\s*:\s*(.+)$"#
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: trimmed,
+                                               range: NSRange(trimmed.startIndex..., in: trimmed)),
+                  match.numberOfRanges > 2,
+                  let codeRange = Range(match.range(at: 1), in: trimmed),
+                  let nameRange = Range(match.range(at: 2), in: trimmed)
+            else { continue }
+            return (String(trimmed[codeRange]).uppercased(),
+                    String(trimmed[nameRange]).trimmingCharacters(in: .whitespaces))
+        }
+        return (nil, trimmed)
+    }
+
+    /// Kanal adının sonundaki kalite eki. "TRT 1 HD" ve "TRT 1 FHD" ayrı
+    /// yayınlar; ek atılmıyor, rozete alınıyor ki ayrım korunsun.
+    private static let qualityTags = ["4K", "UHD", "FHD", "HD", "SD"]
+
+    static func splitQuality(_ name: String) -> (name: String, quality: String?) {
+        var base = name.trimmingCharacters(in: .whitespaces)
+        for tag in qualityTags where base.uppercased().hasSuffix(" " + tag) {
+            base = String(base.dropLast(tag.count + 1)).trimmingCharacters(in: .whitespaces)
+            return (base, tag)
+        }
+        return (base, nil)
+    }
+}
+
+/// Diske yazılan katalog. Liste her açılışta yeniden indirilemeyecek kadar
+/// büyük (film kataloğu tek başına ~15 MB), bu yüzden saklanıp yaşına göre
+/// tazeleniyor.
+struct IPTVCatalog: Codable {
+    var channels: [IPTVChannel] = []
+    var movies: [IPTVMovie] = []
+    var series: [IPTVSeries] = []
+    var liveCategories: [IPTVCategory] = []
+    var movieCategories: [IPTVCategory] = []
+    var seriesCategories: [IPTVCategory] = []
+    var updatedAt: Date?
+
+    var isEmpty: Bool { channels.isEmpty && movies.isEmpty && series.isEmpty }
+
+    /// Eski sürümlerde yazılmış, alanları eksik bir katalog da okunabilmeli.
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        channels = c.value(.channels, [])
+        movies = c.value(.movies, [])
+        series = c.value(.series, [])
+        liveCategories = c.value(.liveCategories, [])
+        movieCategories = c.value(.movieCategories, [])
+        seriesCategories = c.value(.seriesCategories, [])
+        updatedAt = c.optional(.updatedAt)
+    }
+}

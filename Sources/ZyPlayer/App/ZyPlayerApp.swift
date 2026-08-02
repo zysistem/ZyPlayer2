@@ -47,6 +47,7 @@ struct ZyPlayerApp: App {
     @State private var appleTV = AppleTVStore()
     @State private var providers = StreamingProviderStore()
     @State private var streamer = TorrentStreamer()
+    @State private var iptv: IPTVStore
 
     init() {
         ImageCacheManager.configure()
@@ -54,6 +55,7 @@ struct ZyPlayerApp: App {
         _settings = State(initialValue: settings)
         _drive = State(initialValue: GoogleDriveStore(settings: settings))
         _torrents = State(initialValue: TorrentStore(settings: settings))
+        _iptv = State(initialValue: IPTVStore(settings: settings))
     }
 
     var body: some Scene {
@@ -62,7 +64,8 @@ struct ZyPlayerApp: App {
         Window("ZyPlayer", id: "main") {
             RootView(player: player, library: library, smb: smb, drive: drive,
                      torrents: torrents, streamer: streamer, cinema: cinema,
-                     appleTV: appleTV, providers: providers, settings: settings)
+                     appleTV: appleTV, providers: providers, settings: settings,
+                     iptv: iptv)
                 .frame(minWidth: 900, minHeight: 560)
                 .onAppear {
                     AppDelegate.player = player

@@ -95,6 +95,11 @@ struct SettingsData: Codable {
     /// Arama sonuçlarına YouTube bölümü eklensin mi. Yalnızca aramayı etkiler;
     /// kapalıyken YouTube'a hiç istek gitmez.
     var youtubeSearchEnabled: Bool = true
+    /// IPTV aboneliğinin bağlantı bilgileri.
+    var iptvCredentials: IPTVCredentials = .empty
+    /// Yalnızca Türkçe IPTV içeriği listelensin mi. Sağlayıcı kataloğunda
+    /// onlarca ülkenin kanalı ve filmi var; açıkken TR dışındakiler gizleniyor.
+    var iptvOnlyTurkish: Bool = true
 
     init(tmdbToken: String = "", metadataLanguage: String = "tr-TR",
          fetchMetadataAutomatically: Bool = true, downloadDirectory: String = "",
@@ -112,7 +117,11 @@ struct SettingsData: Codable {
          zaiApiKey: String = "38f440e33c494347a4e9c64a8c3827ad.hTs3Ds9WWyVGWQXh",
          openRouterApiKey: String = "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",
          openRouterModel: String = OpenRouterTranslator.automaticModel,
-         youtubeSearchEnabled: Bool = true) {
+         youtubeSearchEnabled: Bool = true,
+         iptvCredentials: IPTVCredentials = .empty,
+         iptvOnlyTurkish: Bool = true) {
+        self.iptvOnlyTurkish = iptvOnlyTurkish
+        self.iptvCredentials = iptvCredentials
         self.youtubeSearchEnabled = youtubeSearchEnabled
         self.openRouterModel = openRouterModel
         self.openRouterApiKey = openRouterApiKey
@@ -175,6 +184,8 @@ struct SettingsData: Codable {
         // Anahtar eklenmeden önce yazılmış bir ayar dosyasında bu alan yok;
         // açık gelmesi doğru olan, kullanıcı kapatana kadar YouTube aranıyor.
         youtubeSearchEnabled = c.value(.youtubeSearchEnabled, true)
+        iptvCredentials = c.value(.iptvCredentials, .empty)
+        iptvOnlyTurkish = c.value(.iptvOnlyTurkish, true)
         // Migration: films used to come from YTS and had their own address,
         // with episodes on a separate one. There is one index now, so a stored
         // YTS address is replaced — by whatever the user had set for episodes if
@@ -265,6 +276,14 @@ final class AppSettings {
     var youtubeSearchEnabled: Bool {
         didSet { persist() }
     }
+    /// IPTV aboneliği: sunucu adresi, kullanıcı adı, parola.
+    var iptvCredentials: IPTVCredentials {
+        didSet { persist() }
+    }
+    /// Yalnızca Türkçe IPTV içeriği gösterilsin mi.
+    var iptvOnlyTurkish: Bool {
+        didSet { persist() }
+    }
     /// Falls back to the built-in address when the field is cleared, so the
     /// torrent section never silently stops working.
     var effectiveTorrentAPIBase: String {
@@ -338,6 +357,8 @@ final class AppSettings {
         openRouterApiKey = value.openRouterApiKey
         openRouterModel = value.openRouterModel
         youtubeSearchEnabled = value.youtubeSearchEnabled
+        iptvCredentials = value.iptvCredentials
+        iptvOnlyTurkish = value.iptvOnlyTurkish
     }
 
     var hasTMDBToken: Bool {
@@ -368,7 +389,9 @@ final class AppSettings {
             zaiApiKey: zaiApiKey,
             openRouterApiKey: openRouterApiKey,
             openRouterModel: openRouterModel,
-            youtubeSearchEnabled: youtubeSearchEnabled
+            youtubeSearchEnabled: youtubeSearchEnabled,
+            iptvCredentials: iptvCredentials,
+            iptvOnlyTurkish: iptvOnlyTurkish
         ))
     }
 }
