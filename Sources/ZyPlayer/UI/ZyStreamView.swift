@@ -208,7 +208,6 @@ struct StreamEpisodePicker: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(details.episodes(inSeason: effectiveSeason)) { episode in
                         episodeRow(episode)
-                        Divider().opacity(0.4)
                     }
                 }
             }
@@ -222,60 +221,32 @@ struct StreamEpisodePicker: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(width: 460, height: 520)
+        .frame(width: 560, height: 560)
     }
 
-    @ViewBuilder
+    /// Kullanıcının seçtiği sezon listede yoksa (dizi yeniden çözümlendiğinde
+    /// olabiliyor) ilk sezona düşülür.
+    private var effectiveSeason: Int {
+        details.seasons.contains(season) ? season : (details.seasons.first ?? 1)
+    }
+
     private func episodeRow(_ episode: StreamEpisode) -> some View {
         let point = resume.point(forKey: episode.pageURL)
         let progress = point?.progress ?? 0
         let isFinished = point?.isFinished ?? false
 
-        Button {
+        return DetailEpisodeRow(
+            stillURL: episode.thumbnailURL,
+            number: episode.episode,
+            title: episode.title ?? "Bölüm \(episode.episode)",
+            duration: progress > 0.01 && !isFinished ? point?.position.asTimecode : nil,
+            progress: progress,
+            isWatched: isFinished,
+            isLoading: store.resolvingID == episode.id
+        ) {
             store.playEpisode(episode, from: details)
-        } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 10) {
-                    Text("\(episode.episode).")
-                        .foregroundStyle(.secondary)
-                        .frame(width: 28, alignment: .trailing)
-                    Text(episode.title ?? "Bölüm \(episode.episode)")
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
-                    if store.resolvingID == episode.id {
-                        ProgressView().controlSize(.small)
-                    } else if isFinished {
-                        Label("İzlendi", systemImage: "checkmark.circle.fill")
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(.green)
-                    } else if progress > 0.01 {
-                        Image(systemName: "play.circle.fill").foregroundStyle(.blue)
-                    } else {
-                        Image(systemName: "play.circle").foregroundStyle(.secondary)
-                    }
-                }
-                // Progress bar for in-progress episodes
-                if progress > 0.01 && !isFinished {
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Color.white.opacity(0.12))
-                            Capsule()
-                                .fill(Color.blue)
-                                .frame(width: geo.size.width * progress)
-                        }
-                    }
-                    .frame(height: 3)
-                    .padding(.leading, 38)
-                }
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-    }
-
-    private var effectiveSeason: Int {
-        details.seasons.contains(season) ? season : (details.seasons.first ?? 1)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 4)
     }
 }

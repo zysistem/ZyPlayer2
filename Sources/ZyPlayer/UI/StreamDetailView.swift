@@ -185,7 +185,6 @@ struct StreamDetailView: View {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(loader.details?.episodes(inSeason: effectiveSeason) ?? []) { episode in
                     episodeRow(episode)
-                    Divider().opacity(0.4).padding(.leading, 24)
                 }
             }
             .padding(.top, 12)
@@ -197,7 +196,19 @@ struct StreamDetailView: View {
         let progress = point?.progress ?? 0
         let isFinished = point?.isFinished ?? false
 
-        return Button {
+        // TMDB'den gelen kare varsa o yeğleniyor: sitenin kendi küçük resmi
+        // çoğu zaman düşük çözünürlüklü ya da hiç yok.
+        let stillKey = "s\(episode.season)e\(episode.episode)"
+
+        return DetailEpisodeRow(
+            stillURL: episodeStills[stillKey] ?? episode.thumbnailURL,
+            number: episode.episode,
+            title: episode.title ?? "Bölüm \(episode.episode)",
+            duration: progress > 0.01 && !isFinished ? point?.position.asTimecode : nil,
+            progress: progress,
+            isWatched: isFinished,
+            isLoading: store.resolvingID == episode.id
+        ) {
             Task {
                 await store.playPage(
                     episode.pageURL, providerID: hit.providerID,
@@ -207,87 +218,13 @@ struct StreamDetailView: View {
                     series: loader.details
                 )
             }
-        } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 12) {
-                    // Thumbnail: TMDB still önce, yoksa site'den gelen URL, yoksa placeholder
-                    let stillKey = "s\(episode.season)e\(episode.episode)"
-                    let thumbURL = episodeStills[stillKey] ?? episode.thumbnailURL
-                    Group {
-                        if let thumbURL {
-                            CachedAsyncImage(url: thumbURL) { phase in
-                                switch phase {
-                                case .success(let img):
-                                    img.resizable()
-                                        .aspectRatio(16/9, contentMode: .fill)
-                                        .frame(width: 100, height: 56)
-                                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                                default:
-                                    stillPlaceholder
-                                }
-                            }
-                        } else {
-                            stillPlaceholder
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack {
-                            Text("\(episode.episode).")
-                                .foregroundStyle(.secondary)
-                                .frame(width: 28, alignment: .trailing)
-                            Text(episode.title ?? "Bölüm \(episode.episode)").lineLimit(1)
-                            Spacer(minLength: 0)
-                            if store.resolvingID == episode.id {
-                                ProgressView().controlSize(.small)
-                            } else if isFinished {
-                                Label("İzlendi", systemImage: "checkmark.circle.fill")
-                                    .font(.caption2.weight(.medium))
-                                    .foregroundStyle(.green)
-                            } else if progress > 0.01 {
-                                Text(point?.position.asTimecode ?? "")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                Image(systemName: "play.circle.fill").foregroundStyle(.blue)
-                            } else {
-                                Image(systemName: "play.circle").foregroundStyle(.secondary)
-                            }
-                        }
-
-                        // Progress bar
-                        if progress > 0.01 && !isFinished {
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    Capsule().fill(Color.white.opacity(0.12))
-                                    Capsule()
-                                        .fill(Color.blue)
-                                        .frame(width: geo.size.width * progress)
-                                }
-                            }
-                            .frame(height: 3)
-                            .padding(.leading, 34)
-                        }
-                    }
-                }
-                .padding(.horizontal, 24).padding(.vertical, 10)
-                .contentShape(Rectangle())
-            }
         }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 4)
         .buttonStyle(.plain)
     }
 
     /// Shown when no thumbnail is available (TMDB still or site image).
-    private var stillPlaceholder: some View {
-        RoundedRectangle(cornerRadius: 6)
-            .fill(Color.white.opacity(0.07))
-            .frame(width: 100, height: 56)
-            .overlay(
-                Image(systemName: "play.tv")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.white.opacity(0.3))
-            )
-    }
-
     private var effectiveSeason: Int {
         let seasons = loader.details?.seasons ?? [1]
         return seasons.contains(season) ? season : (seasons.first ?? 1)

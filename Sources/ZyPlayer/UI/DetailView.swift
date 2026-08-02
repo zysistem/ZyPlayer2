@@ -514,6 +514,9 @@ struct DetailEpisodeRow: View {
     var isWatchlisted: Bool = false
     /// Kumanda imleci bu satırın üzerindeyken. Fareyle aynı vurguyu kullanıyor.
     var isHighlighted: Bool = false
+    /// Akış sitelerinde bölüm açılırken adres çözülüyor; o sırada oynat
+    /// işaretinin yerinde bir ilerleme göstergesi duruyor.
+    var isLoading: Bool = false
     let action: () -> Void
 
     @State private var isHovering = false
@@ -561,7 +564,11 @@ struct DetailEpisodeRow: View {
                     .foregroundStyle(.tertiary)
             }
 
-            if isActive {
+            if isLoading {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.black.opacity(0.5))
+                ProgressView().controlSize(.small)
+            } else if isActive {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(.black.opacity(0.4))
                 Image(systemName: "play.circle.fill")
