@@ -726,6 +726,8 @@ struct RootView: View {
                     title: item.title,
                     isCurrent: item.id == current.id,
                     isWatched: library.state(for: item)?.isFinished ?? false,
+                    stillImage: ArtworkCache.image(named: item.posterFileName),
+                    stillURL: nil,
                     play: { play(item) }
                 )
             }
@@ -745,6 +747,8 @@ struct RootView: View {
                     isCurrent: episode.pageURL == key,
                     // Akış bölümlerinin izlenme durumu devam noktalarında duruyor.
                     isWatched: resumeStore.point(forKey: episode.pageURL)?.isFinished ?? false,
+                    stillImage: nil,
+                    stillURL: episode.thumbnailURL,
                     play: { streamStore.playEpisode(episode, from: details) }
                 )
             }
@@ -763,6 +767,10 @@ struct RootView: View {
                     title: extractEpisodeTitle(from: file.name) ?? "Bölüm \(epNumber)",
                     isCurrent: streamer.activeFileIndex == file.index,
                     isWatched: false,
+                    // TurkTorrent RSS'inde bölüm başına ekran fotoğrafı yok;
+                    // eşleşen TMDB kaydının afişi (varsa) yer tutucu olarak kullanılıyor.
+                    stillImage: nil,
+                    stillURL: hit.remoteTitle?.posterURL,
                     play: {
                         let title = hit.remoteTitle?.title ?? hit.rssTitle
                         let option = TorrentOption(

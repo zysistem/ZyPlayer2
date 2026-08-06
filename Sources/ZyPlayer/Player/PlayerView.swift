@@ -66,6 +66,9 @@ struct PlayerEpisodeList {
         let isCurrent: Bool
         /// Sonuna kadar izlenmiş bölüm — listede tikle işaretleniyor.
         let isWatched: Bool
+        /// Kütüphane bölümlerinin fotoğrafı diskte, akış/IPTV bölümlerininki uzakta.
+        var stillImage: NSImage?
+        var stillURL: URL?
         let play: () -> Void
 
         /// "S2B7" — sezon/bölüm kısa kodu.
@@ -454,7 +457,7 @@ private struct EpisodePickerList: View {
                 }
             }
         }
-        .frame(width: 340, height: 380)
+        .frame(width: 380, height: 380)
     }
 
     private func seasonChip(_ number: Int) -> some View {
@@ -481,10 +484,12 @@ private struct EpisodePickerList: View {
             onPick(entry)
         } label: {
             HStack(spacing: 10) {
+                still(entry)
+
                 Text("\(entry.episode)")
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
                     .foregroundStyle(entry.isCurrent ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                    .frame(width: 26, alignment: .trailing)
+                    .frame(width: 20, alignment: .trailing)
 
                 Text(entry.title?.isEmpty == false ? entry.title! : "\(entry.episode). Bölüm")
                     .font(.system(size: 12, weight: entry.isCurrent ? .semibold : .regular))
@@ -515,6 +520,38 @@ private struct EpisodePickerList: View {
         // Tıklanan satırın çevresine AppKit'in çizdiği mavi odak halkası,
         // listedeki vurguyla çakışıp kirli duruyordu.
         .focusEffectDisabled()
+    }
+
+    /// Küçük 16:9 bölüm fotoğrafı: kütüphane bölümlerinde diskten, akış/IPTV
+    /// bölümlerinde uzaktan. İkisi de yoksa (torrent listesi gibi) sade bir
+    /// yer tutucu simge gösterilir.
+    private func still(_ entry: PlayerEpisodeList.Entry) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .fill(Color(white: 0.14))
+
+            if let stillImage = entry.stillImage {
+                Image(nsImage: stillImage).resizable().aspectRatio(contentMode: .fill)
+            } else if let stillURL = entry.stillURL {
+                CachedAsyncImage(url: stillURL) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Image(systemName: "photo")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                }
+            } else {
+                Image(systemName: "play.rectangle")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .frame(width: 62, height: 35)
+        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+        )
     }
 }
 
@@ -672,14 +709,23 @@ struct PlayerControls: View {
             if let selectedID = model.selectedSubtitleID,
                let _ = model.subtitleTracks.first(where: { $0.id == selectedID }) {
                 Divider()
-                Button {
-                    Task {
-                        await model.translateSelectedSubtitle(
-                            engine: settings.translationEngine,
-                            zaiApiKey: settings.zaiApiKey,
-                            openRouterApiKey: settings.openRouterApiKey,
-                            openRouterModel: settings.openRouterModel
-                        )
+                Menu {
+                    ForEach(TranslationEngine.allCases) { engine in
+                        Button {
+                            Task {
+                                await model.translateSelectedSubtitle(
+                                    engine: engine,
+                                    zaiApiKey: settings.zaiApiKey,
+                                    openRouterApiKey: settings.openRouterApiKey,
+                                    openRouterModel: settings.openRouterModel
+                                )
+                            }
+                        } label: {
+                            Label(
+                                engine.title,
+                                systemImage: settings.translationEngine == engine ? "checkmark" : ""
+                            )
+                        }
                     }
                 } label: {
                     Label("Seçili Altyazıyı Türkçeye Çevir", systemImage: "character.book.closed")

@@ -381,14 +381,21 @@ final class PlayerModel {
                                                  maxLines: GoogleTranslator.maxLinesPerRequest,
                                                  maxChars: GoogleTranslator.maxCharsPerRequest)
                 parallel = 2
-            case .zai, .openRouter:
+            case .zai:
+                // GLM-4.5-flash uzun partilerde satır atlıyor; kısa partiler
+                // eksik çeviri oranını düşürüyor. Ücretsiz katman ayrıca dörtte
+                // hız sınırına takıldığı için paralellik 2'de kalıyor.
+                batches = TranslationUtil.chunks(allTexts,
+                                                 maxLines: ZaiTranslator.maxLinesPerRequest,
+                                                 maxChars: 3000)
+                parallel = 2
+            case .openRouter:
                 // Yapay zeka partileri tek tek 10-90 saniye sürüyor; asıl
                 // hızlanma bunları aynı anda göndermekten geliyor.
                 batches = TranslationUtil.chunks(allTexts,
                                                  maxLines: LLMTranslator.maxLinesPerRequest,
                                                  maxChars: 6000)
-                // Z.ai'nin ücretsiz katmanı dörtte hız sınırına takılıyor.
-                parallel = engine == .zai ? 2 : 4
+                parallel = 4
             }
 
             var done = 0

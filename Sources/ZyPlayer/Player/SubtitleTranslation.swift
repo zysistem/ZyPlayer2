@@ -394,19 +394,32 @@ enum LLMTranslator {
 
                 // Modeller kırk satırın birkaçını atlayabiliyor; atlananlar özgün
                 // hâlleriyle kalınca izlerken araya İngilizce satırlar karışıyor.
-                // Yalnızca eksikler için kısa bir tur daha atıyoruz — küçük bir
-                // istek, gözle görülür bir kazanç.
-                let missing = texts.indices.filter { !matched.contains($0) }
-                if !missing.isEmpty {
+                // Yalnızca eksikler için birkaç kısa tur daha atıyoruz — GLM
+                // (Z.ai) tek turda bile satır atlamaya devam edebiliyor, bu
+                // yüzden tamamı gelene kadar (ya da tur hakkı bitene kadar) ısrar
+                // ediyoruz; her tur küçük bir istek, kazanç gözle görülür.
+                var missing = texts.indices.filter { !matched.contains($0) }
+                var round = 0
+                while !missing.isEmpty, round < 3 {
+                    round += 1
                     let leftovers = missing.map { texts[$0] }
-                    if let retry = try? await requestWithBackoff(leftovers, model: model,
-                                                                 endpoint: endpoint) {
-                        let (retryLines, retryMatched) = align(retry, with: leftovers)
-                        for (position, index) in missing.enumerated()
-                        where retryMatched.contains(position) {
+                    guard let retry = try? await requestWithBackoff(leftovers, model: model,
+                                                                    endpoint: endpoint) else {
+                        break
+                    }
+                    let (retryLines, retryMatched) = align(retry, with: leftovers)
+                    var stillMissing: [Int] = []
+                    for (position, index) in missing.enumerated() {
+                        if retryMatched.contains(position) {
                             lines[index] = retryLines[position]
+                        } else {
+                            stillMissing.append(index)
                         }
                     }
+                    // İlerleme yoksa (aynı satırlar yine atlandıysa) yeniden
+                    // denemek zaman kaybı — döngüden çık.
+                    if stillMissing.count == missing.count { break }
+                    missing = stillMissing
                 }
                 return lines
             } catch {
@@ -595,6 +608,12 @@ enum ZaiTranslator {
     /// ise Z.ai'de yok (kod 1211). Var olmayan modelleri yedek listesine koymak,
     /// asıl model tökezlediğinde hatayı anlaşılmaz hâle getiriyordu.
     static let models = ["glm-4.5-flash"]
+
+    /// GLM-4.5-flash uzun partilerde (40 satır) satır atlama oranı belirgin
+    /// artıyor; daha kısa partiler ("eksik çeviri" şikayetinin kaynağı) bu
+    /// oranı düşürüyor. `LLMTranslator.maxLinesPerRequest`'ten (OpenRouter'ın
+    /// kullandığı) kasıtlı olarak daha küçük.
+    static let maxLinesPerRequest = 20
 
     static func translateBatch(_ texts: [String], apiKey: String) async throws -> [String] {
         try await LLMTranslator.translateBatch(texts, endpoint: LLMTranslator.Endpoint(
