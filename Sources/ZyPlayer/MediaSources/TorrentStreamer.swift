@@ -46,7 +46,11 @@ final class TorrentStreamer {
     @ObservationIgnored private var isPlayable = false
 
     /// A swarm that has produced nothing by now is not going to.
-    private static let firstByteTimeout = Duration.seconds(75)
+    ///
+    /// Wider than a bare "connect" timeout needs to be: the helper actively
+    /// evicts and reconnects peers that sit connected but silent (dead/poisoned
+    /// swarms happen), and that recovery takes a few cycles to pay off.
+    private static let firstByteTimeout = Duration.seconds(100)
 
     var isBusy: Bool {
         switch phase {
@@ -219,7 +223,14 @@ final class TorrentStreamer {
     @MainActor
     private func failIfStalled() {
         guard !handedOver, isBusy, downloaded == 0 else { return }
-        fail("Eş bulunamadı — bu sürümü paylaşan kimse yok gibi görünüyor. Başka bir kalite deneyin.")
+        // `peers > 0` here means connections exist but never sent a byte even
+        // after the helper's own eviction/reconnect cycles — a dead or
+        // poisoned swarm, not an absence of peers, so the message should not
+        // claim the swarm is empty when it visibly isn't.
+        let message = peers > 0
+            ? "\(peers) eşe bağlanıldı ama veri gelmiyor — bu sürümü paylaşanlar yanıt vermiyor. Başka bir kalite deneyin."
+            : "Eş bulunamadı — bu sürümü paylaşan kimse yok gibi görünüyor. Başka bir kalite deneyin."
+        fail(message)
     }
 
     /// Yardımcıyı bu nesneden koparır ve çalışan süreci geri verir; kapatma
