@@ -349,11 +349,12 @@ final class PlayerModel {
 
             let cacheKey = TranslatedSubtitleCache.key(source: content)
 
-            // Bu altyazı daha önce çevrildiyse ağa hiç çıkmıyoruz — hangi motorla
-            // çevrilmiş olursa olsun.
-            if let hit = TranslatedSubtitleCache.cached(key: cacheKey, preferring: engine) {
+            // Bu altyazı bu motorla daha önce çevrildiyse ağa hiç çıkmıyoruz.
+            // `exact: true`: kullanıcı burada bir motor seçti, başka bir
+            // motorun eski çevirisiyle sessizce değiştirilmemeli.
+            if let hit = TranslatedSubtitleCache.cached(key: cacheKey, preferring: engine, exact: true) {
                 translationMessage = "Kayıtlı çeviri yükleniyor..."
-                _ = await attachTranslatedSubtitle(at: hit.url)
+                _ = await attachTranslatedSubtitle(at: hit.url, engineLabel: engine.title)
                 translationMessage = "Kayıtlı çeviri yüklendi (\(hit.engineName))."
                 try? await Task.sleep(for: .seconds(2.0))
                 return
@@ -368,7 +369,7 @@ final class PlayerModel {
             try SubtitleTranslator.buildWebVTT(cues: translatedCues)
                 .write(to: workingURL, atomically: true, encoding: .utf8)
 
-            let trackID = await attachTranslatedSubtitle(at: workingURL)
+            let trackID = await attachTranslatedSubtitle(at: workingURL, engineLabel: engine.title)
 
             let allTexts = cues.map(\.text)
             let batches: [Range<Int>]
@@ -381,20 +382,47 @@ final class PlayerModel {
                                                  maxLines: GoogleTranslator.maxLinesPerRequest,
                                                  maxChars: GoogleTranslator.maxCharsPerRequest)
                 parallel = 2
-            case .zai, .openRouter:
+            case .zai:
+                // GLM-4.5-flash uzun partilerde satır atlıyor; kısa partiler
+                // eksik çeviri oranını düşürüyor. Ücretsiz katman ayrıca dörtte
+                // hız sınırına takıldığı için paralellik 2'de kalıyor.
+                batches = TranslationUtil.chunks(allTexts,
+                                                 maxLines: ZaiTranslator.maxLinesPerRequest,
+                                                 maxChars: 3000)
+                parallel = 2
+            case .openRouter:
                 // Yapay zeka partileri tek tek 10-90 saniye sürüyor; asıl
                 // hızlanma bunları aynı anda göndermekten geliyor.
                 batches = TranslationUtil.chunks(allTexts,
                                                  maxLines: LLMTranslator.maxLinesPerRequest,
                                                  maxChars: 6000)
-                // Z.ai'nin ücretsiz katmanı dörtte hız sınırına takılıyor.
-                parallel = engine == .zai ? 2 : 4
+                parallel = 4
             }
 
             var done = 0
             var failed = 0
+            var failedRanges: [Range<Int>] = []
             var lastError: Error?
             var changed = 0
+
+            // Alınan çeviriyi diziye işler ve altyazıyı ekrana hemen yansıtır —
+            // ana turda da, aşağıdaki yeniden deneme turlarında da kullanılıyor.
+            func apply(_ texts: [String], to range: Range<Int>) {
+                for (offset, index) in range.enumerated() where offset < texts.count {
+                    let text = texts[offset]
+                    if !text.isEmpty, text != translatedCues[index].text {
+                        translatedCues[index].text = text
+                        changed += 1
+                    }
+                }
+                // Çevrilen kısım hemen ekrana: dosya yerinde güncellenip
+                // mpv'ye yeniden okutuluyor, iz ve seçim değişmiyor.
+                if let trackID {
+                    try? SubtitleTranslator.buildWebVTT(cues: translatedCues)
+                        .write(to: workingURL, atomically: true, encoding: .utf8)
+                    core.reloadSubtitle(id: trackID)
+                }
+            }
 
             // Partiler paralel gidiyor ama sonuçlar geldikçe işleniyor: hangisi
             // önce dönerse altyazı o an güncelleniyor, sıra beklenmiyor.
@@ -428,22 +456,10 @@ final class PlayerModel {
                 while let (range, texts, error) = try await group.next() {
                     done += 1
                     if let texts {
-                        for (offset, index) in range.enumerated() where offset < texts.count {
-                            let text = texts[offset]
-                            if !text.isEmpty, text != translatedCues[index].text {
-                                translatedCues[index].text = text
-                                changed += 1
-                            }
-                        }
-                        // Çevrilen kısım hemen ekrana: dosya yerinde güncellenip
-                        // mpv'ye yeniden okutuluyor, iz ve seçim değişmiyor.
-                        if let trackID {
-                            try? SubtitleTranslator.buildWebVTT(cues: translatedCues)
-                                .write(to: workingURL, atomically: true, encoding: .utf8)
-                            core.reloadSubtitle(id: trackID)
-                        }
+                        apply(texts, to: range)
                     } else {
                         failed += 1
+                        failedRanges.append(range)
                         lastError = error
                     }
 
@@ -456,6 +472,39 @@ final class PlayerModel {
                         submit(batches[next]); next += 1
                     }
                 }
+            }
+
+            // Ana turda düşen bir parti sonsuza dek atlanmış sayılmıyor: hepsi
+            // bitince, sırayla (paralel göndermek IP'yi daha çok yorduğu için)
+            // birkaç şans daha veriliyor. Geçici bir hız sınırı ya da tek seferlik
+            // ağ hatası artık partiyi tamamen kaybettirmiyor.
+            var retryRounds = 0
+            while !failedRanges.isEmpty, retryRounds < 2 {
+                retryRounds += 1
+                var stillFailed: [Range<Int>] = []
+                for range in failedRanges {
+                    translationMessage = "Çevriliyor: %\(Int(Double(done) / Double(batches.count) * 100)) " +
+                        "(\(failedRanges.count) parça yeniden deneniyor…)"
+                    do {
+                        let texts = Array(allTexts[range])
+                        let out: [String]
+                        switch engine {
+                        case .zai:
+                            out = try await ZaiTranslator.translateBatch(texts, apiKey: zaiApiKey)
+                        case .openRouter:
+                            out = try await OpenRouterTranslator.translateBatch(
+                                texts, apiKey: openRouterApiKey, preferredModel: openRouterModel)
+                        case .google:
+                            out = try await GoogleTranslator.translateBatch(texts)
+                        }
+                        apply(out, to: range)
+                        failed -= 1
+                    } catch {
+                        lastError = error
+                        stillFailed.append(range)
+                    }
+                }
+                failedRanges = stillFailed
             }
 
             guard changed > 0 else {
@@ -526,7 +575,7 @@ final class PlayerModel {
             // gerektirmediği için kapat-aç akışında çalışan tek yol bu.
             if let (entry, url) = TranslatedSubtitleCache.entries(video: video).first {
                 let engine = TranslationEngine(rawValue: entry.engine)?.title ?? "kayıtlı"
-                _ = await self.attachTranslatedSubtitle(at: url)
+                _ = await self.attachTranslatedSubtitle(at: url, engineLabel: engine)
                 restoredSomething = true
                 if memory?.selectedLabel == nil {
                     self.translationMessage = "Kayıtlı çeviri yüklendi (\(engine))."
@@ -571,7 +620,7 @@ final class PlayerModel {
                                                               preferring: self.restoreEngineHint)
                 else { continue }
 
-                _ = await self.attachTranslatedSubtitle(at: hit.url)
+                _ = await self.attachTranslatedSubtitle(at: hit.url, engineLabel: hit.engineName)
                 self.translationMessage = "Kayıtlı çeviri yüklendi (\(hit.engineName))."
                 try? await Task.sleep(for: .seconds(2.5))
                 self.translationMessage = nil
@@ -677,11 +726,11 @@ final class PlayerModel {
     /// "son iz" çevrilmemiş özgün altyazı oluyordu: çeviri %100 bitiyor, ekranda
     /// hiçbir şey değişmiyordu. Artık yeni iz kimliği belirene kadar yoklanıyor.
     @MainActor
-    private func attachTranslatedSubtitle(at url: URL) async -> Int? {
+    private func attachTranslatedSubtitle(at url: URL, engineLabel: String) async -> Int? {
         let before = Set(subtitleTracks.map(\.id))
-        // Adı ve dili veriliyor: menüde "Parça 4" yerine "Türkçe · Çeviri"
-        // görünüyor, ve seçim hafızası bu adla eşleşebiliyor.
-        core.addSubtitleFile(url, title: "Çeviri", lang: "tur")
+        // Adı ve dili veriliyor: menüde "Parça 4" yerine "Türkçe · Çeviri - Z.ai"
+        // görünüyor, hangi motorun çevirdiği seçim ekranında da belli olsun diye.
+        core.addSubtitleFile(url, title: "Çeviri - \(engineLabel)", lang: "tur")
 
         for _ in 0..<40 {   // en çok ~6 saniye
             try? await Task.sleep(for: .milliseconds(150))

@@ -648,7 +648,8 @@ struct RootView: View {
                                            settings: settings, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .zyMovie:   ZyMovieView(library: library, store: zyMovieStore,
                                          settings: settings, player: player, streamer: streamer, torrents: torrents, selectedIndex: focusZone == .content ? focusedPosterIndex : -1, selectTick: gamepadSelectTick, onOpenRemoteTitle: { route = .remote($0) })
-            case .downloads: DownloadsView(library: library, torrents: torrents, settings: settings)
+            case .downloads: DownloadsView(library: library, torrents: torrents, streamer: streamer,
+                                            settings: settings, onPlay: streamPastedLink)
             case .settings:  SettingsView(library: library, smb: smb, drive: drive,
                                           torrents: torrents, settings: settings,
                                           resume: resumeStore, iptv: iptv)
@@ -726,6 +727,8 @@ struct RootView: View {
                     title: item.title,
                     isCurrent: item.id == current.id,
                     isWatched: library.state(for: item)?.isFinished ?? false,
+                    stillImage: ArtworkCache.image(named: item.posterFileName),
+                    stillURL: nil,
                     play: { play(item) }
                 )
             }
@@ -745,6 +748,8 @@ struct RootView: View {
                     isCurrent: episode.pageURL == key,
                     // Akış bölümlerinin izlenme durumu devam noktalarında duruyor.
                     isWatched: resumeStore.point(forKey: episode.pageURL)?.isFinished ?? false,
+                    stillImage: nil,
+                    stillURL: episode.thumbnailURL,
                     play: { streamStore.playEpisode(episode, from: details) }
                 )
             }
@@ -763,6 +768,10 @@ struct RootView: View {
                     title: extractEpisodeTitle(from: file.name) ?? "Bölüm \(epNumber)",
                     isCurrent: streamer.activeFileIndex == file.index,
                     isWatched: false,
+                    // TurkTorrent RSS'inde bölüm başına ekran fotoğrafı yok;
+                    // eşleşen TMDB kaydının afişi (varsa) yer tutucu olarak kullanılıyor.
+                    stillImage: nil,
+                    stillURL: hit.remoteTitle?.posterURL,
                     play: {
                         let title = hit.remoteTitle?.title ?? hit.rssTitle
                         let option = TorrentOption(
@@ -1024,6 +1033,19 @@ struct RootView: View {
         // The film's own name beats the release filename mpv would otherwise get.
         streamer.start(torrent, title: title) { url, _ in
             player.open(url, title: displayTitle, resumeAt: resumeAt, resumeKey: key)
+        }
+    }
+
+    /// Downloads ekranına yapıştırılan bir magnet/torrent adresini, hiçbir yapıma
+    /// bağlı olmadan doğrudan oynatır. Başlık boş bırakılır: `TorrentStreamer`
+    /// metadata gelince gerçek sürüm adını kendisi doldurur.
+    private func streamPastedLink(_ link: String) {
+        let torrent = TorrentOption(
+            id: link, quality: "", detail: "", seeds: 0, peers: 0,
+            provider: nil, link: link, fileIndex: nil
+        )
+        streamer.start(torrent, title: "") { url, name in
+            player.open(url, title: name.isEmpty ? nil : name)
         }
     }
 

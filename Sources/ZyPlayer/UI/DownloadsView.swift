@@ -5,7 +5,10 @@ import UniformTypeIdentifiers
 struct DownloadsView: View {
     let library: LibraryStore
     let torrents: TorrentStore
+    let streamer: TorrentStreamer
     @Bindable var settings: AppSettings
+    /// Bir magnet/torrent adresini diske hiç yazmadan oynatıcıya açar.
+    let onPlay: (String) -> Void
 
     @State private var linkInput = ""
 
@@ -46,7 +49,28 @@ struct DownloadsView: View {
                 Button("Ekle") { addLink() }
                     .disabled(linkInput.trimmingCharacters(in: .whitespaces).isEmpty)
 
+                Button("Oynat") { playLink() }
+                    .disabled(linkInput.trimmingCharacters(in: .whitespaces).isEmpty || streamer.isBusy)
+
                 Button(".torrent Aç…") { chooseTorrentFile() }
+            }
+
+            if streamer.isBusy {
+                HStack(spacing: 8) {
+                    ProgressView(value: streamer.phase == .connecting ? nil : streamer.bufferProgress)
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
+                    Text(streamer.statusLine.isEmpty ? "Bağlanılıyor…" : streamer.statusLine)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Durdur") { streamer.stop() }
+                        .buttonStyle(.link)
+                        .font(.caption)
+                }
+            } else if case .failed(let message) = streamer.phase {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
             }
 
             HStack(spacing: 6) {
@@ -116,6 +140,12 @@ struct DownloadsView: View {
         let value = linkInput
         linkInput = ""
         Task { await torrents.add(value, library: library) }
+    }
+
+    private func playLink() {
+        let value = linkInput
+        linkInput = ""
+        onPlay(value)
     }
 
     private func chooseTorrentFile() {

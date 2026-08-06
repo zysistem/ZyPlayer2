@@ -121,9 +121,11 @@ struct TorrentioClient {
         "limit=20"
     ].joined(separator: "|")
 
-    /// Only these are offered. A 720p or an unlabelled release is not worth a
-    /// swarm's wait, and cam/telesync/screener rips are worth less than that.
-    private static let acceptedQualityRanks: Set<Int> = [0, 1]
+    /// Only these are offered. An unlabelled release is not worth a swarm's
+    /// wait, and cam/telesync/screener rips are worth less than that — but 720p
+    /// stays in: a new release's best-seeded copy is sometimes only there, and
+    /// hiding it just because a weaker-seeded 1080p exists cost more than it saved.
+    private static let acceptedQualityRanks: Set<Int> = [0, 1, 2]
 
     /// `|` karakteri bir URL yolunda geçersizdir — kodlanmazsa `URL(string:)`
     /// nil döner ve istek hiç kurulmaz.

@@ -41,15 +41,20 @@ enum TranslatedSubtitleCache {
         var engineName: String { engine?.title ?? "kayıtlı çeviri" }
     }
 
-    /// Bu içeriğin daha önce çevrilmiş hâlini arar: önce seçili motorunkini,
-    /// yoksa hangi motorla çevrilmişse onu. Yarım kalan çeviriler hiç
-    /// yazılmadığı için burada yalnızca eksiksiz dosyalar bulunur.
-    static func cached(key: String, preferring engine: TranslationEngine) -> Hit? {
-        let exact = url(for: key, engine: engine)
-        if FileManager.default.fileExists(atPath: exact.path) {
-            touch(exact)
-            return Hit(url: exact, engine: engine)
+    /// Bu içeriğin daha önce çevrilmiş hâlini arar.
+    ///
+    /// `exact: true` yalnızca istenen motorun kendi dosyasına bakar — kullanıcı
+    /// menüden bir motor seçtiğinde başka bir motorun eski çevirisiyle sessizce
+    /// değiştirilmemesi için. `exact: false` (dosya kapat-aç sırasındaki sessiz
+    /// geri yükleme) hangi motorla çevrilmişse onu kabul eder; kaynak altyazı
+    /// zaten elde yoksa herhangi bir çeviri hiç olmamasından iyidir.
+    static func cached(key: String, preferring engine: TranslationEngine, exact: Bool = false) -> Hit? {
+        let exactURL = url(for: key, engine: engine)
+        if FileManager.default.fileExists(atPath: exactURL.path) {
+            touch(exactURL)
+            return Hit(url: exactURL, engine: engine)
         }
+        guard !exact else { return nil }
 
         let files = (try? FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: [.contentModificationDateKey],
