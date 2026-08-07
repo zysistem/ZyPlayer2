@@ -29,7 +29,12 @@ struct TMDBClient {
 
     // MARK: - Requests
 
-    private func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
+    /// `fresh: true` isteği önbelleği tümüyle atlar. Netflix/Prime "son eklenen"
+    /// rafları gibi sık değişen listelerde şart: TMDB yanıtları `Cache-Control`
+    /// başlığı taşıdığından, varsayılan önbellek politikasıyla ana ekran her
+    /// açıldığında istek yeniden gitse bile aynı bayat liste dönüyordu.
+    private func get<T: Decodable>(_ path: String, query: [String: String] = [:],
+                                   fresh: Bool = false) async throws -> T {
         guard !token.isEmpty else { throw ClientError.missingToken }
 
         var components = URLComponents(
@@ -44,6 +49,7 @@ struct TMDBClient {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "accept")
         request.timeoutInterval = 20
+        if fresh { request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData }
 
         let (data, response) = try await URLSession.shared.data(for: request)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
@@ -189,10 +195,13 @@ struct TMDBClient {
                     "with_watch_monetization_types": "flatrate",
                     "sort_by": "primary_release_date.desc",
                     "primary_release_date.lte": formatter.string(from: Date()),
-                    // Henüz kimsenin oy vermediği kayıtlar listeyi kirletiyor.
-                    "vote_count.gte": "5",
+                    // Oy eşiği koymuyoruz: yeni çıkan/yeni eklenen filmlerin henüz
+                    // oyu olmuyor ve tam da göstermek istediğimiz "son eklenenler"
+                    // eleniyordu. Çöpü afiş zorunluluğu (store'daki posterPath
+                    // süzgeci) zaten temizliyor.
                     "include_adult": "false",
-                    "page": String(page)]
+                    "page": String(page)],
+            fresh: true
         )
         return response.results
     }
@@ -209,9 +218,10 @@ struct TMDBClient {
                     "with_watch_monetization_types": "flatrate",
                     "sort_by": "first_air_date.desc",
                     "first_air_date.lte": formatter.string(from: Date()),
-                    "vote_count.gte": "5",
+                    // Oy eşiği yok — yeni eklenen diziler oysuz gelip eleniyordu.
                     "include_adult": "false",
-                    "page": String(page)]
+                    "page": String(page)],
+            fresh: true
         )
         return response.results
     }
