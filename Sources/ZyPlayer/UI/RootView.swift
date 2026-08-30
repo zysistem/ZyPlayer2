@@ -119,6 +119,7 @@ struct RootView: View {
                         selection: $selection,
                         isSidebarActive: focusZone == .sidebar,
                         scheme: settings.colorScheme,
+                        providers: providers,
                         onSelect: selectFromSidebar
                     )
                     .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 320)
@@ -688,12 +689,6 @@ struct RootView: View {
                                  onOpenStream: { route = .stream($0) }
                              )
             case .library:   LibraryTabsView(library: library, actions: actions)
-            case .streamMovies: StreamCategoryBrowser(kind: .movie, store: streamStore, library: library,
-                                                      resume: resumeStore, settings: settings,
-                                                      onOpen: { route = .stream($0) })
-            case .streamSeries: StreamCategoryBrowser(kind: .series, store: streamStore, library: library,
-                                                      resume: resumeStore, settings: settings,
-                                                      onOpen: { route = .stream($0) })
             case .movies:    MoviesView(library: library, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .shows:     ShowsView(library: library, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .favorites: FavoritesView(library: library, actions: actions, stream: streamStore,
@@ -703,6 +698,11 @@ struct RootView: View {
                                            resume: resumeStore,
                                            settings: settings)
             case .appleTV:   AppleTVView(library: library, appleTV: appleTV, settings: settings, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
+            case .netflix, .primeVideo, .disneyPlus, .hboMax:
+                if let brand = selection.streamingBrand {
+                    StreamingBrandDetailView(brand: brand, providers: providers, library: library,
+                                              settings: settings, actions: actions)
+                }
             case .bollywood: BollywoodView(library: library, store: bollywood,
                                            settings: settings, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .zyMovie:   ZyMovieView(library: library, store: zyMovieStore,
@@ -1462,20 +1462,22 @@ struct SearchResultsView: View {
 }
 
 enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
-    case home, streamMovies, streamSeries, library, movies, shows, favorites, appleTV, bollywood, zyMovie, iptv, stream, downloads, settings, music, games
+    case home, library, movies, shows, favorites, appleTV, netflix, primeVideo, disneyPlus, hboMax, bollywood, zyMovie, iptv, stream, downloads, settings, music, games
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .home: "Ana Ekran"
-        case .streamMovies: "Filmler"
-        case .streamSeries: "Diziler"
         case .library: "Kütüphane"
         case .movies: "Filmler"
         case .shows: "Diziler"
         case .favorites: "Favoriler"
         case .appleTV: "Apple TV"
+        case .netflix: "Netflix"
+        case .primeVideo: "Amazon Prime"
+        case .disneyPlus: "Disney+"
+        case .hboMax: "HBO Max"
         case .bollywood: "Bollywood"
         case .zyMovie: "ZyMovie"
         case .iptv: "IP Tv"
@@ -1490,13 +1492,12 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .home: "house"
-        case .streamMovies: "film"
-        case .streamSeries: "tv"
         case .library: "books.vertical"
         case .movies: "film"
         case .shows: "tv"
         case .favorites: "star"
         case .appleTV: "appletv"
+        case .netflix, .primeVideo, .disneyPlus, .hboMax: "sparkles.tv"
         case .bollywood: "movieclapper"
         case .zyMovie: "film.stack"
         case .iptv: "antenna.radiowaves.left.and.right"
@@ -1507,12 +1508,28 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
         case .games: "gamecontroller"
         }
     }
+
+    /// Bu satırın simgesi bir SF Symbol yerine gerçek platform logosuyla
+    /// çizilsin diye — Apple TV ve taşınan Netflix/Amazon/Disney/HBO satırları.
+    var streamingBrand: StreamingBrand? {
+        switch self {
+        case .appleTV: .appleTVPlus
+        case .netflix: .netflix
+        case .primeVideo: .primeVideo
+        case .disneyPlus: .disneyPlus
+        case .hboMax: .hboMax
+        default: nil
+        }
+    }
 }
 
 struct Sidebar: View {
     @Binding var selection: SidebarItem
     var isSidebarActive: Bool = true
     var scheme: ColorScheme = .dark
+    /// Apple TV ve altına taşınan Netflix/Amazon/Disney/HBO satırlarının logoları
+    /// buradan geliyor — aynı TMDB kataloğunu ana ekranın önerileri de kullanıyor.
+    var providers: StreamingProviderStore
     var onSelect: (SidebarItem) -> Void = { _ in }
 
     var body: some View {
@@ -1522,7 +1539,7 @@ struct Sidebar: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     sectionLabel("Keşfet")
-                    ForEach([SidebarItem.home, .streamMovies, .streamSeries, .library, .appleTV, .bollywood, .zyMovie, .iptv, .favorites]) { item in
+                    ForEach([SidebarItem.home, .library, .appleTV, .netflix, .primeVideo, .disneyPlus, .hboMax, .bollywood, .zyMovie, .iptv, .favorites]) { item in
                         row(item)
                     }
                 }
@@ -1574,6 +1591,7 @@ struct Sidebar: View {
             item: item,
             isSelected: selection == item,
             isSidebarActive: isSidebarActive,
+            logoURL: item.streamingBrand.flatMap { providers.logoURL(for: $0) },
             onSelect: { onSelect(item) }
         )
     }
@@ -1583,6 +1601,8 @@ private struct SidebarRowView: View {
     let item: SidebarItem
     let isSelected: Bool
     let isSidebarActive: Bool
+    /// Marka logosu — dolduğunda satırın ikonu SF Symbol yerine bunu çizer.
+    var logoURL: URL?
     let onSelect: () -> Void
     @FocusState private var isFocused: Bool
     @State private var isHovering = false
@@ -1621,9 +1641,13 @@ private struct SidebarRowView: View {
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
                         .fill(isSelected ? Color.accentColor.opacity(0.18) : Color.clear)
                         .frame(width: 26, height: 26)
-                    Image(systemName: isFavorites ? "star.fill" : item.symbol)
-                        .font(.system(size: isFavorites ? 13 : 12.5, weight: isFavorites ? .bold : .medium))
-                        .foregroundStyle(iconTint)
+                    if let brand = item.streamingBrand {
+                        StreamingBrandBadge(brand: brand, logoURL: logoURL, size: 20)
+                    } else {
+                        Image(systemName: isFavorites ? "star.fill" : item.symbol)
+                            .font(.system(size: isFavorites ? 13 : 12.5, weight: isFavorites ? .bold : .medium))
+                            .foregroundStyle(iconTint)
+                    }
                 }
 
                 Text(item.title)

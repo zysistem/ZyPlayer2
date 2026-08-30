@@ -10,6 +10,7 @@
 		0236F5D14735ABBC25A28455 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FD3E2DFFE68414148F4E381 /* AppSettings.swift */; };
 		024188B239A6DFD59873B548 /* SMBShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = F175BB903E3C4EDBC5576688 /* SMBShare.swift */; };
 		027AE1BEEF27C8389A428C93 /* TMDBClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE1237F2BBDCFC05972C4A2 /* TMDBClient.swift */; };
+		03BA9517D9FB22FE74782358 /* StreamingBrandDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B41B71C85E927BBB5FEE5C4 /* StreamingBrandDetailView.swift */; };
 		07537C88D2811F88144E298E /* StreamRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6C528C68403C8D149107FB1 /* StreamRegistry.swift */; };
 		089D985856AB0B1EEFCE005A /* StreamingProviderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BACE7B4A5552A4E51CECFF74 /* StreamingProviderStore.swift */; };
 		1386F79D3DA1E5C5971D508B /* LibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2457DD1AAF13A09AB5F2F6A6 /* LibraryStore.swift */; };
@@ -164,6 +165,7 @@
 		58A4DDE12BA9BADD848EEC5F /* TorrentSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentSearch.swift; sourceTree = "<group>"; };
 		59ACD9120F1FF949FAF4881B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		5B2D4342C52D4F054E4D021E /* ZyMovieDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZyMovieDetailView.swift; sourceTree = "<group>"; };
+		5B41B71C85E927BBB5FEE5C4 /* StreamingBrandDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingBrandDetailView.swift; sourceTree = "<group>"; };
 		60C5C0A206F7AAA72301DE54 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		61D74AB70B669E1000817395 /* StreamDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamDetailView.swift; sourceTree = "<group>"; };
 		64B3E85C58E5FF9F2399A89E /* WatchFlagsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFlagsStore.swift; sourceTree = "<group>"; };
@@ -414,6 +416,7 @@
 				D436A8D35EC84AF6652070BC /* SettingsView.swift */,
 				CF2A53E12F4731EC197C9684 /* SMBSettingsView.swift */,
 				61D74AB70B669E1000817395 /* StreamDetailView.swift */,
+				5B41B71C85E927BBB5FEE5C4 /* StreamingBrandDetailView.swift */,
 				AD647D3BD6F03D2F61CC8170 /* StreamingShelves.swift */,
 				C7F0937596E06D629C2FFE31 /* SubtitlePreview.swift */,
 				F94EF9C8FC833C6010F39028 /* SubtitleSearchPanel.swift */,
@@ -633,6 +636,7 @@
 				880629B197DDAE4BD2E48CEA /* StreamProvider.swift in Sources */,
 				07537C88D2811F88144E298E /* StreamRegistry.swift in Sources */,
 				D652FCE77B656D7F617A7DC5 /* StreamResolver.swift in Sources */,
+				03BA9517D9FB22FE74782358 /* StreamingBrandDetailView.swift in Sources */,
 				089D985856AB0B1EEFCE005A /* StreamingProviderStore.swift in Sources */,
 				2E7539F21B993ED78B7192EC /* StreamingShelves.swift in Sources */,
 				4B9ACFCA056CF19D1DAADE83 /* StremioSubtitleClient.swift in Sources */,
@@ -739,7 +743,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.7.17;
+				MARKETING_VERSION = 1.7.21;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -825,7 +829,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.7.17;
+				MARKETING_VERSION = 1.7.21;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

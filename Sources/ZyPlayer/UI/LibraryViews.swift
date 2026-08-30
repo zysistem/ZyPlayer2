@@ -151,16 +151,6 @@ struct HomeView: View {
                     }
                 }
 
-                // 5. En altta Netflix ve Amazon Prime — son eklenen diziler ve filmler
-                ForEach(providers.shelves) { shelf in
-                    StreamingBrandShelves(
-                        shelf: shelf,
-                        logoURL: providers.logoURL(for: shelf.brand),
-                        library: library,
-                        actions: actions,
-                        columns: columnCount
-                    )
-                }
             }
             .padding(.vertical, 22)
         }

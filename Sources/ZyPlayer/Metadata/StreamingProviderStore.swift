@@ -89,6 +89,59 @@ final class StreamingProviderStore {
     /// TMDB platform kimliği → logo yolu.
     private(set) var logoPaths: [Int: String] = [:]
 
+    /// Sidebar'daki tek platform sayfası (Netflix, Amazon, Disney+, HBO Max,
+    /// Apple TV+): "son eklenen 50" film + 50 dizi. Ana ekranın 10'ar öğelik
+    /// `shelves`'inden ayrı tutuluyor — yalnızca kullanıcı o markanın kendi
+    /// sayfasını açınca, ihtiyaç anında yükleniyor.
+    struct BrandDetail {
+        var movies: [RemoteTitle] = []
+        var shows: [RemoteTitle] = []
+        var isLoading = false
+        var isLoaded = false
+    }
+    private(set) var brandDetails: [StreamingBrand: BrandDetail] = [:]
+    /// Bir sayfada 20 sonuç geldiğinden, posterli 50 bırakmak için 3 sayfa çekilir.
+    private static let detailPages = 3
+    private static let detailCount = 50
+
+    func detail(for brand: StreamingBrand) -> BrandDetail {
+        brandDetails[brand] ?? BrandDetail()
+    }
+
+    @MainActor
+    func refreshDetail(for brand: StreamingBrand, settings: AppSettings) async {
+        guard settings.hasTMDBToken else { return }
+        guard brandDetails[brand]?.isLoaded != true, brandDetails[brand]?.isLoading != true else { return }
+        brandDetails[brand, default: BrandDetail()].isLoading = true
+
+        let client = TMDBClient(token: settings.tmdbToken, language: settings.metadataLanguage)
+        let region = Self.region(for: settings.metadataLanguage)
+
+        if logoPaths[brand.logoProviderID] == nil, logoPaths[brand.logoFallbackID] == nil,
+           let logos = try? await client.watchProviderLogos(region: region) {
+            logoPaths = logos
+        }
+
+        var movies: [RemoteTitle] = []
+        var shows: [RemoteTitle] = []
+        for page in 1...Self.detailPages {
+            if let results = try? await client.providerMovies(
+                providerIDs: brand.providerQuery, region: region, page: page) {
+                movies += results.filter { $0.posterPath != nil }.map(RemoteTitle.init(movie:))
+            }
+            if let results = try? await client.providerShows(
+                providerIDs: brand.providerQuery, region: region, page: page) {
+                shows += results.filter { $0.posterPath != nil }.map(RemoteTitle.init(show:))
+            }
+        }
+        brandDetails[brand] = BrandDetail(
+            movies: Array(Self.deduplicated(movies).prefix(Self.detailCount)),
+            shows: Array(Self.deduplicated(shows).prefix(Self.detailCount)),
+            isLoading: false,
+            isLoaded: true
+        )
+    }
+
     /// Raf başına gösterilen başlık sayısı.
     static let count = 10
     /// Afişsiz kayıtlar elendikten sonra ondan azı kalabiliyor; ikinci sayfa

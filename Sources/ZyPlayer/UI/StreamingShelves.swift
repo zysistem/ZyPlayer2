@@ -1,18 +1,6 @@
 import SwiftUI
 
 extension StreamingBrand {
-    /// Raf başlığında kullanılan kısa ad — "Amazon Prime Video" başlığı uzatıyor.
-    var shortName: String {
-        switch self {
-        case .netflix: "Netflix"
-        case .primeVideo: "Amazon Prime"
-        case .disneyPlus: "Disney+"
-        case .hboMax: "HBO Max"
-        case .paramountPlus: "Paramount+"
-        case .appleTVPlus: "Apple TV+"
-        }
-    }
-
     /// Logo gelmeden önce çizilen yedek rozetin rengi ve harfi.
     var accentColor: Color {
         switch self {
@@ -78,58 +66,6 @@ struct StreamingBrandBadge: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
                 .padding(.horizontal, 2)
-        }
-    }
-}
-
-/// Bir platformun ana ekrandaki iki rafı: son eklenen diziler, sonra filmler.
-struct StreamingBrandShelves: View {
-    let shelf: StreamingProviderStore.Shelf
-    let logoURL: URL?
-    let library: LibraryStore
-    let actions: LibraryActions
-    /// Ana ekranın raf genişliği ayarları — tam ekranda daha çok kart sığıyor.
-    var columns: Int = 10
-    var limit: Int = StreamingProviderStore.count
-
-    var body: some View {
-        if !shelf.isEmpty {
-            VStack(alignment: .leading, spacing: 26) {
-                if !shelf.shows.isEmpty {
-                    row(title: "\(shelf.brand.shortName) · Son Eklenen Diziler", titles: shelf.shows)
-                }
-                if !shelf.movies.isEmpty {
-                    row(title: "\(shelf.brand.shortName) · Son Eklenen Filmler", titles: shelf.movies)
-                }
-            }
-        }
-    }
-
-    private func row(title: String, titles: [RemoteTitle]) -> some View {
-        SectionBlock(
-            title: title,
-            total: titles.count,
-            onShowAll: nil,
-            columns: columns,
-            limit: limit,
-            logo: StreamingBrandBadge(brand: shelf.brand, logoURL: logoURL)
-        ) {
-            ForEach(titles) { title in
-                RemoteCard(
-                    title: title,
-                    isOwned: isOwned(title),
-                    library: library,
-                    onSelect: { actions.selectRemote(title) }
-                )
-            }
-        }
-    }
-
-    /// Kütüphanede zaten varsa kart rozetle işaretleniyor.
-    private func isOwned(_ title: RemoteTitle) -> Bool {
-        switch title.kind {
-        case .movie: library.ownedMovieTMDBIDs.contains(title.tmdbID)
-        case .tv:    library.ownedShowTMDBIDs.contains(title.tmdbID)
         }
     }
 }
