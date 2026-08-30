@@ -36,7 +36,12 @@ struct RemoteDetailView: View {
 
     @State private var loader = RemoteDetailLoader()
     @State private var credits = CreditsLoader()
+    @State private var logo = LogoLoader()
     @State private var streams = StreamLookupLoader()
+    /// Filmde torrent araması artık sayfa açılır açılmaz kendiliğinden
+    /// başlamıyor — "Torrent'te Ara" düğmesine basılana kadar `TorrentPickerView`
+    /// hiç kurulmuyor (kurulduğu an kendi `.task`'ı ile arıyor).
+    @State private var wantsTorrentSearch = false
     @State private var selectedSeason: Int?
     /// Which episode has its torrent list open. One at a time keeps the page
     /// from turning into a wall of lists.
@@ -74,20 +79,26 @@ struct RemoteDetailView: View {
                 if !isOwned {
                     switch title.kind {
                     case .movie:
-                        TorrentPickerView(
-                            request: .movie(imdbID: loader.imdbID, title: title.title, year: title.year),
-                            isReady: loader.loadedID == title.id,
-                            settings: settings,
-                            streamer: streamer,
-                            onPlay: { onStreamTorrent($0, loader.displayTitle ?? title.title, title.posterPath) },
-                            onDownload: { onDownloadTorrent($0, loader.displayTitle ?? title.title) },
-                            // Filmde ara kademe yok: imleç doğrudan kalitelerde.
-                            gamepadIndex: gamepadIndex,
-                            gamepadSelectTick: gamepadSelectTick
-                        )
-                        .padding(.horizontal, 24)
-                        .padding(.top, 22)
-                        .padding(.bottom, 26)
+                        // Kullanıcı "Torrent'te Ara" düğmesine basmadan bu görünüm
+                        // hiç kurulmuyor — kurulduğu an kendi `.task`'ı torrent
+                        // indeksine istek atıyor, o yüzden sayfa her açıldığında
+                        // kendiliğinden aramasın diye böyle gate'leniyor.
+                        if wantsTorrentSearch {
+                            TorrentPickerView(
+                                request: .movie(imdbID: loader.imdbID, title: title.title, year: title.year),
+                                isReady: loader.loadedID == title.id,
+                                settings: settings,
+                                streamer: streamer,
+                                onPlay: { onStreamTorrent($0, loader.displayTitle ?? title.title, title.posterPath) },
+                                onDownload: { onDownloadTorrent($0, loader.displayTitle ?? title.title) },
+                                // Filmde ara kademe yok: imleç doğrudan kalitelerde.
+                                gamepadIndex: gamepadIndex,
+                                gamepadSelectTick: gamepadSelectTick
+                            )
+                            .padding(.horizontal, 24)
+                            .padding(.top, 22)
+                            .padding(.bottom, 26)
+                        }
                     case .tv:
                         seasons
                     }
@@ -97,8 +108,12 @@ struct RemoteDetailView: View {
         .task(id: title.id) {
             // Önceki yapımın akış sonuçları bu ekranda kalmasın.
             streams.reset(forTitleID: title.id)
+            // Bir önceki filmde "Torrent'te Ara" basılmışsa bu, yeni açılan
+            // filmde kendiliğinden arama yapılmasına yol açmasın.
+            wantsTorrentSearch = false
             await loader.load(title, settings: settings)
             await credits.load(kind: title.kind, tmdbID: title.tmdbID, settings: settings)
+            await logo.load(kind: title.kind, tmdbID: title.tmdbID, settings: settings)
         }
     }
 
@@ -267,6 +282,8 @@ struct RemoteDetailView: View {
                 backdropURL: title.backdropURL,
                 posterURL: title.posterURL,
                 title: loader.displayTitle ?? title.title,
+                logoURL: logo.logoURL,
+                logoChecked: logo.hasChecked,
                 tagline: metaLine,
                 overview: title.overview,
                 genres: loader.genres,
@@ -281,7 +298,9 @@ struct RemoteDetailView: View {
                 onTrailer: onTrailer,
                 isTrailerLoading: isTrailerLoading,
                 onSearchStreams: settings.hasEnabledStreamSources ? searchStreams : nil,
-                isSearchingStreams: streams.state == .searching
+                isSearchingStreams: streams.state == .searching,
+                onSearchTorrents: (title.kind == .movie && !isOwned && !wantsTorrentSearch)
+                    ? { wantsTorrentSearch = true } : nil
             )
             .overlay(alignment: .topTrailing) {
                 if isOwned {
@@ -521,6 +540,8 @@ struct RemoteCard: View {
             PosterCard(
                 title: title.title,
                 subtitle: subtitle,
+                isFinished: WatchFlagsStore.shared.isFinished(title.id),
+                watchlisted: WatchFlagsStore.shared.isWantToWatch(title.id),
                 posterURL: title.posterURL,
                 badge: isOwned ? .inLibrary : nil,
                 imdbRating: imdbRating,
@@ -532,6 +553,15 @@ struct RemoteCard: View {
         .focused($isFocused)
         .contextMenu {
             Button("Aç") { onSelect() }
+            Divider()
+            let watched = WatchFlagsStore.shared.isFinished(title.id)
+            Button(watched ? "İzlemedim olarak işaretle" : "İzledim") {
+                WatchFlagsStore.shared.setFinished(title.id, !watched, snapshot: .remote(title))
+            }
+            let listed = WatchFlagsStore.shared.isWantToWatch(title.id)
+            Button(listed ? "İzleyeceklerimden çıkar" : "İzleyeceğim") {
+                WatchFlagsStore.shared.setWantToWatch(title.id, !listed, snapshot: .remote(title))
+            }
             if let library {
                 Divider()
                 let isFav = library.remoteFavorites.contains { $0.id == title.id }

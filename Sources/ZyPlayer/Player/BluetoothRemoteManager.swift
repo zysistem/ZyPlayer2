@@ -17,6 +17,13 @@ final class BluetoothRemoteManager: @unchecked Sendable {
     var onClosePlayer: (() -> Void)?
     var onGlobalBack: (() -> Void)?
     var onGlobalSearch: (() -> Void)?
+    /// 'S': döviz HUD'unu aç/kapat. Eskiden Shift+D'ydi (düz 'd' kumandanın
+    /// "geri dön" kısayolu — ac_back — olduğu için çakışmasın diye Shift
+    /// zorunluydu); kullanıcı isteğiyle düz 'S' tuşuna taşındı. 's' başka bir
+    /// oynatıcı kısayoluyla çakışmıyor (`PlayerKeyMonitor`'daki 's' altyazı
+    /// aç/kapat bağlaması hiç kullanılmıyor — o sınıf `start()` çağrılmadığı
+    /// için etkisiz).
+    var onToggleCurrencyHUD: (() -> Void)?
 
     private init() {}
 
@@ -101,6 +108,15 @@ final class BluetoothRemoteManager: @unchecked Sendable {
 
                 if isPlayerOpen {
                     // ── PLAYER (OYNATICI) MODU ──
+
+                    // 'S': döviz HUD'u. Aşağıdaki switch'e düşmeden önce
+                    // yakalanıyor; switch'te 's' (keyCode 1) başka bir işe
+                    // atanmadığı için çakışma yok.
+                    if event.keyCode == 1 {
+                        self.onToggleCurrencyHUD?()
+                        return nil
+                    }
+
                     switch event.keyCode {
                     case 36, 76, 49, 65: // Return, Keypad Enter, Space, Numpad Enter (OK / Oynat-Duraklat)
                         self.togglePauseWithDebounce()

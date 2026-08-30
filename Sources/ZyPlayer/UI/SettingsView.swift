@@ -4,7 +4,7 @@ import AppKit
 /// The settings panes, in the order they are listed.
 enum SettingsSection: String, CaseIterable, Identifiable {
     case appearance, library, drive, subtitles, openSubtitles, stream, iptv, youtube,
-         downloads, metadata, about
+         apiKeys, downloads, metadata, about
 
     var id: String { rawValue }
 
@@ -18,6 +18,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .stream: "Akış Kaynakları"
         case .iptv: "IP Tv"
         case .youtube: "YouTube"
+        case .apiKeys: "API Anahtarı"
         case .downloads: "İndirmeler"
         case .metadata: "Bilgi Kaynağı"
         case .about: "ZyPlayer Hakkında"
@@ -34,6 +35,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .stream: "play.tv"
         case .iptv: "antenna.radiowaves.left.and.right"
         case .youtube: "play.rectangle"
+        case .apiKeys: "key"
         case .downloads: "arrow.down.circle"
         case .metadata: "sparkles"
         case .about: "info.circle"
@@ -248,6 +250,10 @@ struct SettingsView: View {
             return total == 0 ? "Bağlı · katalog yok" : "\(total) içerik"
         case .youtube:
             return settings.youtubeSearchEnabled ? "Aramada açık" : "Kapalı"
+        case .apiKeys:
+            let count = [settings.hasZaiKey, settings.hasNvidiaKey, settings.hasOpenRouterKey]
+                .filter { $0 }.count
+            return count == 0 ? "Anahtar yok" : "\(count)/3 anahtar girildi"
         case .downloads:
             return torrents.isEngineAvailable
                 ? (settings.downloadDirectory as NSString).lastPathComponent
@@ -271,6 +277,7 @@ struct SettingsView: View {
         case .stream:         streamContent
         case .iptv:           iptvContent
         case .youtube:        youtubeContent
+        case .apiKeys:        apiKeysContent
         case .downloads:      downloadsContent
         case .metadata:       metadataContent
         case .about:          AboutView().frame(maxWidth: .infinity)
@@ -464,35 +471,6 @@ struct SettingsView: View {
                     .frame(maxWidth: 240)
                 }
 
-                if settings.translationEngine == .zai {
-                    GridRow {
-                        Text("Z.ai API Key")
-                        SecureField("Z.ai API Key", text: $settings.zaiApiKey)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 240)
-                    }
-                } else if settings.translationEngine == .openRouter {
-                    GridRow {
-                        Text("OpenRouter API Key")
-                        SecureField("OpenRouter API Key", text: $settings.openRouterApiKey)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 240)
-                    }
-                    GridRow {
-                        Text("Model")
-                        Picker("", selection: $settings.openRouterModel) {
-                            Text("Otomatik (en iyisinden başla)")
-                                .tag(OpenRouterTranslator.automaticModel)
-                            Divider()
-                            ForEach(OpenRouterTranslator.freeModels, id: \.id) { model in
-                                Text(model.title).tag(model.id)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(maxWidth: 240)
-                    }
-                }
-
                 GridRow {
                     Color.clear.frame(width: 0, height: 0)
                     Text(settings.translationEngine.explanation)
@@ -500,6 +478,25 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: 320, alignment: .leading)
+                }
+
+                if settings.translationEngine != .google {
+                    let hasKey = switch settings.translationEngine {
+                    case .zai: settings.hasZaiKey
+                    case .nvidia: settings.hasNvidiaKey
+                    case .openRouter: settings.hasOpenRouterKey
+                    case .google: true
+                    }
+                    GridRow {
+                        Color.clear.frame(width: 0, height: 0)
+                        Label(
+                            hasKey ? "Anahtar girildi (Ayarlar > API Anahtarı)"
+                                   : "Anahtar eksik — Ayarlar > API Anahtarı'ndan girin",
+                            systemImage: hasKey ? "checkmark.circle" : "exclamationmark.triangle"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(hasKey ? Color.secondary : Color.orange)
+                    }
                 }
 
                 GridRow {
@@ -565,18 +562,37 @@ struct SettingsView: View {
                     }
                 }
                 GridRow {
-                    Text("Stil")
-                    HStack(spacing: 14) {
-                        Toggle("Kalın", isOn: $settings.subtitleStyle.isBold)
-                        Toggle("İtalik", isOn: $settings.subtitleStyle.isItalic)
+                    Text("Ağırlık")
+                    Picker("", selection: $settings.subtitleStyle.fontWeight) {
+                        ForEach(SubtitleStyle.availableWeights, id: \.self) { weight in
+                            Text("\(weight)").tag(weight)
+                        }
                     }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 380)
+                }
+                GridRow {
+                    Text("Stil")
+                    Toggle("İtalik", isOn: $settings.subtitleStyle.isItalic)
                 }
             }
 
             Divider().opacity(0.5)
 
-            SettingsGroupLabel(text: "Renk ve Kenarlık")
+            SettingsGroupLabel(text: "Renk ve Kenar Stili")
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
+                GridRow {
+                    Text("Kenar stili")
+                    Picker("", selection: $settings.subtitleStyle.edgeStyle) {
+                        ForEach(SubtitleStyle.EdgeStyle.allCases, id: \.self) { style in
+                            Text(style.title).tag(style)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 400)
+                }
                 GridRow {
                     Text("Renk")
                     HStack(spacing: 14) {
@@ -592,20 +608,52 @@ struct SettingsView: View {
                             set: { settings.subtitleStyle.borderColor = $0.hexString }
                         ))
                         .labelsHidden()
+                        .disabled(!settings.subtitleStyle.edgeStyle.hasOutline)
                         Text("Kenarlık").font(.caption).foregroundStyle(.secondary)
+
+                        ColorPicker("Gölge", selection: Binding(
+                            get: { Color(hex: settings.subtitleStyle.shadowColor) },
+                            set: { settings.subtitleStyle.shadowColor = $0.hexString }
+                        ))
+                        .labelsHidden()
+                        .disabled(!settings.subtitleStyle.edgeStyle.hasShadow)
+                        Text("Gölge").font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 GridRow {
                     Text("Kenarlık kalınlığı")
-                    Slider(value: $settings.subtitleStyle.borderSize, in: 0...6, step: 0.5)
+                    HStack {
+                        Slider(
+                            value: Binding(
+                                get: { Double(settings.subtitleStyle.borderThicknessPercent) },
+                                set: { settings.subtitleStyle.borderThicknessPercent = Int($0) }
+                            ),
+                            in: 1...100, step: 1
+                        )
+                        .disabled(!settings.subtitleStyle.edgeStyle.hasOutline)
+                        Text("\(settings.subtitleStyle.borderThicknessPercent)")
+                            .font(.system(.caption, design: .monospaced))
+                            .frame(width: 28)
+                    }
                 }
                 GridRow {
-                    Text("Gölge")
+                    Text("Gölge mesafesi")
                     Slider(value: $settings.subtitleStyle.shadowOffset, in: 0...6, step: 0.5)
+                        .disabled(!settings.subtitleStyle.edgeStyle.hasShadow)
                 }
                 GridRow {
-                    Text("Arka plan")
-                    Slider(value: $settings.subtitleStyle.backgroundOpacity, in: 0...1, step: 0.05)
+                    Text("Gölge opaklığı")
+                    Slider(value: $settings.subtitleStyle.shadowOpacity, in: 0...1, step: 0.05)
+                        .disabled(!settings.subtitleStyle.edgeStyle.hasShadow)
+                }
+                GridRow {
+                    Text("Gölge bulanıklığı")
+                    // mpv yalnızca kenarlık katmanını bulanıklaştırıyor; kenarlık
+                    // yoksa (salt gölge modu) bu katman yazının kendisiyle
+                    // çakışıyor ve bulanıklık asıl metne bulaşıyor. Bu yüzden
+                    // kontrol yalnızca kenarlık açıkken etkin.
+                    Slider(value: $settings.subtitleStyle.shadowBlur, in: 0...10, step: 0.5)
+                        .disabled(!settings.subtitleStyle.edgeStyle.hasOutline)
                 }
             }
 
@@ -882,6 +930,89 @@ struct SettingsView: View {
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    // MARK: - API Anahtarı
+
+    /// Altyazı çevirisinde kullanılan üç yapay zeka motorunun anahtarı ve
+    /// modeli burada toplu tutuluyor — `subtitleContent`'teki motor seçici
+    /// sadece hangisinin AKTİF kullanılacağını seçer, anahtarları buradan
+    /// okur/yazar.
+    private var apiKeysContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Altyazı çevirisinde kullanılan yapay zeka motorlarının anahtarları ve "
+                 + "modelleri. Hangi motorun aktif kullanılacağını Altyazı Görünümü > "
+                 + "Altyazı Çevirisi'nden seçin.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            apiKeyGroup(
+                title: "Z.ai / GLM",
+                keyPlaceholder: "Z.ai API Key",
+                key: $settings.zaiApiKey,
+                model: $settings.zaiModel,
+                modelOptions: [ZaiTranslator.defaultModel] + ZaiTranslator.freeModels,
+                helpText: "z.ai → API anahtarları. glm-4.7-flash/glm-4.5-flash ücretsizdir; "
+                    + "glm-5.3-flash daha kaliteli ama bakiye ister."
+            )
+
+            Divider().opacity(0.5)
+
+            apiKeyGroup(
+                title: "NVIDIA NIM",
+                keyPlaceholder: "nvapi-...",
+                key: $settings.nvidiaApiKey,
+                model: $settings.nvidiaModel,
+                modelOptions: [NvidiaTranslator.defaultModel] + NvidiaTranslator.fallbackModels,
+                helpText: "build.nvidia.com → API anahtarı. Ücretsiz katman kredi ile sınırlıdır."
+            )
+
+            Divider().opacity(0.5)
+
+            apiKeyGroup(
+                title: "OpenRouter",
+                keyPlaceholder: "sk-or-v1-...",
+                key: $settings.openRouterApiKey,
+                model: $settings.openRouterModel,
+                modelOptions: OpenRouterTranslator.freeModels,
+                helpText: "openrouter.ai → Keys. Listedeki modeller ücretsizdir (\":free\"); "
+                    + "seçilen model meşgulse otomatik bir sonrakine geçilir."
+            )
+
+            Link("openrouter.ai/keys adresini aç",
+                 destination: URL(string: "https://openrouter.ai/keys")!)
+                .font(.caption)
+        }
+    }
+
+    /// One provider's key + model picker, shared layout for all three engines.
+    @ViewBuilder
+    private func apiKeyGroup(title: String, keyPlaceholder: String,
+                             key: Binding<String>, model: Binding<String>,
+                             modelOptions: [String], helpText: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SettingsGroupLabel(text: title)
+            SecureField(keyPlaceholder, text: key)
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 360)
+
+            HStack(spacing: 8) {
+                Text("Model").font(.caption).foregroundStyle(.secondary)
+                Picker("", selection: model) {
+                    ForEach(modelOptions, id: \.self) { option in
+                        Text(option).tag(option)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 300)
+            }
+
+            Text(helpText)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

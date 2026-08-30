@@ -9,6 +9,19 @@ struct SubtitlePreview: View {
     /// scaled down to keep the preview representative rather than literal.
     private var previewSize: CGFloat { CGFloat(style.fontSize) * 0.38 }
 
+    /// SwiftUI can render the full 400–900 ladder, unlike mpv's on/off bold —
+    /// this preview is the only place the in-between steps are actually visible.
+    private var previewWeight: Font.Weight {
+        switch style.fontWeight {
+        case ..<450: .regular
+        case ..<550: .medium
+        case ..<650: .semibold
+        case ..<750: .bold
+        case ..<850: .heavy
+        default: .black
+        }
+    }
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -20,18 +33,17 @@ struct SubtitlePreview: View {
             VStack {
                 Spacer(minLength: 0)
                 Text("Örnek altyazı satırı — Ağğı, İıŞşÇç")
-                    .font(.system(size: previewSize,
-                                  weight: style.isBold ? .bold : .regular))
+                    .font(.system(size: previewSize, weight: previewWeight))
                     .italic(style.isItalic)
                     .foregroundStyle(Color(hex: style.textColor))
                     .shadow(color: Color(hex: style.borderColor),
-                            radius: style.borderSize * 0.6)
+                            radius: style.edgeStyle.hasOutline ? style.borderSize * 0.6 : 0)
+                    .shadow(color: Color(hex: style.shadowColor)
+                                .opacity(style.edgeStyle.hasShadow ? style.shadowOpacity : 0),
+                            radius: style.shadowBlur * 0.6,
+                            x: style.shadowOffset, y: style.shadowOffset)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(
-                        Color.black.opacity(style.backgroundOpacity),
-                        in: RoundedRectangle(cornerRadius: 3)
-                    )
                     .padding(.bottom, bottomPadding)
             }
         }

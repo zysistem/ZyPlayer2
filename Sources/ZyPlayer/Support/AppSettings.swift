@@ -26,7 +26,7 @@ enum AppearanceMode: String, Codable, CaseIterable, Identifiable {
 }
 
 enum TranslationEngine: String, Codable, CaseIterable, Identifiable {
-    case google, zai, openRouter
+    case google, zai, nvidia, openRouter
 
     var id: String { rawValue }
 
@@ -34,7 +34,8 @@ enum TranslationEngine: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .google: "Google (Ücretsiz, hızlı)"
         case .zai: "Z.ai / GLM (Yapay zeka)"
-        case .openRouter: "OpenRouter (Ücretsiz yapay zeka)"
+        case .nvidia: "NVIDIA NIM (Yapay zeka)"
+        case .openRouter: "OpenRouter (Yapay zeka)"
         }
     }
 
@@ -45,11 +46,16 @@ enum TranslationEngine: String, Codable, CaseIterable, Identifiable {
             "kaçırabilir. Google bu ücretsiz servisi çok istek gelen IP'lerde " +
             "geçici olarak engelleyebilir."
         case .zai:
-            "GLM modelleriyle bağlama uygun, film tadında çeviri. Anahtar gerekir " +
-            "ve ücretsiz kotada yanıtlar yavaş gelebilir."
+            "GLM modelleriyle bağlama uygun, film tadında çeviri. Anahtar gerekir; " +
+            "model Ayarlar > API Anahtarı'ndan seçilir."
+        case .nvidia:
+            "NVIDIA'nın build.nvidia.com üzerinden ücretsiz sunduğu güçlü " +
+            "modelleri kullanır. Anahtar gerekir; ücretsiz katman kredi ile " +
+            "sınırlıdır."
         case .openRouter:
-            "OpenRouter'ın ücretsiz modelleriyle çeviri: yapay zeka kalitesi, " +
-            "ücretsiz. Seçilen model meşgulse listedeki diğerlerine geçilir."
+            "Birçok sağlayıcının ücretsiz modeline tek anahtarla erişir. " +
+            "Ücretsiz modeller sık kota/istek sınırına takılabilir, bu yüzden " +
+            "seçilen model tökezlerse otomatik olarak bir sonrakine geçilir."
         }
     }
 }
@@ -88,10 +94,16 @@ struct SettingsData: Codable {
     var playerControlsOffsetY: Double = 0
     var autoplayTrailers: Bool = true
     var translationEngine: TranslationEngine = .google
-    var zaiApiKey: String = "38f440e33c494347a4e9c64a8c3827ad.hTs3Ds9WWyVGWQXh"
-    var openRouterApiKey: String = "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"
-    /// OpenRouter modeli. `auto` = listedeki ücretsiz modeller sırayla denenir.
-    var openRouterModel: String = OpenRouterTranslator.automaticModel
+    var zaiApiKey: String = ""
+    /// Kullanıcı Ayarlar > API Anahtarı'ndan değiştirebiliyor; yedek modeller
+    /// için bkz. `ZaiTranslator.freeModels`.
+    var zaiModel: String = ZaiTranslator.defaultModel
+    /// build.nvidia.com API anahtarı (nvapi-...).
+    var nvidiaApiKey: String = ""
+    var nvidiaModel: String = NvidiaTranslator.defaultModel
+    /// openrouter.ai API anahtarı.
+    var openRouterApiKey: String = ""
+    var openRouterModel: String = OpenRouterTranslator.defaultModel
     /// Arama sonuçlarına YouTube bölümü eklensin mi. Yalnızca aramayı etkiler;
     /// kapalıyken YouTube'a hiç istek gitmez.
     var youtubeSearchEnabled: Bool = true
@@ -114,18 +126,24 @@ struct SettingsData: Codable {
          torrentAPIBase: String = TorrentioClient.defaultBase,
          autoplayTrailers: Bool = true,
          translationEngine: TranslationEngine = .google,
-         zaiApiKey: String = "38f440e33c494347a4e9c64a8c3827ad.hTs3Ds9WWyVGWQXh",
-         openRouterApiKey: String = "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",
-         openRouterModel: String = OpenRouterTranslator.automaticModel,
+         zaiApiKey: String = "",
+         zaiModel: String = ZaiTranslator.defaultModel,
+         nvidiaApiKey: String = "",
+         nvidiaModel: String = NvidiaTranslator.defaultModel,
+         openRouterApiKey: String = "",
+         openRouterModel: String = OpenRouterTranslator.defaultModel,
          youtubeSearchEnabled: Bool = true,
          iptvCredentials: IPTVCredentials = .empty,
          iptvOnlyTurkish: Bool = true) {
         self.iptvOnlyTurkish = iptvOnlyTurkish
         self.iptvCredentials = iptvCredentials
         self.youtubeSearchEnabled = youtubeSearchEnabled
-        self.openRouterModel = openRouterModel
-        self.openRouterApiKey = openRouterApiKey
+        self.nvidiaApiKey = nvidiaApiKey
+        self.nvidiaModel = nvidiaModel
         self.zaiApiKey = zaiApiKey
+        self.zaiModel = zaiModel
+        self.openRouterApiKey = openRouterApiKey
+        self.openRouterModel = openRouterModel
         self.translationEngine = translationEngine
         self.autoplayTrailers = autoplayTrailers
         self.playerControlsOffsetX = playerControlsOffsetX
@@ -178,9 +196,12 @@ struct SettingsData: Codable {
         playerControlsOffsetY = c.value(.playerControlsOffsetY, 0)
         autoplayTrailers = c.value(.autoplayTrailers, true)
         translationEngine = c.value(.translationEngine, TranslationEngine.google)
-        zaiApiKey = c.value(.zaiApiKey, "38f440e33c494347a4e9c64a8c3827ad.hTs3Ds9WWyVGWQXh")
-        openRouterApiKey = c.value(.openRouterApiKey, "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")
-        openRouterModel = c.value(.openRouterModel, OpenRouterTranslator.automaticModel)
+        zaiApiKey = c.value(.zaiApiKey, "")
+        zaiModel = c.value(.zaiModel, ZaiTranslator.defaultModel)
+        nvidiaApiKey = c.value(.nvidiaApiKey, "")
+        nvidiaModel = c.value(.nvidiaModel, NvidiaTranslator.defaultModel)
+        openRouterApiKey = c.value(.openRouterApiKey, "")
+        openRouterModel = c.value(.openRouterModel, OpenRouterTranslator.defaultModel)
         // Anahtar eklenmeden önce yazılmış bir ayar dosyasında bu alan yok;
         // açık gelmesi doğru olan, kullanıcı kapatana kadar YouTube aranıyor.
         youtubeSearchEnabled = c.value(.youtubeSearchEnabled, true)
@@ -266,6 +287,15 @@ final class AppSettings {
     var zaiApiKey: String {
         didSet { persist() }
     }
+    var zaiModel: String {
+        didSet { persist() }
+    }
+    var nvidiaApiKey: String {
+        didSet { persist() }
+    }
+    var nvidiaModel: String {
+        didSet { persist() }
+    }
     var openRouterApiKey: String {
         didSet { persist() }
     }
@@ -319,6 +349,16 @@ final class AppSettings {
         !openSubtitlesKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    var hasZaiKey: Bool {
+        !zaiApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    var hasNvidiaKey: Bool {
+        !nvidiaApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    var hasOpenRouterKey: Bool {
+        !openRouterApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var colorScheme: ColorScheme {
         switch appearance {
         case .light: .light
@@ -354,6 +394,9 @@ final class AppSettings {
         autoplayTrailers = value.autoplayTrailers
         translationEngine = value.translationEngine
         zaiApiKey = value.zaiApiKey
+        zaiModel = value.zaiModel
+        nvidiaApiKey = value.nvidiaApiKey
+        nvidiaModel = value.nvidiaModel
         openRouterApiKey = value.openRouterApiKey
         openRouterModel = value.openRouterModel
         youtubeSearchEnabled = value.youtubeSearchEnabled
@@ -387,6 +430,9 @@ final class AppSettings {
             autoplayTrailers: autoplayTrailers,
             translationEngine: translationEngine,
             zaiApiKey: zaiApiKey,
+            zaiModel: zaiModel,
+            nvidiaApiKey: nvidiaApiKey,
+            nvidiaModel: nvidiaModel,
             openRouterApiKey: openRouterApiKey,
             openRouterModel: openRouterModel,
             youtubeSearchEnabled: youtubeSearchEnabled,

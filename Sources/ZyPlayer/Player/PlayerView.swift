@@ -109,10 +109,82 @@ struct PlayerView: View {
     @State private var hideTask: Task<Void, Never>?
     @State private var barPosition = ControlBarPosition()
     @State private var showSubtitleSync = false
+    /// 'S' tuşuyla açılıp kapanan döviz/altın HUD'u — kontrol çubuğundan
+    /// bağımsız, o gizlense de açık kalır.
+    @State private var showCurrencyHUD = false
     /// Bölüm listesi açıkken kontroller kendiliğinden gizlenmiyor — gizlenirse
     /// listeyi taşıyan üst çubukla birlikte liste de kapanırdı.
     @State private var showEpisodes = false
     @State private var showChannels = false
+    /// "Sonraki Bölüm" balonu kapatıldığında hangi içerikte kapatıldığı. Aynı
+    /// bölümde tekrar açılmaması için; yeni bölüme geçilince (anahtar değişince)
+    /// yeniden belirir.
+    @State private var nextPromptDismissedKey: String?
+    /// "Tanıtımı Geç" balonunun hangi içerikte kapatıldığı — aynı bölümde tekrar
+    /// çıkmaması için.
+    @State private var skipIntroDismissedKey: String?
+
+    /// "Sonraki Bölüm" ne zaman belirsin. Gerçek jenerik algılama (sahne/siyah
+    /// kare analizi) elimizde yok; jenerik tipik olarak bölümün son %6'sında
+    /// başladığından süreye oranlı bir eşik kullanıyoruz — 40 sn ile 90 sn
+    /// arasında sıkıştırılıyor ki kısa bölümde çok erken, uzun bölümde çok geç
+    /// çıkmasın. Böylece eski sabit 120 sn yerine sona daha yakın beliriyor.
+    private var nextEpisodeLeadTime: Double {
+        min(max(model.duration * 0.06, 40), 90)
+    }
+
+    /// "Tanıtımı Geç" düğmesi: bir dizinin başındaki jenerik/tanıtım penceresi.
+    /// Gerçek tanıtım verisi (Infuse'un aksine) elimizde yok; bu yüzden bölümün
+    /// ilk bölümünde beliren ve sabit miktar ileri atlayan bir sezgisel kullanıyoruz.
+    private let skipIntroWindow: ClosedRange<Double> = 5...95
+    private let skipIntroJump: Double = 85
+
+    /// Bir "gizle" seçiminin hangi içeriğe ait olduğunu tanımlayan sabit kimlik.
+    /// `currentResumeKey` yalnızca akış/torrent'te dolu; kütüphane dosyalarında
+    /// nil olduğundan URL'e düşüyoruz — yoksa nil==nil karşılaştırması düğmeyi
+    /// hiç göstermezdi.
+    private var contentKey: String {
+        model.currentResumeKey ?? model.currentURL?.absoluteString ?? ""
+    }
+
+    /// "Sonraki Bölüm" görünme koşulu. Gerçek jenerik başı (chapter ya da analiz)
+    /// biliniyorsa tam o andan itibaren; bilinmiyorsa süreye oranlı sezgiden.
+    private var showNextEpisodePrompt: Bool {
+        guard onNextEpisode != nil, model.duration > 1 else { return false }
+        if let creditsStart = model.skipMarkers.creditsStart {
+            guard model.position >= creditsStart else { return false }
+        } else {
+            let remaining = model.duration - model.position
+            guard remaining > 0, remaining <= nextEpisodeLeadTime else { return false }
+        }
+        return contentKey != nextPromptDismissedKey
+    }
+
+    /// "Tanıtımı Geç" görünme koşulu. Tanıtım sonu (chapter ya da analiz) biliniyorsa
+    /// baştan (ya da chapter kendi başlangıcını da verdiyse tam ondan itibaren —
+    /// cold open'ı atlamadan önce oynatır) o ana kadar gösterilir — içerik film
+    /// de olsa. Bilinmiyorsa yalnızca dizilerde sabit sezgisel pencere kullanılır.
+    private var showSkipIntroPrompt: Bool {
+        guard model.duration > 1 else { return false }
+        if let introEnd = model.skipMarkers.introEnd {
+            // `introStart` yalnızca chapter kaynağında var (bkz. `SkipMarkers`);
+            // yoksa oynatmanın en başından (2 sn'lik kısa bir açılış payıyla)
+            // gösterilir — eski davranış. Üst sınır artık tam `introEnd`:
+            // kullanıcının verdiği örnekte 103. saniyede tam gizlenmeli, bir
+            // saniye erken değil.
+            let lowerBound = model.skipMarkers.introStart ?? 2
+            guard model.position >= lowerBound, model.position < introEnd else { return false }
+        } else {
+            // `skipMarkersResolved`: tespit (önbellek/chapter/ffmpeg) bu bölüm
+            // için "tanıtım yok" diye KESİN sonuç verdiyse sezgisel pencereye
+            // hiç düşülmez — yoksa tanıtımsız bir bölümde de düğme yanlışlıkla
+            // beliriyordu. Tespit henüz sürüyorsa (ilk açılış, ffmpeg analizi
+            // bitmedi) sezgi devrede kalır.
+            guard episodes != nil, !model.skipMarkersResolved,
+                  skipIntroWindow.contains(model.position) else { return false }
+        }
+        return contentKey != skipIntroDismissedKey
+    }
 
     var body: some View {
         ZStack {
@@ -160,7 +232,61 @@ struct PlayerView: View {
                 }
                 .transition(.opacity)
             }
+
+            // Bölümün bitmesine az kala beliren "Sonraki Bölüm" düğmesi.
+            // Kontrollerden bağımsız: kontroller gizlense de görünür kalır ki
+            // izleyici elini kıpırdatmadan sonrakine geçebilsin.
+            if showNextEpisodePrompt {
+                nextEpisodePrompt
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .padding(.trailing, 28)
+                    // Kontrol çubuğu görünürken onun üstünde dursun, çakışmasın.
+                    .padding(.bottom, controlsVisible ? 118 : 40)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+
+            // Dizinin başında beliren "Tanıtımı Geç" düğmesi. Sonraki bölüm
+            // balonuyla aynı köşede ama zamanları çakışmaz (biri başta, biri sonda).
+            if showSkipIntroPrompt {
+                skipIntroPrompt
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .padding(.trailing, 28)
+                    .padding(.bottom, controlsVisible ? 118 : 40)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+
+            // Sağ üst köşe: döviz/altın HUD'u ('S' tuşu, kontrollerden bağımsız)
+            // ve çeviri bittiğinde 5 sn görünen bildirim aynı yığında — ikisi
+            // aynı anda açık olsa da üst üste binmesin diye.
+            if showCurrencyHUD || model.translationCompletedBanner != nil {
+                VStack(alignment: .trailing, spacing: 10) {
+                    if showCurrencyHUD {
+                        CurrencyHUDView()
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                    if let banner = model.translationCompletedBanner {
+                        translationCompletedToast(banner)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .padding(.top, 16)
+                .padding(.trailing, 16)
+                .allowsHitTesting(false)
+            }
+
+            // Oynatma bir hatayla bittiğinde (ör. yt-dlp fragmanı çözemedi)
+            // ekran eskiden sonsuza dek siyah kalıp hiçbir açıklama vermiyordu.
+            // Video alanı zaten boş olduğu için ortada, göze çarpacak bir kart.
+            if let message = model.playbackErrorMessage {
+                playbackErrorCard(message)
+                    .transition(.opacity)
+            }
         }
+        .animation(.easeOut(duration: 0.2), value: model.playbackErrorMessage)
+        .animation(.easeOut(duration: 0.2), value: showCurrencyHUD)
+        .animation(.easeOut(duration: 0.2), value: model.translationCompletedBanner)
+        .animation(.easeOut(duration: 0.25), value: showNextEpisodePrompt)
+        .animation(.easeOut(duration: 0.25), value: showSkipIntroPrompt)
         .onContinuousHover { phase in
             if case .active = phase { revealControls() }
         }
@@ -174,14 +300,113 @@ struct PlayerView: View {
             revealControls()
             BluetoothRemoteManager.shared.setPlayer(model, onClose: onClose)
             GamepadManager.shared.setPlayer(model, onClose: onClose)
+            BluetoothRemoteManager.shared.onToggleCurrencyHUD = {
+                withAnimation(.easeOut(duration: 0.2)) { showCurrencyHUD.toggle() }
+            }
         }
         .onDisappear {
             hideTask?.cancel()
             model.onControlsUserActivity = nil
             BluetoothRemoteManager.shared.setPlayer(nil, onClose: nil)
             GamepadManager.shared.setPlayer(nil, onClose: nil)
+            BluetoothRemoteManager.shared.onToggleCurrencyHUD = nil
             NSCursor.unhide()
         }
+    }
+
+    /// Sağ altta beliren "Sonraki Bölüm" balonu: bir oynat düğmesi ve onu
+    /// susturmak için küçük bir kapat işareti. Kalan süre saniye saniye yazılır.
+    private var nextEpisodePrompt: some View {
+        HStack(spacing: 10) {
+            Button {
+                onNextEpisode?()
+            } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: "forward.end.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Sonraki Bölüm")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(nextEpisodeCountdown)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .frame(height: 46)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 1))
+                .shadow(color: .black.opacity(0.4), radius: 12, y: 4)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                nextPromptDismissedKey = contentKey
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .frame(width: 28, height: 28)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(Circle().strokeBorder(.white.opacity(0.2), lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .help("Gizle")
+        }
+    }
+
+    /// "Tanıtımı Geç" balonu: sabit miktar ileri atlar; küçük kapat işaretiyle
+    /// bu bölüm için susturulabilir.
+    private var skipIntroPrompt: some View {
+        HStack(spacing: 10) {
+            Button {
+                // Tanıtım sonu biliniyorsa tam o saniyeye; değilse sabit sezgisel atlama.
+                let target: Double
+                if let introEnd = model.skipMarkers.introEnd {
+                    target = min(introEnd, max(0, model.duration - 1))
+                } else {
+                    target = min(model.position + skipIntroJump, max(0, model.duration - 1))
+                }
+                model.seek(by: target - model.position)
+            } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: "forward.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Tanıtımı Geç")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 18)
+                .frame(height: 46)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 1))
+                .shadow(color: .black.opacity(0.4), radius: 12, y: 4)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                skipIntroDismissedKey = contentKey
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .frame(width: 28, height: 28)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(Circle().strokeBorder(.white.opacity(0.2), lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .help("Gizle")
+        }
+    }
+
+    /// "Bitmesine 1:23" — kalan süre. 60 sn altında saniye, üstünde dk:sn.
+    private var nextEpisodeCountdown: String {
+        let remaining = max(0, Int((model.duration - model.position).rounded()))
+        if remaining >= 60 {
+            return String(format: "Bitmesine %d:%02d", remaining / 60, remaining % 60)
+        }
+        return "Bitmesine \(remaining) sn"
     }
 
     private var topBar: some View {
@@ -229,6 +454,67 @@ struct PlayerView: View {
         .overlay(Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1))
     }
 
+    /// Çeviri bitince sağ üstte 5 sn görünüp kaybolan ayrı bildirim.
+    /// `translationStatusPill` kontrol çubuğuna bağlı ve o gizlenince kayboluyor;
+    /// bu, tamamlanma anını kontrollerden bağımsız ayrıca vurguluyor.
+    private func translationCompletedToast(_ text: String) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 12))
+                .foregroundStyle(.green)
+            Text(text)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.95))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(
+            Capsule().strokeBorder(
+                LinearGradient(
+                    colors: [.white.opacity(0.24), .white.opacity(0.06)],
+                    startPoint: .top, endPoint: .bottom
+                ),
+                lineWidth: 1
+            )
+        )
+        .shadow(color: .black.opacity(0.32), radius: 11, y: 4)
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    /// mpv oynatmayı hatayla bitirdiğinde ortada beliren kart. Video alanı
+    /// zaten boş (siyah) olduğu için bunu bir hap yerine göze çarpan bir
+    /// kartla gösteriyoruz — kullanıcı artık neden bekleyip durduğunu görüyor.
+    private func playbackErrorCard(_ message: String) -> some View {
+        VStack(spacing: 14) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 26))
+                .foregroundStyle(.orange)
+            Text(message)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.white.opacity(0.95))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Geri Dön", action: onClose)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+        }
+        .padding(24)
+        .frame(maxWidth: 360)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16).strokeBorder(
+                LinearGradient(
+                    colors: [.white.opacity(0.24), .white.opacity(0.06)],
+                    startPoint: .top, endPoint: .bottom
+                ),
+                lineWidth: 1
+            )
+        )
+        .shadow(color: .black.opacity(0.4), radius: 18, y: 6)
+    }
+
     private func revealControls() {
         // Guarded: this runs on every mouse move, and animating a value that is
         // already true costs a transaction for nothing.
@@ -241,6 +527,12 @@ struct PlayerView: View {
         hideTask = Task {
             try? await Task.sleep(for: .seconds(3))
             guard !Task.isCancelled, !model.isPaused, !showEpisodes, !showChannels else { return }
+            // AppKit's slider runs its own tracking loop while the thumb is held,
+            // which starves `onContinuousHover` — nothing re-arms this task during
+            // a drag. Without this guard the bar can hide out from under the user
+            // mid-scrub, unmounting the slider before it reports the drag ending
+            // and leaving the seek position stuck (see `PlayerModel.isScrubbing`).
+            guard !model.isScrubbing else { return }
             withAnimation(.easeIn(duration: 0.4)) { controlsVisible = false }
             // Tek bir çağrı yetmiyor: macOS bu bayrağı fare hiç oynamadan da
             // düşürüyor (pencere odağı değişince, bildirim gelince), imleç de
@@ -717,14 +1009,13 @@ struct PlayerControls: View {
                 Menu {
                     ForEach(TranslationEngine.allCases) { engine in
                         Button {
-                            Task {
-                                await model.translateSelectedSubtitle(
-                                    engine: engine,
-                                    zaiApiKey: settings.zaiApiKey,
-                                    openRouterApiKey: settings.openRouterApiKey,
-                                    openRouterModel: settings.openRouterModel
-                                )
-                            }
+                            model.startTranslation(
+                                engine: engine,
+                                zaiApiKey: settings.zaiApiKey, zaiModel: settings.zaiModel,
+                                nvidiaApiKey: settings.nvidiaApiKey, nvidiaModel: settings.nvidiaModel,
+                                openRouterApiKey: settings.openRouterApiKey,
+                                openRouterModel: settings.openRouterModel
+                            )
                         } label: {
                             Label(
                                 engine.title,

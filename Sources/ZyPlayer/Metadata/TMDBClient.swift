@@ -282,6 +282,25 @@ struct TMDBClient {
         return response.results
     }
 
+    // MARK: - Öneriler
+
+    /// TMDB'nin kendi "buna benzer" motoru — ana ekranın "Sizin İçin Öneriler"
+    /// rafı, izlenmiş bir filmi tohum olarak burada kullanıyor.
+    func movieRecommendations(id: Int, page: Int = 1) async throws -> [MovieResult] {
+        let response: SearchResponse<MovieResult> = try await get(
+            "movie/\(id)/recommendations", query: ["page": String(page)]
+        )
+        return response.results
+    }
+
+    /// Aynısının dizi hâli.
+    func tvRecommendations(id: Int, page: Int = 1) async throws -> [TVResult] {
+        let response: SearchResponse<TVResult> = try await get(
+            "tv/\(id)/recommendations", query: ["page": String(page)]
+        )
+        return response.results
+    }
+
     func discoverShows(genreID: Int, page: Int = 1) async throws -> [TVResult] {
         let response: SearchResponse<TVResult> = try await get(
             "discover/tv",
@@ -355,6 +374,59 @@ struct TMDBClient {
     /// Full URL for a TMDB image path such as `/abc123.jpg`.
     static func imageURL(path: String, size: String = "w500") -> URL {
         imageBase.appendingPathComponent(size).appendingPathComponent(path)
+    }
+
+    // MARK: - Logos (clear-art)
+
+    /// The film's transparent title logo, if TMDB has one — the stylised
+    /// wordmark Stremio shows over the hero art and detail backdrop instead of
+    /// a plain text title.
+    func movieLogoPath(id: Int) async throws -> String? {
+        let response: ImagesResponse = try await get(
+            "movie/\(id)/images",
+            query: ["include_image_language": Self.logoLanguageParam(for: language)]
+        )
+        return Self.bestLogo(response.logos, language: language)
+    }
+
+    func tvLogoPath(id: Int) async throws -> String? {
+        let response: ImagesResponse = try await get(
+            "tv/\(id)/images",
+            query: ["include_image_language": Self.logoLanguageParam(for: language)]
+        )
+        return Self.bestLogo(response.logos, language: language)
+    }
+
+    /// TMDB'nin `include_image_language` alanı olmadan yalnızca istek dilindeki
+    /// logoları döndürüyor — çoğu yapımda o dilde logo yok ve liste boş geliyor.
+    /// İngilizce ve dil etiketsiz (`null`, harf içermeyen amblemler) eklenince
+    /// neredeyse her yapım için bir aday buluyor.
+    private static func logoLanguageParam(for language: String) -> String {
+        let code = language.split(separator: "-").first.map(String.init) ?? language
+        return "\(code),en,null"
+    }
+
+    /// Görüntülenen dil kazanır, sonra İngilizce, sonra dil etiketsiz olan.
+    /// Eşitlikte TMDB'nin kendi oyuyla en beğenilen aday seçilir. PNG'ler
+    /// SVG/WebP adaylarına tercih edilir — `AsyncImage` SVG çözemiyor.
+    private static func bestLogo(_ logos: [ImageInfo], language: String) -> String? {
+        guard !logos.isEmpty else { return nil }
+        let code = language.split(separator: "-").first.map(String.init) ?? language
+        func rank(_ logo: ImageInfo) -> Int {
+            switch logo.iso6391 {
+            case code: 0
+            case "en": 1
+            case nil: 2
+            default: 3
+            }
+        }
+        let sorted = logos.sorted { lhs, rhs in
+            let lr = rank(lhs), rr = rank(rhs)
+            if lr != rr { return lr < rr }
+            return (lhs.voteAverage ?? 0) > (rhs.voteAverage ?? 0)
+        }
+        return sorted.first(where: { $0.filePath.lowercased().hasSuffix(".png") })?.filePath
+            ?? sorted.first?.filePath
     }
 }
 
@@ -620,4 +692,23 @@ struct CastMember: Decodable {
     var name: String
     var character: String?
     var profilePath: String?
+}
+
+/// `movie|tv/{id}/images` response — only `logos` is used, for the clear-art
+/// title wordmark.
+struct ImagesResponse: Decodable {
+    var logos: [ImageInfo] = []
+
+    private enum CodingKeys: String, CodingKey { case logos }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        logos = c.value(.logos, [])
+    }
+}
+
+struct ImageInfo: Decodable {
+    var filePath: String
+    var iso6391: String?
+    var voteAverage: Double?
 }

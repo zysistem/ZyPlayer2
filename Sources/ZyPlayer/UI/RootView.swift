@@ -36,6 +36,7 @@ struct RootView: View {
     let smb: SMBStore
     let drive: GoogleDriveStore
     let torrents: TorrentStore
+    let streamDownloads: StreamDownloadStore
     let streamer: TorrentStreamer
     @Bindable var cinema: CinemaStore
     @Bindable var appleTV: AppleTVStore
@@ -70,6 +71,10 @@ struct RootView: View {
     @State private var streamStore = ZyStreamStore()
     @State private var youtubeStore = YouTubeStore()
     @State private var resumeStore = PlaybackResumeStore()
+    /// "Sizin İçin Öneriler" rafı — izleme geçmişine göre NVIDIA NIM'e sorar.
+    @State private var recommendations = RecommendationStore()
+    /// Sağ alttaki "fikir sor" sohbet kutusu.
+    @State private var chatAssistant = ChatAssistantStore()
     @State private var bollywood = BollywoodStore()
     @State private var zyMovieStore = ZyMovieStore()
     @State private var matchTarget: MatchTarget?
@@ -81,6 +86,15 @@ struct RootView: View {
     /// kanal hangi listeden açıldıysa o liste, ve açık olan kanal.
     @State private var iptvChannelList: [IPTVChannel] = []
     @State private var iptvCurrentChannel: IPTVChannel?
+    /// IPTV dizisi izlenirken oynatıcıdaki bölüm seçicisini ve sonraki/önceki
+    /// bölüm geçişlerini besleyen durum: dizinin tüm bölümleri (sezon/bölüm
+    /// sırasında), oynayan bölüm ve seçilen bir komşuyu yeniden oynatmak için
+    /// gereken dizi adı/kimliği/afişi.
+    @State private var iptvSeriesEpisodes: [IPTVEpisode] = []
+    @State private var iptvCurrentEpisodeID: String?
+    @State private var iptvSeriesTitle = ""
+    @State private var iptvSeriesID: Int?
+    @State private var iptvSeriesPoster: String?
     /// Drives hiding the window toolbar only in fullscreen (where it shows as a
     /// grey strip), while keeping it — and the traffic-light buttons — in windowed
     /// mode.
@@ -94,12 +108,8 @@ struct RootView: View {
                     settings: settings,
                     onClose: closePlayer,
                     onSearchSubtitles: { showSubtitleSearch = true },
-                    onPreviousEpisode: adjacentEpisode(offset: -1).map { episode in
-                        { play(episode) }
-                    },
-                    onNextEpisode: adjacentEpisode(offset: 1).map { episode in
-                        { play(episode) }
-                    },
+                    onPreviousEpisode: adjacentEpisodeAction(offset: -1),
+                    onNextEpisode: adjacentEpisodeAction(offset: 1),
                     episodes: playerEpisodes,
                     channels: playerChannels
                 )
@@ -168,6 +178,24 @@ struct RootView: View {
                 GamepadLegendHUD()
                     .padding(20)
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            }
+        }
+        // "Fikir sor" sohbet kutusu — yalnızca ana pencerede, oynatıcı açıkken
+        // hiç görünmüyor.
+        .overlay(alignment: .bottomTrailing) {
+            if player.currentURL == nil {
+                ChatAssistantView(
+                    library: library,
+                    stream: streamStore,
+                    providers: providers,
+                    cinema: cinema,
+                    appleTV: appleTV,
+                    settings: settings,
+                    actions: actions,
+                    onOpenStream: { route = .stream($0) },
+                    chat: chatAssistant
+                )
+                .padding(20)
             }
         }
         .onAppear {
@@ -385,6 +413,12 @@ struct RootView: View {
             // takes effect on the next search or play without a relaunch.
             streamStore.lookup = { settings.streamProvider(id: $0) }
             streamStore.resume = resumeStore
+            // Akış indirmeleri de canlı ayarlardan sağlayıcı çözer. İndirilenler
+            // bilinçli olarak kütüphaneye eklenmez; yalnızca İndirilenler ekranında
+            // görünür.
+            streamDownloads.lookup = { settings.streamProvider(id: $0) }
+            // Açılışta yarım kalan indirmeleri yeniden sıraya al.
+            streamDownloads.resumePersisted()
         }
         .onChange(of: settings.subtitleStyle) {
             player.applySubtitleStyle(settings.subtitleStyle)
@@ -420,6 +454,19 @@ struct RootView: View {
                     route = .remote(remote)
                 } else if let target = iptvTarget(for: point) {
                     route = .iptv(target)
+                } else if let providerID = point.providerID, let pageURL = point.pageURL {
+                    // `streamHit` yalnızca detay sayfasından oynatılınca
+                    // (`activeDetails` doluyken) kaydediliyor; devam
+                    // rafından doğrudan sürdürülen bir oynatmada boş kalabilir.
+                    // `providerID`/`pageURL` ise her ZyStream noktasında var —
+                    // detay sayfası yine de açılsın diye minimal bir
+                    // `StreamHit` bunlardan kuruluyor.
+                    route = .stream(StreamHit(
+                        providerID: providerID,
+                        providerName: StreamRegistry.info(id: providerID)?.displayName ?? "",
+                        kind: .movie, title: point.title, year: nil,
+                        posterURL: point.posterURL, pageURL: pageURL
+                    ))
                 }
             }
         )
@@ -521,12 +568,13 @@ struct RootView: View {
                 store: iptv,
                 onBack: { self.route = nil },
                 onPlayMovie: playIPTVMovie,
-                onPlayEpisode: { episode, name in
+                onPlayEpisode: { episode, name, allEpisodes in
                     if case .series(let series) = target {
                         playIPTVEpisode(episode, seriesName: name,
-                                        seriesID: series.id, poster: series.coverURLString)
+                                        seriesID: series.id, poster: series.coverURLString,
+                                        episodes: allEpisodes)
                     } else {
-                        playIPTVEpisode(episode, seriesName: name)
+                        playIPTVEpisode(episode, seriesName: name, episodes: allEpisodes)
                     }
                 },
                 onTrailer: { tmdbID, isMovie in
@@ -582,6 +630,7 @@ struct RootView: View {
                 library: library,
                 settings: settings,
                 resume: resumeStore,
+                downloads: streamDownloads,
                 onBack: { self.route = nil },
                 onTrailer: { title in
                     switch title.kind {
@@ -635,20 +684,32 @@ struct RootView: View {
                                  actions: actions,
                                  stream: streamStore,
                                  resume: resumeStore,
+                                 recommendations: recommendations,
                                  onOpenStream: { route = .stream($0) }
                              )
+            case .library:   LibraryTabsView(library: library, actions: actions)
+            case .streamMovies: StreamCategoryBrowser(kind: .movie, store: streamStore, library: library,
+                                                      resume: resumeStore, settings: settings,
+                                                      onOpen: { route = .stream($0) })
+            case .streamSeries: StreamCategoryBrowser(kind: .series, store: streamStore, library: library,
+                                                      resume: resumeStore, settings: settings,
+                                                      onOpen: { route = .stream($0) })
             case .movies:    MoviesView(library: library, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .shows:     ShowsView(library: library, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .favorites: FavoritesView(library: library, actions: actions, stream: streamStore,
                                            onSelectStream: { route = .stream($0) },
                                            iptv: iptv,
-                                           onPlayIPTVFavorite: playIPTVFavorite)
-            case .appleTV:   AppleTVView(library: library, appleTV: appleTV, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
+                                           onPlayIPTVFavorite: playIPTVFavorite,
+                                           resume: resumeStore,
+                                           settings: settings)
+            case .appleTV:   AppleTVView(library: library, appleTV: appleTV, settings: settings, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .bollywood: BollywoodView(library: library, store: bollywood,
                                            settings: settings, actions: actions, selectedIndex: focusZone == .content ? focusedPosterIndex : -1)
             case .zyMovie:   ZyMovieView(library: library, store: zyMovieStore,
-                                         settings: settings, player: player, streamer: streamer, torrents: torrents, selectedIndex: focusZone == .content ? focusedPosterIndex : -1, selectTick: gamepadSelectTick, onOpenRemoteTitle: { route = .remote($0) })
-            case .downloads: DownloadsView(library: library, torrents: torrents, streamer: streamer,
+                                         settings: settings, player: player, streamer: streamer, torrents: torrents,
+                                         resume: resumeStore, selectedIndex: focusZone == .content ? focusedPosterIndex : -1, selectTick: gamepadSelectTick, onOpenRemoteTitle: { route = .remote($0) })
+            case .downloads: DownloadsView(library: library, torrents: torrents,
+                                            streamDownloads: streamDownloads, streamer: streamer,
                                             settings: settings, onPlay: streamPastedLink)
             case .settings:  SettingsView(library: library, smb: smb, drive: drive,
                                           torrents: torrents, settings: settings,
@@ -690,21 +751,22 @@ struct RootView: View {
         }
     }
 
-    /// Oynayan bölümün serisindeki komşusu: `-1` önceki, `+1` sonraki.
+    /// Oynayan bölümün serisindeki komşusunu oynatan eylem: `-1` önceki, `+1`
+    /// sonraki. Bölüm yoksa (film ya da serinin ucu) nil döner ve düğme sönük
+    /// görünür.
     ///
-    /// Bölümler `library.shows` içinde sezon/bölüm sırasına dizili geliyor, o
-    /// yüzden sezon sınırını da kendiliğinden aşıyor: bir sezonun son bölümünden
-    /// sonraki, bir sonraki sezonun ilki oluyor. Film oynuyorsa ya da serinin
-    /// ucundaysak nil döner ve düğme sönük görünür.
-    private func adjacentEpisode(offset: Int) -> MediaItem? {
-        guard let url = player.currentURL,
-              let current = library.item(for: url), current.kind == .episode,
-              let show = library.show(forSeriesKey: current.seriesKey),
-              let index = show.episodes.firstIndex(where: { $0.id == current.id })
+    /// Kaynak `playerEpisodes`: kütüphane, akış, IPTV ve torrent bölümlerinin
+    /// hepsi orada sezon/bölüm sırasına dizili tek bir listeye iniyor, her
+    /// satırın kendi `play` kapanışı var. Komşuyu buradan almak dört kaynağın
+    /// tümünde aynı şekilde çalışıyor — sezon sınırını da kendiliğinden aşarak,
+    /// bir sezonun son bölümünden sonrakini bir sonraki sezonun ilki yaparak.
+    private func adjacentEpisodeAction(offset: Int) -> (() -> Void)? {
+        guard let list = playerEpisodes,
+              let index = list.entries.firstIndex(where: { $0.isCurrent })
         else { return nil }
         let target = index + offset
-        guard show.episodes.indices.contains(target) else { return nil }
-        return show.episodes[target]
+        guard list.entries.indices.contains(target) else { return nil }
+        return list.entries[target].play
     }
 
     /// Player'ın sağ üstündeki bölüm seçicinin listesi — oynayan içerik bir dizi
@@ -756,6 +818,29 @@ struct RootView: View {
             return PlayerEpisodeList(showTitle: details.hit.title, entries: entries)
         }
         
+        if let currentID = iptvCurrentEpisodeID, !iptvSeriesEpisodes.isEmpty,
+           player.currentResumeKey == "iptv:episode:\(currentID)" {
+            let sorted = iptvSeriesEpisodes.sorted { ($0.season, $0.episode) < ($1.season, $1.episode) }
+            let entries = sorted.map { episode in
+                PlayerEpisodeList.Entry(
+                    id: episode.id,
+                    season: episode.season,
+                    episode: episode.episode,
+                    title: episode.title,
+                    isCurrent: episode.id == currentID,
+                    isWatched: resumeStore.point(forKey: "iptv:episode:\(episode.id)")?.isFinished ?? false,
+                    stillImage: nil,
+                    stillURL: episode.stillURL,
+                    play: {
+                        playIPTVEpisode(episode, seriesName: iptvSeriesTitle,
+                                        seriesID: iptvSeriesID, poster: iptvSeriesPoster,
+                                        episodes: iptvSeriesEpisodes)
+                    }
+                )
+            }
+            return PlayerEpisodeList(showTitle: IPTVNaming.split(iptvSeriesTitle).name, entries: entries)
+        }
+
         if let hit = zyMovieStore.playingHit, streamer.activeHash == hit.rssLink, !zyMovieStore.playingFiles.isEmpty {
             let entries = zyMovieStore.playingFiles.map { file in
                 let seasonStr = extractSeason(from: hit.rssTitle)
@@ -897,11 +982,14 @@ struct RootView: View {
                 trailerMessage = "Fragman alınamadı."
                 return
             }
-            guard let url = videos.compactMap(\.youtubeURL).first else {
+            let urls = videos.compactMap(\.youtubeURL)
+            guard !urls.isEmpty else {
                 trailerMessage = "Bu içerik için fragman yok."
                 return
             }
-            player.openTrailer(url, title: "\(title) — Fragman")
+            // İlk aday kaldırılmış/bölge kısıtlı çıkarsa PlayerModel sırayla
+            // diğerlerini dener — bkz. `openTrailer(candidates:title:)`.
+            player.openTrailer(candidates: urls, title: "\(title) — Fragman")
         }
     }
 
@@ -996,8 +1084,18 @@ struct RootView: View {
     }
 
     private func playIPTVEpisode(_ episode: IPTVEpisode, seriesName: String,
-                                 seriesID: Int? = nil, poster: String? = nil) {
+                                 seriesID: Int? = nil, poster: String? = nil,
+                                 episodes: [IPTVEpisode] = []) {
         guard let url = iptv.url(for: episode) else { return }
+        // Oynatıcıdaki bölüm seçici ve sonraki/önceki geçişleri için dizinin
+        // bütün bölümleri saklanıyor. Devam kartından ya da favoriden gelen tek
+        // bölümde liste boş olabilir; o durumda en azından oynayan bölüm listeye
+        // konur ki seçici tümüyle kaybolmasın.
+        iptvSeriesEpisodes = episodes.isEmpty ? [episode] : episodes
+        iptvCurrentEpisodeID = episode.id
+        iptvSeriesTitle = seriesName
+        iptvSeriesID = seriesID
+        iptvSeriesPoster = poster
         let key = "iptv:episode:\(episode.id)"
         let title = "\(IPTVNaming.split(seriesName).name) · S\(episode.season)B\(episode.episode)"
         // Bölümün kendi ekran fotoğrafı devam kartında görünüyor; yoksa dizinin
@@ -1091,7 +1189,13 @@ struct RootView: View {
         // kapandığında sonraki içeriğe sarkmamalı.
         iptvCurrentChannel = nil
         iptvChannelList = []
-        
+        // Dizi bölüm seçicisi de bir sonraki içeriğe sarkmasın.
+        iptvSeriesEpisodes = []
+        iptvCurrentEpisodeID = nil
+        iptvSeriesID = nil
+        iptvSeriesPoster = nil
+        iptvSeriesTitle = ""
+
         Task { @MainActor in
             let favs = zyMovieStore.favorites
             
@@ -1358,13 +1462,16 @@ struct SearchResultsView: View {
 }
 
 enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
-    case home, movies, shows, favorites, appleTV, bollywood, zyMovie, iptv, stream, downloads, settings, music, games
+    case home, streamMovies, streamSeries, library, movies, shows, favorites, appleTV, bollywood, zyMovie, iptv, stream, downloads, settings, music, games
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .home: "Ana Ekran"
+        case .streamMovies: "Filmler"
+        case .streamSeries: "Diziler"
+        case .library: "Kütüphane"
         case .movies: "Filmler"
         case .shows: "Diziler"
         case .favorites: "Favoriler"
@@ -1383,6 +1490,9 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .home: "house"
+        case .streamMovies: "film"
+        case .streamSeries: "tv"
+        case .library: "books.vertical"
         case .movies: "film"
         case .shows: "tv"
         case .favorites: "star"
@@ -1407,19 +1517,56 @@ struct Sidebar: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach([SidebarItem.home, .movies, .shows, .favorites, .appleTV, .bollywood, .zyMovie, .iptv]) { item in
-                    row(item)
+            VStack(alignment: .leading, spacing: 20) {
+                header
+
+                VStack(alignment: .leading, spacing: 2) {
+                    sectionLabel("Keşfet")
+                    ForEach([SidebarItem.home, .streamMovies, .streamSeries, .library, .appleTV, .bollywood, .zyMovie, .iptv, .favorites]) { item in
+                        row(item)
+                    }
                 }
-                Divider()
-                    .padding(.vertical, 8)
-                ForEach([SidebarItem.music, .games, .downloads, .settings]) { item in
-                    row(item)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    sectionLabel("Diğer")
+                    ForEach([SidebarItem.music, .games, .downloads, .settings]) { item in
+                        row(item)
+                    }
                 }
             }
-            .padding(12)
+            .padding(.horizontal, 12)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
         }
         .background(AppTheme.sidebar(scheme).ignoresSafeArea())
+    }
+
+    /// Uygulama kimliği: küçük gradyanlı simge + isim — rafın ne olduğunu
+    /// ilk bakışta belli eder, alttaki listeye de görsel bir çapa verir.
+    private var header: some View {
+        HStack(spacing: 9) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 30, height: 30)
+                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+            Text("ZyPlayer")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.primary)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text.uppercased())
+            .font(.system(size: 10.5, weight: .semibold))
+            .tracking(0.7)
+            .foregroundStyle(.secondary.opacity(0.65))
+            .padding(.horizontal, 10)
+            .padding(.bottom, 5)
     }
 
     private func row(_ item: SidebarItem) -> some View {
@@ -1438,41 +1585,80 @@ private struct SidebarRowView: View {
     let isSidebarActive: Bool
     let onSelect: () -> Void
     @FocusState private var isFocused: Bool
+    @State private var isHovering = false
 
     private var isGamepadFocused: Bool {
         GamepadManager.shared.isConnected && isSidebarActive && (isSelected || isFocused)
     }
 
+    /// Favoriler (artık İzledim/İzleyeceğim'i de barındırdığı için) sidebar'da
+    /// tek başına göze çarpsın diye dolu yıldız + kalıcı sarı vurgu alıyor —
+    /// diğer satırlar gibi yalnızca seçiliyken renklenmiyor.
+    private var isFavorites: Bool { item == .favorites }
+
+    private var iconTint: AnyShapeStyle {
+        if isGamepadFocused { return AnyShapeStyle(Color.cyan) }
+        if isFavorites { return AnyShapeStyle(Color.yellow) }
+        if isSelected { return AnyShapeStyle(Color.accentColor) }
+        return AnyShapeStyle(.secondary)
+    }
+
+    private var textStyle: AnyShapeStyle {
+        isSelected || isGamepadFocused ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary)
+    }
+
+    private var rowFill: AnyShapeStyle {
+        if isGamepadFocused { return AnyShapeStyle(Color.cyan.opacity(0.26)) }
+        if isSelected { return AnyShapeStyle(Color.accentColor.opacity(0.15)) }
+        if isHovering { return AnyShapeStyle(Color.primary.opacity(0.06)) }
+        return AnyShapeStyle(Color.clear)
+    }
+
     var body: some View {
         Button(action: onSelect) {
-            HStack(spacing: 10) {
-                Image(systemName: item.symbol)
-                    .font(.system(size: 14))
-                    .frame(width: 20)
+            HStack(spacing: 11) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(isSelected ? Color.accentColor.opacity(0.18) : Color.clear)
+                        .frame(width: 26, height: 26)
+                    Image(systemName: isFavorites ? "star.fill" : item.symbol)
+                        .font(.system(size: isFavorites ? 13 : 12.5, weight: isFavorites ? .bold : .medium))
+                        .foregroundStyle(iconTint)
+                }
 
                 Text(item.title)
-                    .font(.system(size: 13, weight: (isSelected || isGamepadFocused) ? .semibold : .medium))
+                    .font(.system(size: 13, weight: (isSelected || isGamepadFocused || isFavorites) ? .semibold : .regular))
+                    .foregroundStyle(textStyle)
 
                 Spacer(minLength: 0)
             }
-            .foregroundStyle(isGamepadFocused ? AnyShapeStyle(Color.cyan) : (isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.primary)))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
             .contentShape(Rectangle())
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isGamepadFocused ? Color.cyan.opacity(0.3) : (isSelected ? Color.white.opacity(0.12) : Color.clear))
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(rowFill)
             )
+            .overlay(alignment: .leading) {
+                if isSelected && !isGamepadFocused {
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                        .fill(Color.accentColor)
+                        .frame(width: 3, height: 16)
+                        .padding(.leading, 1)
+                }
+            }
             .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
                     .strokeBorder(isGamepadFocused ? Color.cyan : Color.clear, lineWidth: 2)
             )
-            .scaleEffect(isGamepadFocused ? 1.04 : 1.0)
-            .animation(.easeOut(duration: 0.12), value: isGamepadFocused)
+            .scaleEffect(isGamepadFocused ? 1.03 : 1.0)
         }
         .buttonStyle(.plain)
         .focusable()
         .focused($isFocused)
+        .onHover { isHovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: isGamepadFocused)
+        .animation(.easeOut(duration: 0.1), value: isHovering)
     }
 }
 

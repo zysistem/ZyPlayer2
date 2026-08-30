@@ -4,6 +4,7 @@ import SwiftUI
 struct AppleTVView: View {
     let library: LibraryStore
     let appleTV: AppleTVStore
+    let settings: AppSettings
     let actions: LibraryActions
     var selectedIndex: Int = -1
 
@@ -36,6 +37,7 @@ struct AppleTVView: View {
             case .shows:  grid(appleTV.shows, owned: library.ownedShowTMDBIDs)
             }
         }
+        .task { await appleTV.refresh(settings: settings) }
     }
 
     @ViewBuilder

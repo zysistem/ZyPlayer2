@@ -53,7 +53,7 @@ enum StreamRegistry {
         StreamProviderInfo(
             id: "hdfilmcehennemi",
             displayName: "HdFilmCehennemi",
-            badgeName: "Zysistem",
+            badgeName: "HDFC",
             badgeHex: "#01258F",
             kind: .movie,
             defaultBaseURL: HdFilmCehennemiProvider.defaultBaseURL,
@@ -62,7 +62,7 @@ enum StreamRegistry {
         StreamProviderInfo(
             id: "dizipal",
             displayName: "ZySeries",
-            badgeName: "ZySeries",
+            badgeName: "DiziPal",
             badgeHex: "#FF214A",
             kind: .series,
             defaultBaseURL: DizipalProvider.defaultBaseURL,
@@ -97,6 +97,18 @@ enum StreamRegistry {
                 return StreamSourceToggle(id: info.id, isEnabled: true, baseURL: info.defaultBaseURL)
             }
             if toggle.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                toggle.baseURL = info.defaultBaseURL
+            }
+            // İleriye dönük göç: kayıtlı adres, kodun bildiği default'la aynı kök
+            // ve uzantıya sahipse ama numarası daha küçükse (ör. saklanan
+            // dizipal2108, default dizipal2109), default'a çekilir. Yalnızca
+            // ileri: takipçi daha yenisini bulup sakladıysa (2115 > 2109) ona
+            // dokunulmaz. Bu, otomatik takip ağ yüzünden tökezlese bile adresin
+            // en az kodun bildiği güncel noktaya gelmesini garanti eder.
+            if let stored = StreamDomainTracker.parts(of: toggle.baseURL),
+               let fresh = StreamDomainTracker.parts(of: info.defaultBaseURL),
+               stored.stem == fresh.stem, stored.suffix == fresh.suffix,
+               stored.number < fresh.number {
                 toggle.baseURL = info.defaultBaseURL
             }
             return toggle

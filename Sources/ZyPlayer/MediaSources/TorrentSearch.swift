@@ -249,13 +249,14 @@ struct TorrentioClient {
     /// Doğrudan YTS.mx (YIFY Official REST API) üzerinden torrent sonuçlarını çeker.
     /// Hem IMDb ID hem de başlık/yıl ile sorgulama yapar.
     private func fetchYTSStreams(imdbID: String, title: String?, year: Int?) async -> [TorrentOption]? {
-        var queryTerms: [String] = [imdbID]
-        if let title = title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
-            queryTerms.append(title)
-            if let year = year {
-                queryTerms.append("\(title) \(year)")
-            }
+        let trimmedTitle = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        var queryTerms: [String] = []
+        if !imdbID.isEmpty { queryTerms.append(imdbID) }
+        if let trimmedTitle, !trimmedTitle.isEmpty {
+            queryTerms.append(trimmedTitle)
+            if let year { queryTerms.append("\(trimmedTitle) \(year)") }
         }
+        guard !queryTerms.isEmpty else { return nil }
 
         let trackersQuery = Self.trackers.map { "tr=" + $0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)! }.joined(separator: "&")
 
@@ -277,6 +278,7 @@ struct TorrentioClient {
                 struct YTSMovie: Decodable {
                     let title: String?
                     let imdb_code: String?
+                    let year: Int?
                     let torrents: [YTSTorrent]?
                 }
                 struct YTSTorrent: Decodable {
@@ -291,12 +293,28 @@ struct TorrentioClient {
 
             // YTS aradığı yapımı bulamadığında hata döndürmüyor: sorguyu yok
             // sayıp listenin başındaki filmleri veriyor. Doğrulamadan alınırsa
-            // bambaşka bir filmin sürümleri "bu film" diye sunuluyor — aranan
-            // yapımın IMDb kimliğini taşıyan kayıt yoksa buradan bir şey çıkmaz.
+            // bambaşka bir filmin sürümleri "bu film" diye sunuluyor.
+            //
+            // Doğrulama önceliği: IMDb kimliği elimizdeyse (TMDB'den geldiyse)
+            // bire bir eşleşme aranır — en güvenilir yol. Ama TMDB henüz çok
+            // yeni bir yapımın IMDb kimliğini işlememiş olabilir (imdbID boş
+            // gelir); bu durumda IMDb eşleşmesi zaten hiçbir zaman tutmaz ve
+            // film YTS'de gerçekten olsa bile hiç gösterilmezdi. Bu yüzden
+            // imdbID boşken başlık (noktalama/boşluk/büyük-küçük harf
+            // gözetmeksizin) + yıl (±1, TMDB'nin çıkış tarihiyle YTS'nin
+            // kayıt yılı bir gün/yıl sonu farkıyla kayabiliyor) eşleşmesi de
+            // kabul ediliyor.
             if let decoded = try? JSONDecoder().decode(YTSResponse.self, from: data),
                let movies = decoded.data?.movies,
-               let movie = movies.first(where: {
-                   ($0.imdb_code ?? "").caseInsensitiveCompare(imdbID) == .orderedSame
+               let movie = movies.first(where: { candidate in
+                   if !imdbID.isEmpty {
+                       return (candidate.imdb_code ?? "").caseInsensitiveCompare(imdbID) == .orderedSame
+                   }
+                   guard let trimmedTitle,
+                         Self.normalizedTitle(candidate.title ?? "") == Self.normalizedTitle(trimmedTitle)
+                   else { return false }
+                   guard let year, let candidateYear = candidate.year else { return true }
+                   return abs(candidateYear - year) <= 1
                }),
                let torrents = movie.torrents, !torrents.isEmpty {
 
@@ -533,6 +551,17 @@ struct TorrentioClient {
             link: link,
             fileIndex: stream.fileIdx
         )
+    }
+
+    /// IMDb kimliği yokken başlık karşılaştırması için: küçük harfe çevirir,
+    /// harf/rakam dışındaki her şeyi (noktalama, boşluk, "The " gibi ekler
+    /// dahil değil — yalnızca ayraçlar) atar. "The Odyssey 2" ile
+    /// "the odyssey 2" ya da "The Odyssey  2:" aynı sayılsın diye.
+    private static func normalizedTitle(_ title: String) -> String {
+        title.lowercased().unicodeScalars
+            .filter { CharacterSet.alphanumerics.contains($0) }
+            .map(String.init)
+            .joined()
     }
 
     /// Falls back to reading the quality out of the release name, for addons

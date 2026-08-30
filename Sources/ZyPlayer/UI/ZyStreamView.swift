@@ -87,6 +87,210 @@ struct ZyStreamView: View {
     }
 }
 
+/// Sidebar'daki "Filmler" (kind: .movie) ve "Diziler" (kind: .series)
+/// görünümleri: üstte akış sitelerinin kendi kategorileri tab olarak, altta
+/// seçili kategorinin o türdeki kartları.
+struct StreamCategoryBrowser: View {
+    let kind: StreamKind
+    @Bindable var store: ZyStreamStore
+    let library: LibraryStore
+    let resume: PlaybackResumeStore
+    let settings: AppSettings
+    let onOpen: (StreamHit) -> Void
+
+    @State private var selected: StreamCategory?
+
+    enum SortMode: String, CaseIterable { case none = "Varsayılan", year = "Yıl", rating = "Puan" }
+    /// Sağdaki filtreler: en düşük yıl, en düşük IMDb puanı ve sıralama.
+    @State private var minYear: Int?
+    @State private var minRating: Double?
+    @State private var sort: SortMode = .none
+
+    /// Bu iki görünüm içeriğini yalnızca HdFilmCehennemi'nin kendi kategori
+    /// sisteminden alıyor — Dizipal (ZySeries) buraya karışmıyor. Sağlayıcı
+    /// ayarlardaki güncel adresle kuruluyor, site taşınırsa yeni adres kullanılır.
+    private var hdfcProviders: [StreamProvider] {
+        settings.enabledStreamProviders.filter { $0.id == "hdfilmcehennemi" }
+    }
+
+    /// Sabit 10 sütun: her satırda 10 içerik (ekran genişliğine göre 13 değil).
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 10)
+
+    /// Seçili kategorinin bu türdeki kartları — sağ panel filtreleri ve sıralaması
+    /// uygulanmış hâlde.
+    private var visibleHits: [StreamHit] {
+        var hits = store.categoryHits.filter { $0.kind == kind }
+        if let minYear { hits = hits.filter { ($0.year ?? 0) >= minYear } }
+        if let minRating { hits = hits.filter { ($0.imdbRating ?? 0) >= minRating } }
+        switch sort {
+        case .none: break
+        case .year: hits.sort { ($0.year ?? 0) > ($1.year ?? 0) }
+        case .rating: hits.sort { ($0.imdbRating ?? 0) > ($1.imdbRating ?? 0) }
+        }
+        return hits
+    }
+
+    var body: some View {
+        Group {
+            if hdfcProviders.isEmpty {
+                PlaceholderView(
+                    title: "HdFilmCehennemi kapalı",
+                    detail: "Bu bölümün içeriği HdFilmCehennemi’den gelir. Ayarlar → Akış Kaynakları’ndan açın."
+                )
+            } else {
+                HStack(spacing: 0) {
+                    VStack(spacing: 0) {
+                        categoryTabs
+                        Divider().opacity(0.3)
+                        grid
+                    }
+                    Divider().opacity(0.3)
+                    filterPanel
+                }
+            }
+        }
+        .task {
+            // Kategorileri yüklemeden önce adresler denetlenir: site taşındıysa
+            // eski adrese yapılacak istekler boş dönerdi ve ekran sebebini
+            // söylemeden boş kalırdı.
+            await StreamDomainTracker.refreshAll(settings: settings)
+            await store.loadCategories(for: kind, providers: hdfcProviders)
+            if selected == nil { selected = store.categories(for: kind).first }
+        }
+        .task(id: selected) {
+            guard let selected else { return }
+            await store.loadCategoryHits(selected)
+        }
+    }
+
+    @ViewBuilder
+    private var categoryTabs: some View {
+        if store.categories(for: kind).isEmpty {
+            if store.isLoadingCategories {
+                HStack { ProgressView().controlSize(.small); Text("Kategoriler yükleniyor…").font(.caption).foregroundStyle(.secondary) }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 22).padding(.vertical, 12)
+            }
+        } else {
+            // Kategoriler yatay tek satırda taşıp ekran dışında kalıyordu; sarmalayan
+            // (wrap) düzende hepsi görünür, gerekirse dikey kaydırılır.
+            ScrollView(.vertical, showsIndicators: false) {
+                FlowLayout(spacing: 8, lineSpacing: 8) {
+                    ForEach(store.categories(for: kind)) { category in
+                        let isActive = category.id == selected?.id
+                        Button { selected = category } label: {
+                            Text(category.title)
+                                .font(.system(size: 12, weight: isActive ? .bold : .medium))
+                                .padding(.horizontal, 13)
+                                .frame(height: 30)
+                                .background {
+                                    Capsule().fill(isActive
+                                                   ? AnyShapeStyle(Color.accentColor)
+                                                   : AnyShapeStyle(.quaternary.opacity(0.5)))
+                                }
+                                .foregroundStyle(isActive ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 12)
+            }
+            .frame(maxHeight: 132)
+        }
+    }
+
+    @ViewBuilder
+    private var grid: some View {
+        if store.isLoadingCategoryHits {
+            ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if visibleHits.isEmpty {
+            PlaceholderView(
+                title: kind == .movie ? "Bu kategoride film yok" : "Bu kategoride dizi yok",
+                detail: "Başka bir kategori seçin."
+            )
+        } else {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 22) {
+                    ForEach(visibleHits) { hit in
+                        StreamHitCard(hit: hit, store: store, onOpen: onOpen, library: library)
+                    }
+                }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 20)
+            }
+        }
+    }
+
+    // MARK: - Sağ filtre paneli
+
+    private static let yearOptions: [(String, Int?)] = [
+        ("Tümü", nil), ("2025+", 2025), ("2020+", 2020), ("2015+", 2015), ("2010+", 2010), ("2000+", 2000)
+    ]
+    private static let ratingOptions: [(String, Double?)] = [
+        ("Tümü", nil), ("5+", 5), ("6+", 6), ("7+", 7), ("8+", 8)
+    ]
+
+    private var filterPanel: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Filtrele")
+                    .font(.system(size: 14, weight: .bold))
+
+                filterGroup("Sırala") {
+                    ForEach(SortMode.allCases, id: \.self) { mode in
+                        chip(mode.rawValue, active: sort == mode) { sort = mode }
+                    }
+                }
+                filterGroup("Yıl") {
+                    ForEach(Self.yearOptions, id: \.0) { opt in
+                        chip(opt.0, active: minYear == opt.1) { minYear = opt.1 }
+                    }
+                }
+                filterGroup("IMDb Puanı") {
+                    ForEach(Self.ratingOptions, id: \.0) { opt in
+                        chip(opt.0, active: minRating == opt.1) { minRating = opt.1 }
+                    }
+                }
+
+                if minYear != nil || minRating != nil || sort != .none {
+                    Button("Sıfırla") { minYear = nil; minRating = nil; sort = .none }
+                        .font(.system(size: 12, weight: .medium))
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+        }
+        .frame(width: 168)
+    }
+
+    @ViewBuilder
+    private func filterGroup<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+            FlowLayout(spacing: 6, lineSpacing: 6) { content() }
+        }
+    }
+
+    private func chip(_ label: String, active: Bool, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 11, weight: active ? .bold : .medium))
+                .padding(.horizontal, 11)
+                .frame(height: 26)
+                .background {
+                    Capsule().fill(active ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.quaternary.opacity(0.5)))
+                }
+                .foregroundStyle(active ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 /// A streaming-site result card. Shared by the ZyStream page and the global
 /// search's ZyStream section.
 struct StreamHitCard: View {
@@ -114,11 +318,15 @@ struct StreamHitCard: View {
                     title: hit.title,
                     subtitle: hit.year.map(String.init) ?? hit.kind.label,
                     progress: progress,
+                    isFinished: WatchFlagsStore.shared.isFinished(hit.id),
+                    watchlisted: WatchFlagsStore.shared.isWantToWatch(hit.id),
                     posterImage: poster,
                     badge: {
                         let badge = StreamRegistry.badge(forProviderID: hit.providerID)
                         return .source(badge.name, tint: Color(hex: badge.hex))
                     }(),
+                    audioLabel: hit.audioLabel,
+                    imdbRating: hit.imdbRating,
                     isRemovable: onRemove != nil,
                     isFocused: isFocused
                 )
@@ -141,7 +349,17 @@ struct StreamHitCard: View {
         }
         .contextMenu {
             Button("Aç") { onOpen(hit) }
+            Divider()
+            let watched = WatchFlagsStore.shared.isFinished(hit.id)
+            Button(watched ? "İzlemedim olarak işaretle" : "İzledim") {
+                WatchFlagsStore.shared.setFinished(hit.id, !watched, snapshot: .stream(hit))
+            }
+            let listed = WatchFlagsStore.shared.isWantToWatch(hit.id)
+            Button(listed ? "İzleyeceklerimden çıkar" : "İzleyeceğim") {
+                WatchFlagsStore.shared.setWantToWatch(hit.id, !listed, snapshot: .stream(hit))
+            }
             if let library {
+                Divider()
                 let fav = library.isStreamFavorite(hit)
                 Button(fav ? "Favorilerden çıkar" : "Favorilere ekle") {
                     library.toggleStreamFavorite(hit)
@@ -248,5 +466,57 @@ struct StreamEpisodePicker: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 4)
+    }
+}
+
+/// Basit sarmalayan (akış) yerleşim: öğeleri soldan sağa dizer, satıra sığmayınca
+/// alt satıra geçer. Kategori etiketleri tek satırda taşıp ekran dışında
+/// kalmasın diye — hepsi görünür, gerekirse dikey kaydırılır.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+    var lineSpacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = arrange(subviews: subviews, maxWidth: proposal.width ?? .infinity)
+        let height = rows.reduce(0) { $0 + $1.height } + CGFloat(max(0, rows.count - 1)) * lineSpacing
+        let width = proposal.width ?? rows.map(\.width).max() ?? 0
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let rows = arrange(subviews: subviews, maxWidth: bounds.width)
+        var y = bounds.minY
+        for row in rows {
+            var x = bounds.minX
+            for index in row.items {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(at: CGPoint(x: x, y: y), anchor: .topLeading,
+                                      proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += row.height + lineSpacing
+        }
+    }
+
+    private struct Row { var items: [Int] = []; var width: CGFloat = 0; var height: CGFloat = 0 }
+
+    private func arrange(subviews: Subviews, maxWidth: CGFloat) -> [Row] {
+        var rows: [Row] = []
+        var row = Row()
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let needed = row.items.isEmpty ? size.width : row.width + spacing + size.width
+            if needed > maxWidth, !row.items.isEmpty {
+                rows.append(row)
+                row = Row(items: [index], width: size.width, height: size.height)
+            } else {
+                if !row.items.isEmpty { row.width += spacing }
+                row.items.append(index)
+                row.width += size.width
+                row.height = max(row.height, size.height)
+            }
+        }
+        if !row.items.isEmpty { rows.append(row) }
+        return rows
     }
 }

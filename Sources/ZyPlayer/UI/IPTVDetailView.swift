@@ -15,7 +15,9 @@ struct IPTVDetailView: View {
     let store: IPTVStore
     let onBack: () -> Void
     let onPlayMovie: (IPTVMovie) -> Void
-    let onPlayEpisode: (IPTVEpisode, String) -> Void
+    /// Üçüncü parametre dizinin tüm bölümleri (tüm sezonlar): oynatıcıdaki bölüm
+    /// seçici ve sonraki/önceki geçişleri buradan kuruluyor.
+    let onPlayEpisode: (IPTVEpisode, String, [IPTVEpisode]) -> Void
     /// Fragman TMDB'den geliyor: sağlayıcının `youtube_trailer` alanı
     /// kataloğun tamamında boş. Kimlik bildirilmemişse düğme hiç çıkmıyor.
     var onTrailer: ((Int, Bool) -> Void)?
@@ -55,6 +57,12 @@ struct IPTVDetailView: View {
     }
 
     private var seasonNumbers: [Int] { episodes.keys.sorted() }
+    /// Tüm sezonların bölümleri sezon/bölüm sırasında tek listede — oynatıcıdaki
+    /// seçici ve sonraki/önceki geçişleri bunun üzerinden çalışıyor.
+    private var allEpisodes: [IPTVEpisode] {
+        seasonNumbers.flatMap { episodes[$0] ?? [] }
+            .sorted { ($0.season, $0.episode) < ($1.season, $1.episode) }
+    }
     private var currentSeason: Int { selectedSeason ?? seasonNumbers.first ?? 1 }
 
     var body: some View {
@@ -318,7 +326,7 @@ struct IPTVDetailView: View {
                         progress: point?.progress ?? 0,
                         isWatched: point?.isFinished ?? false
                     ) {
-                        onPlayEpisode(episode, title)
+                        onPlayEpisode(episode, title, allEpisodes)
                     }
                 }
             }

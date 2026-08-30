@@ -34,18 +34,29 @@ enum StreamDomainTracker {
     // MARK: - Denetim
 
     static func refresh(baseURL: String, announcedNext: String?) async -> Outcome {
-        // 1. Kayıtlı adres ayakta mı?
-        if let html = await fetch(baseURL), isLive(html, matching: baseURL) {
+        // 1. Kayıtlı adresi getir — yönlendirmeleri izleyerek indiği *son* adrese
+        //    bak. Bu siteler eski adresten yenisine 301 ile yönlendiriyor
+        //    (dizipal2108 → dizipal2109); son adresin konağı değişmişse taşınma
+        //    budur, en güçlü ve en doğrudan sinyal.
+        if let result = await fetch(baseURL), isLive(result.html) {
+            let landed = origin(of: result.finalURL) ?? baseURL
+            if landed != baseURL {
+                return Outcome(baseURL: landed,
+                               announcedNext: announced(in: result.html, current: landed),
+                               didMove: true)
+            }
             return Outcome(baseURL: baseURL,
-                           announcedNext: announced(in: html, current: baseURL) ?? announcedNext,
+                           announcedNext: announced(in: result.html, current: baseURL) ?? announcedNext,
                            didMove: false)
         }
 
-        // 2/3. Kapanmış: sitenin duyurduğu adres, sonra sayısal ardıllar.
+        // 2/3. Kapanmış (ya da yönlendirmesiz ölmüş): sitenin duyurduğu adres,
+        //      sonra sayısal ardıllar.
         for candidate in candidates(from: baseURL, announced: announcedNext) {
-            guard let html = await fetch(candidate), isLive(html, matching: candidate) else { continue }
-            return Outcome(baseURL: candidate,
-                           announcedNext: announced(in: html, current: candidate),
+            guard let result = await fetch(candidate), isLive(result.html) else { continue }
+            let landed = origin(of: result.finalURL) ?? candidate
+            return Outcome(baseURL: landed,
+                           announcedNext: announced(in: result.html, current: landed),
                            didMove: true)
         }
 
@@ -53,6 +64,13 @@ enum StreamDomainTracker {
         // arızasında adresi bozmamak, taşınmayı bir sonraki denetime bırakmaktan
         // daha güvenli.
         return Outcome(baseURL: baseURL, announcedNext: announcedNext, didMove: false)
+    }
+
+    /// "https://dizipal2109.com/dizi/…" → "https://dizipal2109.com". Yolu ve
+    /// sorguyu atıp yalnızca şema+konağı bırakır; adres olarak saklanan biçim bu.
+    private static func origin(of url: URL) -> String? {
+        guard let scheme = url.scheme, let host = url.host else { return nil }
+        return "\(scheme)://\(host)"
     }
 
     /// Bütün akış kaynaklarını denetler ve değişeni ayarlara yazar.
@@ -145,23 +163,38 @@ enum StreamDomainTracker {
 
     // MARK: - Canlılık
 
-    /// Sayfanın gerçekten o site olup olmadığı. Yalnızca HTTP 200'e bakmak
-    /// yetmez: satılığa çıkmış ya da park edilmiş bir alan adı da 200 döner.
-    private static func isLive(_ html: String, matching baseURL: String) -> Bool {
-        guard html.count > 1500 else { return false }
-        guard let (stem, _, _) = parts(of: baseURL) else { return true }
-        return html.localizedCaseInsensitiveContains(stem)
+    /// Sayfanın gerçek bir içerik sayfası olup olmadığı. Yalnızca HTTP 200'e
+    /// bakmak yetmez: satılığa çıkmış ya da park edilmiş bir alan adı da 200
+    /// döner.
+    ///
+    /// Eskiden sayfanın alan adının kökünü ("dizipal") içermesi şart koşuluyordu;
+    /// ama bu siteler kendi adlarını HTML içinde hiç geçirmiyor, dolayısıyla
+    /// canlı sayfa bile "ölü" sayılıp adres güncellenemiyordu. Artık kök
+    /// aranmıyor: yeterince dolu bir HTML belgesi olması ve bilinen park/satılık
+    /// imzalarını taşımaması yetiyor.
+    private static func isLive(_ html: String) -> Bool {
+        guard html.count > 2000 else { return false }
+        let lower = html.lowercased()
+        let parked = ["domain for sale", "buy this domain", "satılık alan adı",
+                      "this domain is parked", "sedoparking", "domain parking",
+                      "godaddy.com/domainfind"]
+        return !parked.contains(where: lower.contains)
     }
 
     /// Önce düz bir istek; sayfa Cloudflare arkasındaysa sitenin kendi
-    /// tarayıcı tabanlı getiricisine düşülür.
+    /// tarayıcı tabanlı getiricisine düşülür. Dönen `finalURL`, yönlendirmeler
+    /// izlendikten sonra inilen adrestir — taşınmayı yakalamanın anahtarı bu.
     @MainActor
-    private static func fetch(_ baseURL: String) async -> String? {
-        if let html = await plainFetch(baseURL), html.count > 1500 { return html }
-        return try? await WebFetcherPool.fetcher(for: baseURL).text(baseURL)
+    private static func fetch(_ baseURL: String) async -> (html: String, finalURL: URL)? {
+        if let result = await plainFetch(baseURL), result.html.count > 1500 { return result }
+        if let html = try? await WebFetcherPool.fetcher(for: baseURL).text(baseURL),
+           let url = URL(string: baseURL) {
+            return (html, url)
+        }
+        return nil
     }
 
-    private static func plainFetch(_ baseURL: String) async -> String? {
+    private static func plainFetch(_ baseURL: String) async -> (html: String, finalURL: URL)? {
         guard let url = URL(string: baseURL) else { return nil }
         var request = URLRequest(url: url)
         request.timeoutInterval = 10
@@ -170,10 +203,13 @@ enum StreamDomainTracker {
             + "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
             forHTTPHeaderField: "User-Agent"
         )
+        // URLSession yönlendirmeleri kendiliğinden izler; `response.url` inilen
+        // son adrestir (301 dizipal2108 → dizipal2109 burada 2109'a döner).
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode)
         else { return nil }
-        return String(data: data, encoding: .utf8)
+        guard let html = String(data: data, encoding: .utf8) else { return nil }
+        return (html, http.url ?? url)
     }
 }
 

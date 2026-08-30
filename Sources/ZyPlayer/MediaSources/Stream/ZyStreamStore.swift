@@ -146,6 +146,82 @@ final class ZyStreamStore {
         shelves = collected
     }
 
+    // MARK: - Categories (sidebar Filmler / Diziler)
+
+    /// Kategori menüleri kind'a göre ayrı: "Filmler" ile "Diziler" farklı kümeler
+    /// gösteriyor (film: türler + özel kategoriler; dizi: yabancı dizi listesi +
+    /// popüler türler).
+    private(set) var movieCategories: [StreamCategory] = []
+    private(set) var seriesCategories: [StreamCategory] = []
+    private(set) var isLoadingCategories = false
+    /// Seçili kategorinin kartları (film + dizi karışık); görünüm kind'a göre süzer.
+    private(set) var categoryHits: [StreamHit] = []
+    private(set) var isLoadingCategoryHits = false
+
+    /// Kategori sayfaları değişmediği için oturum boyunca önbelleğe alınıyor —
+    /// aynı kategoriye dönüldüğünde yeniden çekilmez.
+    @ObservationIgnored private var categoryHitsCache: [String: [StreamHit]] = [:]
+    @ObservationIgnored private var categoryHitsToken = 0
+    /// Bir kategoride en çok kaç sayfa taranacak. Film kategorilerinde sayfalama
+    /// var; boş sayfaya kadar toplanıyor, bu üst sınır kör bir taramayı önlüyor.
+    private static let maxCategoryPages = 8
+
+    func categories(for kind: StreamKind) -> [StreamCategory] {
+        kind == .series ? seriesCategories : movieCategories
+    }
+
+    /// İstenen türün kategori menüsünü bir kez yükler (boşsa).
+    func loadCategories(for kind: StreamKind, providers: [StreamProvider]) async {
+        let existing = categories(for: kind)
+        guard existing.isEmpty, !providers.isEmpty else { return }
+        isLoadingCategories = true
+        defer { isLoadingCategories = false }
+        var out: [StreamCategory] = []
+        var seenTitles = Set<String>()
+        for provider in providers {
+            guard let cats = try? await provider.categories(for: kind) else { continue }
+            for category in cats where seenTitles.insert(category.title.lowercased()).inserted {
+                out.append(category)
+            }
+        }
+        if kind == .series { seriesCategories = out } else { movieCategories = out }
+    }
+
+    /// Seçilen kategorinin kartlarını yükler: sayfa sayfa çekip birleştirir, her
+    /// sayfa geldikçe grid'i tazeler (ilk sayfadan sonra spinner kalkar), boş
+    /// sayfada ya da üst sınırda durur. Sonuç önbelleğe alınır.
+    func loadCategoryHits(_ category: StreamCategory) async {
+        categoryHitsToken += 1
+        let token = categoryHitsToken
+        if let cached = categoryHitsCache[category.id] {
+            categoryHits = cached
+            isLoadingCategoryHits = false
+            return
+        }
+        isLoadingCategoryHits = true
+        categoryHits = []
+        guard let provider = lookup(category.providerID) else {
+            isLoadingCategoryHits = false
+            return
+        }
+        var all: [StreamHit] = []
+        var seen = Set<String>()
+        for page in 1...Self.maxCategoryPages {
+            guard token == categoryHitsToken else { return }
+            let pageHits = (try? await provider.categoryHits(category.pageURL, page: page)) ?? []
+            guard token == categoryHitsToken else { return }
+            let fresh = pageHits.filter { seen.insert($0.id).inserted }
+            if fresh.isEmpty { break }
+            all += fresh
+            categoryHits = all
+            isLoadingCategoryHits = false   // ilk sayfa geldi, grid görünür
+        }
+        guard token == categoryHitsToken else { return }
+        categoryHitsCache[category.id] = all
+        categoryHits = all
+        isLoadingCategoryHits = false
+    }
+
     // MARK: - Activate / play
 
     /// A card was tapped. A page with a player embed plays straight away; one
@@ -162,11 +238,11 @@ final class ZyStreamStore {
         message = nil
         do {
             let embeds = try await provider.embeds(forPage: hit.pageURL)
-            if let embed = embeds.first {
+            if !embeds.isEmpty {
                 // Sayfada oynatıcı varsa bu bir film; önceki dizinin bölüm
                 // listesi player'a taşınmasın.
                 playingDetails = nil
-                await resolveAndPlay(embed: embed, pageURL: hit.pageURL, providerID: hit.providerID,
+                await resolveAndPlay(embeds: embeds, pageURL: hit.pageURL, providerID: hit.providerID,
                                      title: hit.title, resolvingID: hit.id, posterURL: hit.posterURL)
                 return
             }
@@ -234,8 +310,8 @@ final class ZyStreamStore {
         message = nil
         do {
             let embeds = try await provider.embeds(forPage: pageURL)
-            guard let embed = embeds.first else { throw StreamError.noEmbed }
-            await resolveAndPlay(embed: embed, pageURL: pageURL, providerID: providerID,
+            guard !embeds.isEmpty else { throw StreamError.noEmbed }
+            await resolveAndPlay(embeds: embeds, pageURL: pageURL, providerID: providerID,
                                  title: title, resolvingID: resolvingID, posterURL: posterURL)
         } catch {
             self.resolvingID = nil
@@ -246,10 +322,11 @@ final class ZyStreamStore {
     /// Shared tail: resolve the embed, register a resume point, and play with the
     /// saved position. The resume key is the stable page URL, not the ephemeral
     /// media URL that actually streams.
-    private func resolveAndPlay(embed: StreamEmbed, pageURL: String, providerID: String,
+    private func resolveAndPlay(embeds: [StreamEmbed], pageURL: String, providerID: String,
                                 title: String, resolvingID: String, posterURL: URL?) async {
         do {
-            let resolved = try await resolver.resolve(embed)
+            // İlk sunucu 15 sn'de çözülmezse sıradakine (ör. Rapidrame) geçilir.
+            let resolved = try await resolver.resolveFirstWorking(embeds)
             resume?.begin(ResumePoint(
                 id: pageURL, kind: .stream, title: title,
                 posterURLString: posterURL?.absoluteString,

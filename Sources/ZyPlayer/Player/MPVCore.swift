@@ -11,6 +11,12 @@ final class MPVCore {
     enum Event {
         case fileLoaded
         case endFile
+        /// mpv oynatmayı bir hatayla bitirdiğinde (ör. yt-dlp bir YouTube
+        /// fragmanını çözemedi, akış adresi artık ölü, dosya bozuk). Eskiden
+        /// `MPV_EVENT_END_FILE`'ın `reason`/`error` alanları hiç okunmuyordu —
+        /// böyle bir hata sessizce yutuluyor, kullanıcı kalıcı siyah bir
+        /// ekranda hiçbir açıklama olmadan bekliyordu.
+        case playbackFailed(String)
         case propertyChanged(name: String)
         case shutdown
     }
@@ -51,6 +57,12 @@ final class MPVCore {
         // file's own default track. Every spelling shows up in the wild, and an
         // explicit `aid` chosen later still overrides this.
         setOption("alang", "tur,tr,turkish,türkçe")
+        // Yan altyazı dosyalarını otomatik yükle. `fuzzy`: yalnızca birebir aynı
+        // adı değil, video adıyla başlayan dosyaları da alır — indirilen
+        // "Ad (Yıl).Türkçe.srt" gibi dilli yan dosyalar böyle görünür.
+        setOption("sub-auto", "fuzzy")
+        // İndirilen altyazının varsayılan dili Türkçe olsun.
+        setOption("slang", "tur,tr,turkish,türkçe")
         // Trailers are YouTube URLs, resolved by mpv's ytdl hook. Give it an
         // absolute path: a bundled .app does not inherit the shell's PATH.
         setOption("ytdl", "yes")
@@ -235,6 +247,21 @@ final class MPVCore {
         return raw.compactMap(MediaTrack.init(mpvEntry:))
     }
 
+    /// mpv `chapter-list`'i JSON olarak verir; her öğede `title` ve `time` var.
+    /// Gömülü bölüm işareti olan dosyalarda intro/jenerik sınırlarını buradan
+    /// okuyoruz — dosyada yazan kesin saniye.
+    func chapterList() -> [(title: String, time: Double)] {
+        guard let json = stringProperty("chapter-list"),
+              let data = json.data(using: .utf8),
+              let raw = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            return []
+        }
+        return raw.compactMap { entry in
+            guard let time = entry["time"] as? Double else { return nil }
+            return (title: (entry["title"] as? String) ?? "", time: time)
+        }
+    }
+
     func selectAudioTrack(id: Int?) {
         setProperty("aid", id.map(String.init) ?? "no")
     }
@@ -257,8 +284,21 @@ final class MPVCore {
     /// Dosyası yerinde değişen bir dış altyazıyı yeniden okutur. Çeviri
     /// ilerledikçe aynı dosyaya yazıp bunu çağırıyoruz: yeni bir parça çevrildikçe
     /// altyazı oynatma sırasında güncelleniyor, yeni bir iz açılmıyor.
+    ///
+    /// mpv bunu "izi kaldırıp yeniden ekleme" olarak yapıyor ve `sub-add`'e
+    /// verilen `title`/`lang`'ı bu yeniden eklemede uygulamıyor — iz menüde
+    /// dosya adına (`zyplayer_ceviri_...vtt`) düşebiliyor. Ara adımlarda ucuz
+    /// olduğu için burası hâlâ kullanılıyor; çeviri bitince kalıcı başlık için
+    /// `removeSubtitle` + `addSubtitleFile` ile açıkça yeniden ekleniyor.
     func reloadSubtitle(id: Int) {
         command(["sub-reload", String(id)])
+    }
+
+    /// Bir dış altyazı izini kaldırır. Çeviri bittiğinde kalıcı başlığı
+    /// korumak için izi silip `addSubtitleFile`le başlıklı yeniden eklemede
+    /// kullanılıyor — `sub-reload` başlığı düşürüyor.
+    func removeSubtitle(id: Int) {
+        command(["sub-remove", String(id)])
     }
 
     /// Pushes the whole subtitle style; safe to call while playing.
@@ -283,6 +323,12 @@ final class MPVCore {
                     self.refreshMirroredProperties()
                     self.emit(.fileLoaded)
                 case MPV_EVENT_END_FILE:
+                    if let endFile = UnsafeMutablePointer<mpv_event_end_file>(
+                        OpaquePointer(event.data))?.pointee,
+                       endFile.reason == MPV_END_FILE_REASON_ERROR {
+                        let message = String(cString: mpv_error_string(endFile.error))
+                        self.emit(.playbackFailed(message))
+                    }
                     self.emit(.endFile)
                 case MPV_EVENT_PROPERTY_CHANGE:
                     if let prop = UnsafeMutablePointer<mpv_event_property>(OpaquePointer(event.data)) {

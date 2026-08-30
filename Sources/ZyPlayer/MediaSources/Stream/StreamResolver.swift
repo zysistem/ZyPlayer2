@@ -85,6 +85,21 @@ final class StreamResolver: NSObject, WKScriptMessageHandler, WKNavigationDelega
     return '';
     """
 
+    /// Embed listesini sırayla dener; biri `perEmbedTimeout` içinde çözülmezse
+    /// ya da hata verirse bir sonrakine geçer. HdFilmCehennemi gibi sayfalarda
+    /// ilk sunucu ("Close") takılırsa ikinci sunucudan ("Rapidrame") devam etsin
+    /// diye. İlk başarılı çözüm döner; hepsi tükenirse son hata fırlatılır.
+    func resolveFirstWorking(_ embeds: [StreamEmbed],
+                             perEmbedTimeout: Duration = .seconds(8)) async throws -> ResolvedStream {
+        guard !embeds.isEmpty else { throw StreamError.noEmbed }
+        var lastError: Error = StreamError.resolveFailed
+        for embed in embeds {
+            do { return try await resolve(embed, timeout: perEmbedTimeout) }
+            catch { lastError = error }
+        }
+        throw lastError
+    }
+
     func resolve(_ embed: StreamEmbed, timeout: Duration = .seconds(25)) async throws -> ResolvedStream {
         teardown(resumingWith: .failure(CancellationError()))
         resultReferer = Self.origin(of: embed.url) ?? embed.url

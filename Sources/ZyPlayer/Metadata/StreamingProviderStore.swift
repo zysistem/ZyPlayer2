@@ -8,6 +8,10 @@ import Observation
 enum StreamingBrand: String, CaseIterable, Identifiable {
     case netflix
     case primeVideo
+    case disneyPlus
+    case hboMax
+    case paramountPlus
+    case appleTVPlus
 
     var id: String { rawValue }
 
@@ -15,14 +19,25 @@ enum StreamingBrand: String, CaseIterable, Identifiable {
         switch self {
         case .netflix: "Netflix"
         case .primeVideo: "Amazon Prime Video"
+        case .disneyPlus: "Disney+"
+        case .hboMax: "HBO Max"
+        case .paramountPlus: "Paramount+"
+        case .appleTVPlus: "Apple TV+"
         }
     }
 
-    /// `with_watch_providers` alanına giden değer.
+    /// `with_watch_providers` alanına giden değer. Bazı platformlar bölgeye
+    /// göre iki kimlikten biriyle listeleniyor, o yüzden VEYA'lanıyor: Prime
+    /// Video (9/119), HBO Max — eski adıyla kimi ülkede hâlâ 384, yeni marka
+    /// "Max" 1899.
     var providerQuery: String {
         switch self {
         case .netflix: "8"
         case .primeVideo: "9|119"
+        case .disneyPlus: "337"
+        case .hboMax: "384|1899"
+        case .paramountPlus: "531"
+        case .appleTVPlus: "350"
         }
     }
 
@@ -31,6 +46,10 @@ enum StreamingBrand: String, CaseIterable, Identifiable {
         switch self {
         case .netflix: 8
         case .primeVideo: 119
+        case .disneyPlus: 337
+        case .hboMax: 1899
+        case .paramountPlus: 531
+        case .appleTVPlus: 350
         }
     }
 
@@ -38,6 +57,10 @@ enum StreamingBrand: String, CaseIterable, Identifiable {
         switch self {
         case .netflix: 8
         case .primeVideo: 9
+        case .disneyPlus: 337
+        case .hboMax: 384
+        case .paramountPlus: 531
+        case .appleTVPlus: 350
         }
     }
 }

@@ -30,6 +30,13 @@ struct StreamHit: Identifiable, Hashable, Codable {
     /// The detail/watch page on the site, resolved to an episode list (series)
     /// or straight to embeds (movie).
     var pageURL: String
+    /// Sitenin kart üzerinde gösterdiği IMDb puanı (varsa) — kartta rozet olarak
+    /// çiziliyor. Opsiyonel: eski kayıtlar ve puan vermeyen kaynaklar için nil.
+    var imdbRating: Double?
+    /// "Dublaj" (Türkçe seslendirme var) ya da "Altyazılı" (yalnızca altyazı) —
+    /// sitenin kartında bu bilgiyi taşıyan kaynaklarda (HdFilmCehennemi) dolu,
+    /// diğerlerinde nil.
+    var audioLabel: String?
 }
 
 /// A single episode on a series/anime page.
@@ -94,6 +101,18 @@ struct StreamShelf: Identifiable {
     var id: String { title }
     var title: String
     var hits: [StreamHit]
+}
+
+/// Bir akış sitesinin kendi menüsündeki kategori (tür). Sidebar'daki "Filmler"
+/// ve "Diziler" görünümlerinde tab olarak çıkıyor; içeriği o kategorinin liste
+/// sayfasından kazınıyor. `providerID` taşınıyor çünkü sayfa o sağlayıcının
+/// getiricisiyle yüklenmeli ve birden çok kaynak açıkken hangi siteye ait olduğu
+/// bilinmeli.
+struct StreamCategory: Identifiable, Hashable {
+    var providerID: String
+    var title: String
+    var pageURL: String
+    var id: String { "\(providerID)|\(pageURL)" }
 }
 
 /// On-disk shape of `stream-favorites.json`, kept apart from the library like

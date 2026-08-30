@@ -18,7 +18,13 @@ enum TranslatedSubtitleCache {
     }()
 
     /// Çeviri biçimi değişirse eski önbellek kendiliğinden geçersiz olsun diye.
-    private static let formatVersion = "v1"
+    /// v1 → v2 (2026-08-28): `LLMTranslator.systemPrompt`/`userPrompt` sinema
+    /// bağlamı/tutarlılık vurgusuyla yeniden yazıldı. Eski sürümle çevrilmiş
+    /// dosyalar diskte kalıyor ama artık hiçbir anahtar onlara denk gelmiyor,
+    /// bu yüzden "aynı altyazıyı aynı motorla yeniden çevir" isteği eski,
+    /// düşük kaliteli çıktıyı sessizce geri getirmek yerine gerçekten yeniden
+    /// çeviriyor.
+    private static let formatVersion = "v2"
 
     /// Anahtar **yalnızca kaynak altyazının içeriğinden** üretiliyor. Motor adı
     /// dosya adına ayrı bir ek olarak yazılıyor, anahtarın içine karışmıyor:

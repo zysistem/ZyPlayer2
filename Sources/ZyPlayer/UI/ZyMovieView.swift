@@ -9,7 +9,10 @@ struct ZyMovieView: View {
     let player: PlayerModel
     let streamer: TorrentStreamer
     let torrents: TorrentStore
-    
+    /// İzlenen torrent'ler burada da devam noktası bıraksın diye — yoksa
+    /// "İzledim" sekmesi bu içerikleri hiç göremiyordu.
+    var resume: PlaybackResumeStore?
+
     var selectedIndex: Int = -1
     /// Kumandanın seçim tuşu sayacı. Hangi içeriğin seçili olduğunu bu ekran
     /// bilir (arama süzgeci listeyi değiştiriyor), bu yüzden seçimi RootView
@@ -79,6 +82,7 @@ struct ZyMovieView: View {
                     torrents: torrents,
                     streamer: streamer,
                     player: player,
+                    resume: resume,
                     onBack: { selectedHit = nil },
                     onOpenRemoteTitle: { remote in
                         selectedHit = nil
@@ -121,8 +125,10 @@ struct ZyMovieView: View {
                                             PosterCard(
                                                 title: titleText,
                                                 subtitle: subtitle,
+                                                isFinished: WatchFlagsStore.shared.isFinished(hit.rssLink),
                                                 seasonBadge: season,
                                                 is4K: is4K,
+                                                watchlisted: WatchFlagsStore.shared.isWantToWatch(hit.rssLink),
                                                 posterURL: hit.remoteTitle?.posterURL,
                                                 isFocused: false,
                                                 isGamepadSelected: isGamepadSelected
@@ -132,6 +138,15 @@ struct ZyMovieView: View {
                                         .focusEffectDisabled()
                                     }
                                     .contextMenu {
+                                        let watched = WatchFlagsStore.shared.isFinished(hit.rssLink)
+                                        Button(watched ? "İzlemedim olarak işaretle" : "İzledim") {
+                                            WatchFlagsStore.shared.setFinished(hit.rssLink, !watched, snapshot: .torrent(hit))
+                                        }
+                                        let listed = WatchFlagsStore.shared.isWantToWatch(hit.rssLink)
+                                        Button(listed ? "İzleyeceklerimden çıkar" : "İzleyeceğim") {
+                                            WatchFlagsStore.shared.setWantToWatch(hit.rssLink, !listed, snapshot: .torrent(hit))
+                                        }
+                                        Divider()
                                         Button(store.isFavorite(hit) ? "Favorilerden Çıkar" : "Favorilere Ekle") {
                                             store.toggleFavorite(hit)
                                         }
@@ -171,8 +186,10 @@ struct ZyMovieView: View {
                                         PosterCard(
                                             title: titleText,
                                             subtitle: subtitle,
+                                            isFinished: WatchFlagsStore.shared.isFinished(hit.rssLink),
                                             seasonBadge: season,
                                             is4K: is4K,
+                                            watchlisted: WatchFlagsStore.shared.isWantToWatch(hit.rssLink),
                                             posterURL: hit.remoteTitle?.posterURL,
                                             isFocused: false, // Local state handles hover
                                             isGamepadSelected: isGamepadSelected
@@ -180,7 +197,7 @@ struct ZyMovieView: View {
                                     }
                                     .buttonStyle(.plain)
                                     .focusEffectDisabled()
-                                    
+
                                     // Torrent details hover tooltip
                                     if hoveredHit == hit {
                                         Text(hit.rssDescription)
@@ -194,6 +211,15 @@ struct ZyMovieView: View {
                                     hoveredHit = isHovering ? hit : nil
                                 }
                                 .contextMenu {
+                                    let watched = WatchFlagsStore.shared.isFinished(hit.rssLink)
+                                    Button(watched ? "İzlemedim olarak işaretle" : "İzledim") {
+                                        WatchFlagsStore.shared.setFinished(hit.rssLink, !watched, snapshot: .torrent(hit))
+                                    }
+                                    let listed = WatchFlagsStore.shared.isWantToWatch(hit.rssLink)
+                                    Button(listed ? "İzleyeceklerimden çıkar" : "İzleyeceğim") {
+                                        WatchFlagsStore.shared.setWantToWatch(hit.rssLink, !listed, snapshot: .torrent(hit))
+                                    }
+                                    Divider()
                                     Button(store.isFavorite(hit) ? "Favorilerden Çıkar" : "Favorilere Ekle") {
                                         store.toggleFavorite(hit)
                                     }

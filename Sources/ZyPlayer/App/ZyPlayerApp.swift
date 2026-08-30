@@ -43,6 +43,7 @@ struct ZyPlayerApp: App {
     @State private var smb = SMBStore()
     @State private var drive: GoogleDriveStore
     @State private var torrents: TorrentStore
+    @State private var streamDownloads: StreamDownloadStore
     @State private var cinema = CinemaStore()
     @State private var appleTV = AppleTVStore()
     @State private var providers = StreamingProviderStore()
@@ -55,6 +56,7 @@ struct ZyPlayerApp: App {
         _settings = State(initialValue: settings)
         _drive = State(initialValue: GoogleDriveStore(settings: settings))
         _torrents = State(initialValue: TorrentStore(settings: settings))
+        _streamDownloads = State(initialValue: StreamDownloadStore(settings: settings))
         _iptv = State(initialValue: IPTVStore(settings: settings))
     }
 
@@ -63,10 +65,16 @@ struct ZyPlayerApp: App {
         // player rather than spawn another window with its own mpv instance.
         Window("ZyPlayer", id: "main") {
             RootView(player: player, library: library, smb: smb, drive: drive,
-                     torrents: torrents, streamer: streamer, cinema: cinema,
+                     torrents: torrents, streamDownloads: streamDownloads,
+                     streamer: streamer, cinema: cinema,
                      appleTV: appleTV, providers: providers, settings: settings,
                      iptv: iptv)
                 .frame(minWidth: 900, minHeight: 560)
+                // Uygulamanın seçili görünümünü (Açık/Koyu) tüm pencereye uygula.
+                // Bu olmadan arka planlar ayara göre, metin renkleri ise SİSTEM
+                // görünümüne göre gidiyordu; ikisi çakışınca (ör. sistem koyu, uygulama
+                // açık) açık modda beyaz-üstüne-beyaz "bozuk" görüntü çıkıyordu.
+                .preferredColorScheme(settings.colorScheme)
                 .onAppear {
                     AppDelegate.player = player
                     AppDelegate.streamer = streamer

@@ -42,6 +42,18 @@ enum TranslationUtil {
         return out
     }
 
+    /// Kullanıcının Ayarlar'dan seçtiği modeli başa alıp, geri kalan bilinen
+    /// modelleri (tekrarsız) arkasına ekler. `LLMTranslator.translateBatch`
+    /// zaten kota/limit hatasında bir sonraki modele geçiyor — bu sıralama
+    /// sayesinde kullanıcının seçimi her zaman ilk denenen olur, ama seçtiği
+    /// model o an meşgulse/bakiyesizse çeviri yine de sessizce sürer.
+    static func fallbackChain(preferred: String, pool: [String]) -> [String] {
+        let trimmed = preferred.trimmingCharacters(in: .whitespacesAndNewlines)
+        var chain = trimmed.isEmpty ? [] : [trimmed]
+        chain.append(contentsOf: pool.filter { $0 != trimmed })
+        return chain
+    }
+
     /// Metinleri hem satır sayısına hem de toplam karakter sayısına göre paketler.
     /// Uçların ikisi de tek istekte alabilecekleri metin miktarında sınırlı.
     static func chunks(_ texts: [String], maxLines: Int, maxChars: Int) -> [Range<Int>] {
@@ -111,6 +123,23 @@ enum SubtitleTranslator {
             output += "\(cue.text)\n\n"
         }
         return output
+    }
+
+    /// Bir cue'nun başlangıç saniyesi — `"00:12:34,560 --> 00:12:36,000"` ya
+    /// da noktalı VTT biçimi. Çeviriye kullanıcının şu an olduğu zamandan
+    /// başlamak için kullanılıyor: baştan çevirmenin, izlenmiş kısmı önce
+    /// bitirmenin kullanıcıya bir faydası yok, önemli olan az sonra göreceği
+    /// satırlar.
+    static func startSeconds(ofTimecode timecode: String) -> Double? {
+        guard let arrowRange = timecode.range(of: "-->") else { return nil }
+        let start = timecode[..<arrowRange.lowerBound]
+            .trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: ",", with: ".")
+        let parts = start.split(separator: ":")
+        guard parts.count == 3,
+              let hours = Double(parts[0]), let minutes = Double(parts[1]),
+              let seconds = Double(parts[2]) else { return nil }
+        return hours * 3600 + minutes * 60 + seconds
     }
 }
 
@@ -299,7 +328,7 @@ enum GoogleTranslator {
                     lastError = error(http.statusCode,
                                       "Google ücretsiz çeviri servisi bu IP'yi geçici olarak " +
                                       "engelledi (kod \(http.statusCode)). Bir süre bekleyin ya da " +
-                                      "Ayarlar'dan OpenRouter motorunu seçin.")
+                                      "Ayarlar'dan NVIDIA NIM motorunu seçin.")
                 default:
                     lastError = error(http.statusCode, "Google hatası (kod \(http.statusCode)).")
                 }
@@ -318,28 +347,44 @@ enum GoogleTranslator {
 
 // MARK: - Yapay zeka motorları için ortak protokol
 
-/// Z.ai ve OpenRouter aynı OpenAI uyumlu gövdeyi kullanıyor; aradaki tek fark
+/// Z.ai ve NVIDIA NIM aynı OpenAI uyumlu gövdeyi kullanıyor; aradaki tek fark
 /// adres, model ve başlıklar. Numaralandırılmış istek/yanıt biçimi de burada:
 /// modelden `1|çeviri` satırları isteniyor, böylece model satır atlasa ya da
 /// fazladan satır yazsa bile hangi çeviri hangi bloğa ait karışmıyor.
 enum LLMTranslator {
-
-    static let maxLinesPerRequest = 40
 
     struct Endpoint {
         var url: URL
         var apiKey: String
         var models: [String]
         var extraHeaders: [String: String] = [:]
-        /// GLM-4.5 ailesi varsayılan olarak "düşünüyor"; kapatılmazsa yanıt
-        /// dakikalarca sürüyor ve çıktı yarıda kesilebiliyor.
+        /// GLM ailesi varsayılan olarak "düşünüyor"; kapatılmazsa yanıt
+        /// dakikalarca sürüyor ve çıktı yarıda kesilebiliyor. Z.ai'ye özgü
+        /// gövde biçimi (`thinking: {type: disabled}`).
         var disableThinking: Bool = false
+        /// OpenRouter'ın motorlar arası ortak "düşünmeyi kapat" alanı
+        /// (`reasoning: {enabled: false}`) — çoğu ücretsiz model varsayılan
+        /// olarak gizli düşünme yapıp `max_tokens`'ı tüketiyor.
+        var disableReasoning: Bool = false
         var label: String
     }
 
     static func systemPrompt() -> String {
-        "Sen usta bir film ve dizi altyazı çevirmenisin. Sadece istenen biçimde " +
-        "çıktı verirsin; açıklama, not ya da başlık eklemezsin."
+        "Sen bir dağıtım şirketinin sinema ve dizi altyazı çevirmenisin; " +
+        "yıllardır beyazperdeye giden filmlerin Türkçe altyazısını yazıyorsun. " +
+        "İşin literal çeviri değil, yerelleştirme (localization): repliği " +
+        "kelimesi kelimesine değil, sahnedeki duyguyu, niyeti ve o karakterin " +
+        "ağzına yakışan sesi Türkçede yeniden kurarsın. Sana verilen satırlar " +
+        "aynı sahneden ardışık repliklerdir — art arda gelen satırların bir " +
+        "diyalog olduğunu, aralarında konuşmacı değişebileceğini unutma ve " +
+        "her repliği kendinden önceki/sonraki satırla tutarlı bir sahnenin " +
+        "parçası gibi çevir, aralarındaki bağlamı ve ritmi koru. " +
+        "Deyim, argo, küfür ve kültürel göndermeleri birebir çevirmek yerine " +
+        "Türkçe izleyicinin doğal bulacağı karşılığını bul; komik bir replik " +
+        "Türkçede de komik kalsın, gergin bir replik gergin kalsın. Yapmacık, " +
+        "kitabi ya da çeviri kokan cümlelerden kaçın — sanki repliği bir " +
+        "Türk senarist yazmış gibi doğal aksın. Sadece istenen biçimde çıktı " +
+        "verirsin; açıklama, yorum, dipnot ya da başlık eklemezsin."
     }
 
     static func userPrompt(_ texts: [String]) -> String {
@@ -347,15 +392,34 @@ enum LLMTranslator {
             .map { "\($0.offset + 1)|\(TranslationUtil.flatten($0.element))" }
             .joined(separator: "\n")
         return """
-        Aşağıdaki numaralı altyazı satırlarını doğal, akıcı ve sinematik bir \
-        Türkçe'ye çevir.
+        Aşağıdaki numaralı satırlar bir filmin/dizinin aynı sahnesinden ardışık \
+        diyaloglardır — teknik metin ya da birbirinden bağımsız cümleler değil. \
+        Önce hepsini oku, sahnede neler olduğunu, kaç kişinin konuştuğunu ve \
+        tonun ne olduğunu (samimi/resmi, şakacı/gergin, sakin/öfkeli) kendi \
+        içinde anla; sonra bu bütünlüğü koruyarak doğal, akıcı ve sinema \
+        tadında bir Türkçeye çevir.
 
-        KURALLAR:
-        1. Çıktıda tam olarak \(texts.count) satır olmalı.
-        2. Her satır "numara|çeviri" biçiminde olmalı. Numaraları değiştirme, \
-        atlama, birleştirme.
-        3. Satır içindeki ⏎ işareti alt satıra geçişi gösterir; olduğu yerde bırak.
-        4. Açıklama, not, başlık ya da kod bloğu yazma. Yalnızca satırları yaz.
+        ÇEVİRİ KURALLARI:
+        1. Kelime kelime değil, anlamı ve tonu Türkçede doğal konuşma diliyle ver;
+        deyim, argo ve küfürün birebir karşılığını değil Türkçede gerçekten
+        kullanılan karşılığını yaz.
+        2. Replikler arasındaki bağlamı gözet: bir soru-cevap ya da yarım kalan
+        cümle varsa çeviride de o akış bozulmasın; her satırı diğerlerinden
+        kopuk, tek başına bir cümleymiş gibi çevirme.
+        3. Replik kısaysa çeviri de kısa kalsın — altyazı hızlıca okunur, gereksiz
+        ekleme, açıklama ya da parantez içi yorum yapma.
+        4. Karakterin tonunu ve kayıt düzeyini koru: bağırma, şaka, kabalık,
+        resmiyet, tereddüt neyse çeviride de aynısı hissedilsin. Sokak ağzı
+        konuşan biri Türkçede de sokak ağzıyla, resmi konuşan resmi kalsın.
+        5. Özel isimleri (kişi, yer, marka adları) olduğu gibi bırak, çevirme.
+
+        BİÇİM KURALLARI (kesinlikle uy):
+        6. Çıktıda tam olarak \(texts.count) satır olmalı, ne eksik ne fazla.
+        7. Her satır "numara|çeviri" biçiminde olmalı. Numaraları değiştirme, \
+        atlama. İKİ SATIRI TEK NUMARADA BİRLEŞTİRME (ör. "5-6|..." yazma) — \
+        anlamca bağlı olsalar bile her replik kendi numarasıyla ayrı satırda kalsın.
+        8. Satır içindeki ⏎ işareti alt satıra geçişi gösterir; olduğu yerde bırak.
+        9. Açıklama, not, başlık ya da kod bloğu yazma. Yalnızca satırları yaz.
 
         SATIRLAR:
         \(numbered)
@@ -400,7 +464,7 @@ enum LLMTranslator {
                 // ediyoruz; her tur küçük bir istek, kazanç gözle görülür.
                 var missing = texts.indices.filter { !matched.contains($0) }
                 var round = 0
-                while !missing.isEmpty, round < 3 {
+                while !missing.isEmpty, round < 4 {
                     round += 1
                     let leftovers = missing.map { texts[$0] }
                     guard let retry = try? await requestWithBackoff(leftovers, model: model,
@@ -425,11 +489,15 @@ enum LLMTranslator {
             } catch {
                 lastError = error
                 let code = (error as NSError).code
-                // 429/402/404: model meşgul, kotası dolmuş ya da kalkmış.
-                // 422: biçimi bozdu. Hepsinde sıradaki modeli denemek anlamlı.
-                // Diğerlerinde (401 gibi) model değiştirmenin faydası yok.
-                guard code == 429 || code == 402 || code == 404 || code == 503 || code == 422
-                else { throw error }
+                // 401 dışında her şeyde sıradaki modeli dene: 429/402/404/503
+                // standart "meşgul/kotasız/yok" durumları, 422 biçim hatası,
+                // ama Z.ai gibi uçlar bakiye/model hatalarını da kendi
+                // numaralı kodlarıyla (1113, 1211...) dönebiliyor — bunlar
+                // HTTP durum kodu değil ama aynı şekilde "bu modeli bu
+                // anahtarla kullanamıyorsun" anlamına geliyor. 401 tek
+                // istisna: anahtarın kendisi geçersizse hiçbir model
+                // çalışmaz, yeniden denemek zaman kaybı.
+                guard code != 401 else { throw error }
             }
         }
         throw lastError
@@ -444,9 +512,13 @@ enum LLMTranslator {
     private static func requestWithBackoff(_ texts: [String], model: String,
                                            endpoint: Endpoint) async throws -> String {
         var lastError: Error?
-        for attempt in 0..<3 {
+        // 3 denemeden 4'e çıkarıldı — ücretsiz katmanlarda yoğun anlarda 3
+        // deneme (6+14 sn bekleme) hâlâ 429'a takılıp partiyi tamamen
+        // kaybettiriyordu; dördüncü, daha uzun bir bekleme (26 sn) ekstra bir
+        // şans daha veriyor.
+        for attempt in 0..<4 {
             if attempt > 0 {
-                try? await Task.sleep(for: .seconds(attempt == 1 ? 6 : 14))
+                try? await Task.sleep(for: .seconds([0, 6, 14, 26][attempt]))
             }
             do {
                 return try await request(texts, model: model, endpoint: endpoint)
@@ -473,18 +545,36 @@ enum LLMTranslator {
             request.setValue(value, forHTTPHeaderField: key)
         }
 
+        let systemContent = systemPrompt()
+
         var body: [String: Any] = [
             "model": model,
             "messages": [
-                ["role": "system", "content": systemPrompt()],
+                ["role": "system", "content": systemContent],
                 ["role": "user", "content": userPrompt(texts)]
             ],
-            "temperature": 0.2,
+            // 0.2 çok düşüktü: model repliği neredeyse birebir/kelime kelime
+            // çeviriyordu ("çok kötü çeviriyor" şikayeti). 0.3, biçim kurallarını
+            // (numaralama) bozacak kadar değil ama daha doğal cümle kurmasına
+            // yetecek kadar serbestlik veriyor.
+            "temperature": 0.3,
             // Yanıtın ortada kesilmemesi için bolca yer bırakılıyor.
             "max_tokens": 8000
         ]
+        // Nemotron ailesinde düşünme modu sistem mesajına metin ekleyerek DEĞİL,
+        // bu alanla kapanıyor — denendi: sistem mesajına "detailed thinking off"
+        // yazmak modeli hiç etkilemiyor, gizli bir "reasoning_content" bloğu
+        // üretmeye devam ediyor ve bu blok `max_tokens`'ın büyük kısmını tüketip
+        // görünür yanıtı (numaralı satırlar) yarıda kesiyor ya da tamamen boş
+        // bırakıyor. `chat_template_kwargs.thinking: false` gerçekten kapatıyor.
+        if model.contains("nemotron") {
+            body["chat_template_kwargs"] = ["thinking": false]
+        }
         if endpoint.disableThinking {
             body["thinking"] = ["type": "disabled"]
+        }
+        if endpoint.disableReasoning {
+            body["reasoning"] = ["enabled": false]
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -502,7 +592,7 @@ enum LLMTranslator {
         }
 
         let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        // OpenRouter hata gövdesini 200 ile de döndürebiliyor.
+        // Bazı OpenAI-uyumlu uçlar hata gövdesini HTTP 200 ile de döndürebiliyor.
         if let error = json?["error"] as? [String: Any] {
             let message = error["message"] as? String ?? "bilinmeyen hata"
             let code = error["code"] as? Int ?? 500
@@ -562,6 +652,46 @@ enum LLMTranslator {
         return body.isEmpty ? nil : (number, String(body))
     }
 
+    /// GLM ve diğer modeller bazen iki bitişik repliği tek satırda birleştirip
+    /// `5-6|metin` yazıyor. `numbered(_:upTo:)` bunu "numara 5, gövde '6|metin'"
+    /// diye yanlış ayrıştırır: 5. satır çöp metinle dolar, 6. satır hiç
+    /// eşleşmeden özgün (yabancı) hâliyle kalır — izlerken replik aniden
+    /// İngilizce kalıyor ya da anlamsız bir parça görünüyor, sanki çeviri
+    /// zamanlaması kaymış gibi hissettiriyor. Bunu önce yakalayıp aralığın
+    /// tamamına aynı çeviriyi uyguluyoruz: ikisi de aynı Türkçe metni gösterir,
+    /// hiçbiri boş ya da bozuk kalmaz.
+    private static func numberedRange(_ line: String, upTo count: Int) -> (ClosedRange<Int>, String)? {
+        var cursor = line.startIndex
+        var firstDigits = ""
+        while cursor < line.endIndex, line[cursor].isNumber {
+            firstDigits.append(line[cursor])
+            cursor = line.index(after: cursor)
+        }
+        guard let first = Int(firstDigits), first >= 1, first <= count,
+              cursor < line.endIndex, line[cursor] == "-" || line[cursor] == "–" else { return nil }
+        cursor = line.index(after: cursor)
+
+        var secondDigits = ""
+        while cursor < line.endIndex, line[cursor].isNumber {
+            secondDigits.append(line[cursor])
+            cursor = line.index(after: cursor)
+        }
+        guard !secondDigits.isEmpty, let second = Int(secondDigits),
+              second > first, second <= count, second - first <= 4,
+              cursor < line.endIndex else { return nil }
+
+        // Aralıktan sonra tireyi tekrar kabul etmiyoruz — "5-6-7" gibi bir
+        // gövde belirsiz; net bir ayraç ya da boşluk istiyoruz.
+        let separators: Set<Character> = ["|", ".", ")", ":", ">", "]", "、"]
+        if separators.contains(line[cursor]) {
+            cursor = line.index(after: cursor)
+        } else if !line[cursor].isWhitespace {
+            return nil
+        }
+        let body = line[cursor...].drop { $0.isWhitespace }
+        return body.isEmpty ? nil : (first...second, String(body))
+    }
+
     /// `1|çeviri` satırlarını numaralarına göre yerleştirir. Numarası olmayan ya
     /// da hiç gelmeyen satırlar özgün metinle kalır — boş altyazı üretmektense
     /// çevrilmemiş satır bırakmak yeğdir.
@@ -577,6 +707,20 @@ enum LLMTranslator {
         for rawLine in content.components(separatedBy: "\n") {
             let line = rawLine.trimmingCharacters(in: .whitespaces)
             guard !line.isEmpty, !line.hasPrefix("```") else { continue }
+
+            // Birleşmiş "5-6|metin" satırları tek numaralı ayrıştırıcıdan önce
+            // yakalanmalı, yoksa 5. satır bozuk metin alır, 6. hiç eşleşmez.
+            if let (range, body) = numberedRange(line, upTo: texts.count) {
+                let text = TranslationUtil.restore(body)
+                if !text.isEmpty {
+                    for index in (range.lowerBound - 1)...(range.upperBound - 1) {
+                        result[index] = text
+                        matched.insert(index)
+                    }
+                }
+                continue
+            }
+
             guard let (number, body) = numbered(line, upTo: texts.count) else {
                 unnumbered.append(line)
                 continue
@@ -603,71 +747,101 @@ enum LLMTranslator {
 enum ZaiTranslator {
     static let endpointURL = URL(string: "https://api.z.ai/api/paas/v4/chat/completions")!
 
-    /// Yalnızca `glm-4.5-flash`. Denendi: `glm-4.6`, `glm-4.5`, `glm-4.5-air`
-    /// ve `glm-4.5-airx` bakiye istiyor (kod 1113), `glm-4-flash` diye bir model
-    /// ise Z.ai'de yok (kod 1211). Var olmayan modelleri yedek listesine koymak,
-    /// asıl model tökezlediğinde hatayı anlaşılmaz hâle getiriyordu.
-    static let models = ["glm-4.5-flash"]
+    /// Kullanıcı Ayarlar'dan model seçebiliyor; `glm-5.3-flash` en güncel ve
+    /// en kaliteli seçenek olduğu için varsayılan bu. Ücretsiz katmanda
+    /// yalnızca `glm-4.7-flash`/`glm-4.5-flash` çalışıyor (diğer GLM-4.5
+    /// varyantları bakiye istiyor, kod 1113) — bunlar seçilen model
+    /// tökezlerse otomatik denenen yedekler.
+    static let defaultModel = "glm-5.3-flash"
+    static let freeModels = ["glm-4.7-flash", "glm-4.5-flash"]
 
-    /// GLM-4.5-flash uzun partilerde (40 satır) satır atlama oranı belirgin
+    /// GLM ailesi uzun partilerde (40 satır) satır atlama oranı belirgin
     /// artıyor; daha kısa partiler ("eksik çeviri" şikayetinin kaynağı) bu
-    /// oranı düşürüyor. `LLMTranslator.maxLinesPerRequest`'ten (OpenRouter'ın
-    /// kullandığı) kasıtlı olarak daha küçük.
+    /// oranı düşürüyor.
     static let maxLinesPerRequest = 20
 
-    static func translateBatch(_ texts: [String], apiKey: String) async throws -> [String] {
+    static func translateBatch(_ texts: [String], apiKey: String, model: String) async throws -> [String] {
         try await LLMTranslator.translateBatch(texts, endpoint: LLMTranslator.Endpoint(
             url: endpointURL,
             apiKey: apiKey,
-            models: models,
+            models: TranslationUtil.fallbackChain(preferred: model, pool: freeModels),
             disableThinking: true,
             label: "Z.ai"
         ))
     }
 }
 
-// MARK: - OpenRouter
+// MARK: - NVIDIA NIM
 
-/// OpenRouter üzerinden ücretsiz modellerle çeviri.
-enum OpenRouterTranslator {
-    static let endpointURL = URL(string: "https://openrouter.ai/api/v1/chat/completions")!
+/// build.nvidia.com (NIM) üzerinden tek, sabit modelle çeviri.
+///
+/// OpenRouter'ın aksine burada bir model listesi/seçimi yok: kullanıcı
+/// "en iyisi hangisiyse sadece o çalışsın" dedi. `nemotron-3-ultra-550b-a55b`
+/// NVIDIA'nın kendi kataloğundaki en güçlü, ücretsiz erişilebilen modeli
+/// (bkz. OpenRouter tarafında da aynı model en yüksek kalite puanına
+/// sahipti — [[zyplayer-subtitle-translation]]). Reasoning modu
+/// `LLMTranslator.request`'teki genel "model adı nemotron içeriyorsa
+/// 'detailed thinking off'" kuralıyla zaten kapatılıyor.
+enum NvidiaTranslator {
+    static let endpointURL = URL(string: "https://integrate.api.nvidia.com/v1/chat/completions")!
 
-    /// Ayarlarda seçilebilen ücretsiz modeller. Sıra, Türkçe altyazı çevirisinde
-    /// ölçülen kalite/hız dengesine göre: en üstteki hem iyi çeviriyor hem ~10 sn'de
-    /// dönüyor. Hepsi OpenRouter'ın `:free` katmanında, yani ücret çıkarmıyor.
-    static let freeModels: [(id: String, title: String)] = [
-        ("nvidia/nemotron-3-ultra-550b-a55b:free", "Nemotron 3 Ultra 550B (önerilen)"),
-        ("nvidia/nemotron-3-super-120b-a12b:free", "Nemotron 3 Super 120B"),
-        ("google/gemma-4-31b-it:free", "Gemma 4 31B"),
-        ("google/gemma-4-26b-a4b-it:free", "Gemma 4 26B"),
-        ("inclusionai/ling-3.0-flash:free", "Ling 3.0 Flash (en hızlı)"),
-        ("openai/gpt-oss-20b:free", "GPT-OSS 20B")
-    ]
+    /// `nemotron-3-ultra-550b-a55b` NVIDIA'nın kendi kataloğundaki en güçlü,
+    /// ücretsiz erişilebilen model — varsayılan bu. Kullanıcı Ayarlar'dan
+    /// başka bir NIM modeli de seçebiliyor; buradaki ikisi seçilen model
+    /// tökezlerse (kota/kaldırılmış model) otomatik denenen yedekler.
+    static let defaultModel = "nvidia/nemotron-3-ultra-550b-a55b"
+    static let fallbackModels = ["meta/llama-3.1-405b-instruct", "qwen/qwen2.5-72b-instruct"]
 
-    /// Ayarlardaki "Otomatik" seçeneğinin değeri: listenin tamamı sırayla denenir.
-    static let automaticModel = "auto"
+    /// OpenRouter'ın küçük/zayıf ücretsiz modelleri 10 satırda bile satır
+    /// atlıyordu; bu, NVIDIA'nın kendi bünyesinde barındırdığı büyük
+    /// modeller — hem daha güvenilir hem de ücretsiz katman kredi sınırlı
+    /// olduğundan büyük parti = daha az istek = kredi tasarrufu.
+    static let maxLinesPerRequest = 30
 
-    static func models(preferred: String) -> [String] {
-        let all = freeModels.map(\.id)
-        guard preferred != automaticModel,
-              let index = all.firstIndex(of: preferred) else { return all }
-        // Seçilen model başa alınır, gerisi yedek olarak arkada kalır: ücretsiz
-        // katmanda bir model kotaya takıldığında çeviri durmasın.
-        return [all[index]] + all.enumerated().filter { $0.offset != index }.map(\.element)
-    }
-
-    static func translateBatch(_ texts: [String], apiKey: String,
-                               preferredModel: String) async throws -> [String] {
+    static func translateBatch(_ texts: [String], apiKey: String, model: String) async throws -> [String] {
         try await LLMTranslator.translateBatch(texts, endpoint: LLMTranslator.Endpoint(
             url: endpointURL,
             apiKey: apiKey,
-            models: models(preferred: preferredModel),
-            // OpenRouter bu iki başlıkla isteği uygulamaya bağlıyor; ücretsiz
-            // katmanda istekleri kimin yaptığı böyle görünüyor.
+            models: TranslationUtil.fallbackChain(preferred: model, pool: fallbackModels),
+            label: "NVIDIA NIM"
+        ))
+    }
+}
+
+// MARK: - OpenRouter
+
+/// openrouter.ai üzerinden birden çok sağlayıcının ücretsiz modellerine tek
+/// anahtarla erişim. Daha önce (2026-08-16) güvenilmezliği nedeniyle
+/// kaldırılmıştı — kullanıcı isteğiyle yeniden eklendi. Ücretsiz modeller sık
+/// 429 verdiği ve zaman zaman kataloktan kalktığı için model listesi sırayla
+/// denenir; kullanıcının Ayarlar'dan seçtiği model her zaman ilk sırada.
+enum OpenRouterTranslator {
+    static let endpointURL = URL(string: "https://openrouter.ai/api/v1/chat/completions")!
+
+    static let defaultModel = "nvidia/nemotron-3.5-lightning:free"
+    /// costgoat.com / openrouter.ai katalogunda doğrulanan güncel ücretsiz
+    /// genel amaçlı modeller (2026-08). Yalnızca kod/görsel odaklı olanlar
+    /// dışarıda bırakıldı.
+    static let freeModels = [
+        "nvidia/nemotron-3.5-lightning:free",
+        "inclusionai/ling-3.0-flash-fin:free",
+        "thinkingmachines/inkling:free",
+        "liquid/lfm-2.5-2.6b:free"
+    ]
+
+    /// Ücretsiz modellerin çoğu küçük/zayıf, büyük partilerde satır atlıyor.
+    static let maxLinesPerRequest = 10
+
+    static func translateBatch(_ texts: [String], apiKey: String, model: String) async throws -> [String] {
+        try await LLMTranslator.translateBatch(texts, endpoint: LLMTranslator.Endpoint(
+            url: endpointURL,
+            apiKey: apiKey,
+            models: TranslationUtil.fallbackChain(preferred: model, pool: freeModels),
             extraHeaders: [
-                "HTTP-Referer": "https://github.com/zyplayer",
+                "HTTP-Referer": "https://github.com/zyplayer/zyplayer",
                 "X-Title": "ZyPlayer"
             ],
+            disableReasoning: true,
             label: "OpenRouter"
         ))
     }

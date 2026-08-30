@@ -288,6 +288,13 @@ struct HeroCinemaBanner: View {
     @State private var trailerCache: [Int: String?] = [:]
     /// Fragman gerçekten oynuyor mu? Afişten fragmana geçiş buna bakıyor.
     @State private var isTrailerPlaying = false
+    /// TMDB clear-art logosu — Stremio'daki gibi başlık yerine gösteriliyor.
+    @State private var logoURL: URL?
+    @State private var logoCache: [Int: URL?] = [:]
+    /// Logosu için arama tamamlanmış film kimlikleri — bulunamamış olsa bile.
+    /// Başlık metni ancak burada olan bir yapım için gösterilir; yoksa arama
+    /// sürerken metin belirip logo gelince yerini bırakırdı.
+    @State private var checkedLogoIDs: Set<Int> = []
 
     private var currentMovie: RemoteTitle? {
         guard !movies.isEmpty else { return nil }
@@ -307,6 +314,7 @@ struct HeroCinemaBanner: View {
         .padding(.horizontal, 20)
         .onChange(of: currentIndex) {
             fetchTrailerForCurrentMovie()
+            fetchLogoForCurrentMovie()
         }
         .onChange(of: trailerKey) {
             // Yeni fragman kendi "oynuyorum" haberini verene kadar afişe dön.
@@ -315,10 +323,14 @@ struct HeroCinemaBanner: View {
         .onChange(of: movies) {
             prefetchTrailers()
             fetchTrailerForCurrentMovie()
+            prefetchLogos()
+            fetchLogoForCurrentMovie()
         }
         .onAppear {
             prefetchTrailers()
             fetchTrailerForCurrentMovie()
+            prefetchLogos()
+            fetchLogoForCurrentMovie()
         }
     }
 
@@ -442,11 +454,7 @@ struct HeroCinemaBanner: View {
             // Left Side Information & Action Buttons
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(movie.title)
-                        .font(.system(size: 40, weight: .heavy))
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
-                        .shadow(color: .black.opacity(0.6), radius: 8, x: 0, y: 3)
+                    heroTitle(for: movie)
 
                     HStack(spacing: 8) {
                         HStack(spacing: 4) {
@@ -548,6 +556,47 @@ struct HeroCinemaBanner: View {
         }
     }
 
+    /// Stremio'da olduğu gibi: yapımın logosu varsa düz başlık metninin yerini
+    /// alır. Metin, logo aranırken de indirilirken de belirmez — yalnızca
+    /// aramanın logosuz bittiği ya da görselin gerçekten indirilemediği
+    /// kesinleşince çıkar; yoksa önce metin sonra logo görünen bir titreşim
+    /// olurdu.
+    @ViewBuilder
+    private func heroTitle(for movie: RemoteTitle) -> some View {
+        if let logoURL {
+            CachedAsyncImage(url: logoURL) { phase in
+                switch phase {
+                case .success(let image):
+                    image.resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: 480, maxHeight: 160, alignment: .leading)
+                        .shadow(color: .black.opacity(0.6), radius: 10, y: 3)
+                case .failure:
+                    heroTitleText(movie.title)
+                default:
+                    Color.clear.frame(width: 1, height: 1)
+                }
+            }
+            .frame(maxHeight: 160, alignment: .bottomLeading)
+        } else if isLogoChecked(for: movie) {
+            heroTitleText(movie.title)
+        } else {
+            Color.clear.frame(width: 1, height: 1)
+        }
+    }
+
+    private func isLogoChecked(for movie: RemoteTitle) -> Bool {
+        checkedLogoIDs.contains(movie.tmdbID)
+    }
+
+    private func heroTitleText(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 40, weight: .heavy))
+            .foregroundStyle(.white)
+            .lineLimit(2)
+            .shadow(color: .black.opacity(0.6), radius: 8, x: 0, y: 3)
+    }
+
     private var placeholderBanner: some View {
         ZStack {
             LinearGradient(
@@ -625,6 +674,69 @@ struct HeroCinemaBanner: View {
                         self.trailerCache[id] = key
                         if self.currentMovie?.tmdbID == id {
                             self.trailerKey = key
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func fetchLogoForCurrentMovie() {
+        guard let movie = currentMovie else {
+            logoURL = nil
+            return
+        }
+
+        guard settings.hasTMDBToken else {
+            checkedLogoIDs.insert(movie.tmdbID)
+            logoURL = nil
+            return
+        }
+
+        if let cached = logoCache[movie.tmdbID] {
+            logoURL = cached
+            return
+        }
+
+        Task {
+            let client = TMDBClient(token: settings.tmdbToken, language: settings.metadataLanguage)
+            let path = (try? await client.movieLogoPath(id: movie.tmdbID)) ?? nil
+            let url = path.map { TMDBClient.imageURL(path: $0, size: "w500") }
+
+            await MainActor.run {
+                self.logoCache[movie.tmdbID] = url
+                self.checkedLogoIDs.insert(movie.tmdbID)
+                if self.currentMovie?.tmdbID == movie.tmdbID {
+                    self.logoURL = url
+                }
+            }
+        }
+    }
+
+    private func prefetchLogos() {
+        guard !movies.isEmpty else { return }
+        guard settings.hasTMDBToken else {
+            checkedLogoIDs.formUnion(movies.map(\.tmdbID))
+            return
+        }
+        let client = TMDBClient(token: settings.tmdbToken, language: settings.metadataLanguage)
+        let list = Array(movies.prefix(8))
+        Task {
+            await withTaskGroup(of: (Int, URL?).self) { group in
+                for m in list {
+                    if logoCache[m.tmdbID] != nil { continue }
+                    group.addTask {
+                        let path = (try? await client.movieLogoPath(id: m.tmdbID)) ?? nil
+                        let url = path.map { TMDBClient.imageURL(path: $0, size: "w500") }
+                        return (m.tmdbID, url)
+                    }
+                }
+                for await (id, url) in group {
+                    await MainActor.run {
+                        self.logoCache[id] = url
+                        self.checkedLogoIDs.insert(id)
+                        if self.currentMovie?.tmdbID == id {
+                            self.logoURL = url
                         }
                     }
                 }

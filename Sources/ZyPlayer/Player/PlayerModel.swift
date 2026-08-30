@@ -30,7 +30,36 @@ final class PlayerModel {
     /// Trailers must not write watch progress against a library item.
     var isTrailer = false
     var isTranslatingSubtitles = false
+    /// mpv bir dosyayı hatayla bitirdiğinde dolan mesaj (ör. yt-dlp fragmanı
+    /// çözemedi, akış adresi ölü). Eskiden bu hiç yakalanmıyordu — kullanıcı
+    /// kalıcı bir siyah ekranda hiçbir açıklama olmadan bekliyordu.
+    /// `fileLoaded` ve `close()` temizler.
+    var playbackErrorMessage: String?
     var translationMessage: String?
+    /// Çeviri bitince sağ üstte 5 sn görünüp kaybolan ayrı bildirim.
+    /// `translationMessage` kontrol çubuğuna bağlı bir hap olduğu ve o gizlenince
+    /// kayboluyor; bu, tamamlanma anını kontrollerden bağımsız ayrıca vurguluyor.
+    var translationCompletedBanner: String?
+    @ObservationIgnored private var translationCompletedBannerTask: Task<Void, Never>?
+    /// Aktif çeviri işi. Oynatıcı kapanınca (`close()`) arka planda devam
+    /// etmesin diye iptal edilebilsin diye ayrı tutuluyor — kullanıcı player'dan
+    /// çıktıktan sonra ağa istek atmaya, kredi harcamaya devam etmemeli.
+    @ObservationIgnored private var translationTask: Task<Void, Never>?
+
+    /// Otomatik "Tanıtımı Geç" / "Sonraki Bölüm" için tespit edilen zaman
+    /// işaretleri. `fileLoaded`'da chapter'lardan (kesin) doldurulur; eksik kalan
+    /// alanlar arka planda ffmpeg analiziyle (yaklaşık) tamamlanır.
+    var skipMarkers = SkipMarkers()
+    /// Bu bölüm için tespit (önbellek/chapter/ffmpeg) tamamen bitti mi — sonuç
+    /// boş olsa (tanıtım/jenerik yok) bile `true`. "Tanıtımı Geç" düğmesinin
+    /// gerçek marker yokken düştüğü süreye-oranlı sezgisel pencere, YALNIZCA
+    /// tespit henüz kesinleşmemişken devrede olmalı: tespit "bu bölümde
+    /// tanıtım yok" diye kesin sonuç verdiyse sezgiyle yine de göstermek yanlış
+    /// pozitif olur.
+    var skipMarkersResolved = false
+    /// Arka plan analizinin sonucunu, o sırada başka bir dosyaya geçilmişse
+    /// yazmamak için; her yeni dosyada tazelenir.
+    @ObservationIgnored private var skipDetectToken = UUID()
 
     /// Live subtitle offset in seconds; positive shows the line later. Starts at
     /// the value saved in settings and is nudged from the player while watching,
@@ -64,6 +93,15 @@ final class PlayerModel {
     /// yeğleneceğini belirler; başka motorun çevirisi de kabul edilir.
     @ObservationIgnored var restoreEngineHint: TranslationEngine = .google
 
+    /// Çevrilmiş bir izin kimliğini, kendisinin çevrildiği **özgün** izin
+    /// kimliğine eşler. Bir çeviri bitince yeni iz kendiliğinden seçili hâle
+    /// geliyor; kullanıcı seçili haldeyken başka bir motoru denerse, bu harita
+    /// olmadan "kaynak" olarak az önce üretilen Türkçe çeviri alınır — Z.ai
+    /// Türkçe metni yeniden "çevirir", sonuç Google'ınkiyle hemen hemen aynı
+    /// kalır ve hangi motorun gerçekten çalıştığı belirsizleşir. Bu yüzden
+    /// kaynak her zaman zincirin başındaki gerçek özgün ize kadar geri sarılır.
+    @ObservationIgnored private var translationSourceTrackID: [Int: Int] = [:]
+
     /// Display name of the selected subtitle track, or nil when off. Used to
     /// remember the choice for "continue watching".
     var currentSubtitleLabel: String? {
@@ -76,7 +114,15 @@ final class PlayerModel {
     @ObservationIgnored private var lastReportedPosition: Double = 0
 
     /// Set while the user drags the scrubber so incoming positions don't fight it.
-    @ObservationIgnored private var isScrubbing = false
+    ///
+    /// Readable outside the model so the controls bar can refuse to auto-hide
+    /// mid-drag: AppKit's slider runs its own tracking loop during a mouseDown,
+    /// which starves SwiftUI's `onContinuousHover` — the hide timer armed before
+    /// the drag started keeps running, and if it fires while dragging it unmounts
+    /// the scrubber (removing it from the `if controlsVisible` branch) before
+    /// `onEditingChanged(false)` ever calls `endScrub`. That left this flag stuck
+    /// `true` forever, freezing the bar even after loading a new file.
+    @ObservationIgnored private(set) var isScrubbing = false
     /// When the last preview seek went to mpv, so a drag issues a handful of cheap
     /// seeks a second instead of one per mouse move.
     @ObservationIgnored private var lastPreviewSeek: TimeInterval = 0
@@ -93,11 +139,26 @@ final class PlayerModel {
             guard let self else { return }
             switch event {
             case .fileLoaded:
+                self.playbackErrorMessage = nil
                 self.duration = self.core.duration
                 self.attachPendingSubtitles()
                 self.refreshTracks()
                 self.applyPreferredSubtitle()
                 self.restoreCachedTranslation()
+                self.detectSkipMarkers()
+            case .playbackFailed(let message):
+                // Fragmanda elde başka aday varsa (TMDB genelde birden fazla
+                // video döndürür) önce onu dene — kullanıcıya hata göstermek
+                // yerine. Adaylar tükendiyse (ya da bu fragman değilse) hatayı
+                // göster.
+                if self.isTrailer, !self.trailerCandidates.isEmpty {
+                    self.playNextTrailerCandidate()
+                } else {
+                    self.playbackErrorMessage = self.isTrailer
+                        ? "Fragman oynatılamadı: \(message). YouTube bu videoyu engellemiş ya da " +
+                          "yt-dlp güncel olmayabilir."
+                        : "Oynatma başarısız: \(message)"
+                }
             case .propertyChanged:
                 self.syncFromCore()
             case .endFile, .shutdown:
@@ -199,9 +260,13 @@ final class PlayerModel {
         core.setProperty("sub-delay", clamped)
     }
 
-    /// Back to the value configured in Settings.
+    /// Always zero — a user pressing "reset" means "no offset", not "back to
+    /// whatever the Settings default happens to be". Reverting to
+    /// `baseSubtitleDelay` here used to make reset a no-op whenever Ayarlar's
+    /// "Varsayılan gecikme" wasn't itself 0, which looked like the button did
+    /// nothing.
     func resetSubtitleDelay() {
-        setSubtitleDelay(baseSubtitleDelay)
+        setSubtitleDelay(0)
     }
 
     func addSubtitleFile(_ url: URL, title: String? = nil, lang: String? = nil,
@@ -256,17 +321,64 @@ final class PlayerModel {
         }
     }
 
+    /// Sağ üstteki tamamlanma bildirimini gösterir, 5 sn sonra kendiliğinden
+    /// kaybolur. Ard arda çağrılırsa önceki zamanlayıcı iptal edilir, yoksa
+    /// ikinci çağrı erken kapanan ilk zamanlayıcı yüzünden vaktinden önce silinirdi.
     @MainActor
-    func translateSelectedSubtitle(engine: TranslationEngine,
-                                   zaiApiKey: String,
-                                   openRouterApiKey: String,
-                                   openRouterModel: String) async {
+    private func showTranslationCompletedBanner(_ text: String) {
+        translationCompletedBannerTask?.cancel()
+        translationCompletedBanner = text
+        translationCompletedBannerTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            self?.translationCompletedBanner = nil
+        }
+    }
+
+    /// Menüden çeviri başlatmanın tek girişi. Önceki bir çeviri hâlâ sürüyorsa
+    /// önce onu iptal eder (aynı anda iki çevirinin aynı iz üzerinde
+    /// çakışmaması için), sonra işi iptal edilebilir bir `Task` olarak saklar —
+    /// `close()` oynatıcı kapanınca bu görevi iptal ediyor.
+    @MainActor
+    func startTranslation(engine: TranslationEngine,
+                          zaiApiKey: String, zaiModel: String,
+                          nvidiaApiKey: String, nvidiaModel: String,
+                          openRouterApiKey: String, openRouterModel: String) {
+        translationTask?.cancel()
+        translationTask = Task { [weak self] in
+            await self?.translateSelectedSubtitle(
+                engine: engine,
+                zaiApiKey: zaiApiKey, zaiModel: zaiModel,
+                nvidiaApiKey: nvidiaApiKey, nvidiaModel: nvidiaModel,
+                openRouterApiKey: openRouterApiKey, openRouterModel: openRouterModel
+            )
+        }
+    }
+
+    @MainActor
+    private func translateSelectedSubtitle(engine: TranslationEngine,
+                                   zaiApiKey: String, zaiModel: String,
+                                   nvidiaApiKey: String, nvidiaModel: String,
+                                   openRouterApiKey: String, openRouterModel: String) async {
         guard let selectedID = selectedSubtitleID else { return }
+
+        // Seçili iz kendisi daha önce üretilmiş bir çeviriyse (bir motoru
+        // deneyip ardından menüden başka bir motor seçildiğinde olduğu gibi,
+        // çünkü çeviri bitince yeni iz kendiliğinden seçili kalıyor), kaynak
+        // olarak onu değil, zincirin başındaki gerçek özgün izi kullan.
+        // Yoksa "yeni" çeviri aslında bir önceki motorun Türkçe çıktısını
+        // yeniden çevirmiş olur — sonuç neredeyse değişmez ve hangi motorun
+        // çalıştığı anlaşılmaz hâle gelir.
+        var sourceID = selectedID
+        var chainGuard = Set<Int>()
+        while let origin = translationSourceTrackID[sourceID], chainGuard.insert(sourceID).inserted {
+            sourceID = origin
+        }
 
         // Kaynak ya bizim eklediğimiz dosya ya da mpv'nin videonun yanından
         // kendiliğinden bulduğu bir `.srt`; ikisi de yoksa iz gömülüdür.
-        var subtitleURL: URL? = trackURLs[selectedID] ?? subtitleTracks
-            .first { $0.id == selectedID }
+        var subtitleURL: URL? = trackURLs[sourceID] ?? subtitleTracks
+            .first { $0.id == sourceID }
             .flatMap { Self.subtitleSourceURL(fromMPVPath: $0.externalFilename) }
 
 
@@ -279,8 +391,8 @@ final class PlayerModel {
                 }
                 return
             }
-            
-            guard let selectedTrack = subtitleTracks.first(where: { $0.id == selectedID }),
+
+            guard let selectedTrack = subtitleTracks.first(where: { $0.id == sourceID }),
                   let ffIndex = selectedTrack.ffIndex else {
                 translationMessage = "Gömülü altyazı akış bilgisi bulunamadı."
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
@@ -307,14 +419,14 @@ final class PlayerModel {
             translationMessage = "Gömülü altyazı çıkartılıyor..."
 
             NSLog("ZyPlayer gömülü altyazı: iz=%d codec=%@ ff-index=%d kaynak=%@",
-                  selectedID, selectedTrack.codec ?? "?", ffIndex, videoURL.absoluteString)
+                  sourceID, selectedTrack.codec ?? "?", ffIndex, videoURL.absoluteString)
 
             do {
                 let extractedURL = try await extractEmbeddedSubtitle(from: videoURL, ffIndex: ffIndex)
                 subtitleURL = extractedURL
                 // Aynı iz yeniden çevrilmek istenirse ffmpeg'i tekrar
                 // çalıştırmaya gerek kalmasın.
-                trackURLs[selectedID] = extractedURL
+                trackURLs[sourceID] = extractedURL
             } catch {
                 isTranslatingSubtitles = false
                 translationMessage = "Ayıklama Hatası: \(error.localizedDescription)"
@@ -354,7 +466,9 @@ final class PlayerModel {
             // motorun eski çevirisiyle sessizce değiştirilmemeli.
             if let hit = TranslatedSubtitleCache.cached(key: cacheKey, preferring: engine, exact: true) {
                 translationMessage = "Kayıtlı çeviri yükleniyor..."
-                _ = await attachTranslatedSubtitle(at: hit.url, engineLabel: engine.title)
+                if let trackID = await attachTranslatedSubtitle(at: hit.url, engineLabel: engine.title) {
+                    translationSourceTrackID[trackID] = sourceID
+                }
                 translationMessage = "Kayıtlı çeviri yüklendi (\(hit.engineName))."
                 try? await Task.sleep(for: .seconds(2.0))
                 return
@@ -370,9 +484,12 @@ final class PlayerModel {
                 .write(to: workingURL, atomically: true, encoding: .utf8)
 
             let trackID = await attachTranslatedSubtitle(at: workingURL, engineLabel: engine.title)
+            if let trackID {
+                translationSourceTrackID[trackID] = sourceID
+            }
 
             let allTexts = cues.map(\.text)
-            let batches: [Range<Int>]
+            var batches: [Range<Int>]
             let parallel: Int
             switch engine {
             case .google:
@@ -390,13 +507,33 @@ final class PlayerModel {
                                                  maxLines: ZaiTranslator.maxLinesPerRequest,
                                                  maxChars: 3000)
                 parallel = 2
-            case .openRouter:
-                // Yapay zeka partileri tek tek 10-90 saniye sürüyor; asıl
-                // hızlanma bunları aynı anda göndermekten geliyor.
+            case .nvidia:
+                // Tek, güçlü bir model; ücretsiz katman kredi ile sınırlı
+                // olduğundan paralellik düşük tutuluyor (krediyi hızlı tüketip
+                // 429/kota hatasına çarpmamak için).
                 batches = TranslationUtil.chunks(allTexts,
-                                                 maxLines: LLMTranslator.maxLinesPerRequest,
+                                                 maxLines: NvidiaTranslator.maxLinesPerRequest,
                                                  maxChars: 6000)
-                parallel = 4
+                parallel = 2
+            case .openRouter:
+                // Ücretsiz modeller küçük/zayıf ve sık 429 veriyor; kısa
+                // partiler ve düşük paralellik atlanan satırı azaltıyor.
+                batches = TranslationUtil.chunks(allTexts,
+                                                 maxLines: OpenRouterTranslator.maxLinesPerRequest,
+                                                 maxChars: 2000)
+                parallel = 2
+            }
+
+            // Baştan çevirmenin kullanıcıya faydası yok — izlediği kısmı zaten
+            // geçti. Şu an oynatma nerede duruyorsa çeviri oradan başlasın;
+            // partiler o noktadan sona kadar, sonra baştan o noktaya kadar
+            // sırayla gidiyor (döngüsel), böylece az sonra görünecek satırlar
+            // önce ekrana düşüyor.
+            if let startCueIndex = cues.firstIndex(where: {
+                guard let start = SubtitleTranslator.startSeconds(ofTimecode: $0.timecode) else { return false }
+                return start >= position
+            }), let startBatchIndex = batches.firstIndex(where: { $0.contains(startCueIndex) }) {
+                batches = Array(batches[startBatchIndex...]) + Array(batches[..<startBatchIndex])
             }
 
             var done = 0
@@ -435,10 +572,11 @@ final class PlayerModel {
                             let out: [String]
                             switch engine {
                             case .zai:
-                                out = try await ZaiTranslator.translateBatch(texts, apiKey: zaiApiKey)
+                                out = try await ZaiTranslator.translateBatch(texts, apiKey: zaiApiKey, model: zaiModel)
+                            case .nvidia:
+                                out = try await NvidiaTranslator.translateBatch(texts, apiKey: nvidiaApiKey, model: nvidiaModel)
                             case .openRouter:
-                                out = try await OpenRouterTranslator.translateBatch(
-                                    texts, apiKey: openRouterApiKey, preferredModel: openRouterModel)
+                                out = try await OpenRouterTranslator.translateBatch(texts, apiKey: openRouterApiKey, model: openRouterModel)
                             case .google:
                                 out = try await GoogleTranslator.translateBatch(texts)
                             }
@@ -478,22 +616,35 @@ final class PlayerModel {
             // bitince, sırayla (paralel göndermek IP'yi daha çok yorduğu için)
             // birkaç şans daha veriliyor. Geçici bir hız sınırı ya da tek seferlik
             // ağ hatası artık partiyi tamamen kaybettirmiyor.
+            //
+            // Eskiden 2 turdu ve turlar arasında bekleme yoktu — ücretsiz
+            // katmanların hız sınırı henüz soğumadan hemen yeniden denenince
+            // aynı 429'a tekrar takılıp "çok parça atlandı" şikayetine yol
+            // açıyordu. Artık 5 tur var, aralarında artan bir bekleme (hız
+            // sınırının soğuması için) var, ve kullanıcı player'dan çıkıp işi
+            // iptal ettiyse döngü hemen kesiliyor.
             var retryRounds = 0
-            while !failedRanges.isEmpty, retryRounds < 2 {
+            while !failedRanges.isEmpty, retryRounds < 5, !Task.isCancelled {
                 retryRounds += 1
+                if retryRounds > 1 {
+                    try? await Task.sleep(for: .seconds(min(Double(retryRounds) * 5, 20)))
+                    guard !Task.isCancelled else { break }
+                }
                 var stillFailed: [Range<Int>] = []
                 for range in failedRanges {
+                    guard !Task.isCancelled else { stillFailed.append(range); continue }
                     translationMessage = "Çevriliyor: %\(Int(Double(done) / Double(batches.count) * 100)) " +
-                        "(\(failedRanges.count) parça yeniden deneniyor…)"
+                        "(\(failedRanges.count) parça yeniden deneniyor, tur \(retryRounds))"
                     do {
                         let texts = Array(allTexts[range])
                         let out: [String]
                         switch engine {
                         case .zai:
-                            out = try await ZaiTranslator.translateBatch(texts, apiKey: zaiApiKey)
+                            out = try await ZaiTranslator.translateBatch(texts, apiKey: zaiApiKey, model: zaiModel)
+                        case .nvidia:
+                            out = try await NvidiaTranslator.translateBatch(texts, apiKey: nvidiaApiKey, model: nvidiaModel)
                         case .openRouter:
-                            out = try await OpenRouterTranslator.translateBatch(
-                                texts, apiKey: openRouterApiKey, preferredModel: openRouterModel)
+                            out = try await OpenRouterTranslator.translateBatch(texts, apiKey: openRouterApiKey, model: openRouterModel)
                         case .google:
                             out = try await GoogleTranslator.translateBatch(texts)
                         }
@@ -507,6 +658,15 @@ final class PlayerModel {
                 failedRanges = stillFailed
             }
 
+            // Kullanıcı player'dan çıkıp işi iptal ettiyse burada sessizce
+            // duruyoruz: o ana kadar çevrilen parçalar zaten `apply(_:to:)`
+            // ile dosyaya yazılıp mpv'ye yüklendi, ama "tamamlandı" bildirimi
+            // göstermek, dosyayı temiz başlıkla yeniden eklemek ya da yarım
+            // çeviriyi önbelleğe yazmak (`failed == 0` şartı zaten engelliyor
+            // ama bildirim/yeniden ekleme adımları öyle değil) burada anlamsız
+            // — video zaten kapanıyor.
+            guard !Task.isCancelled else { return }
+
             guard changed > 0 else {
                 throw lastError ?? NSError(domain: "Translation", code: 3, userInfo: [
                     NSLocalizedDescriptionKey:
@@ -516,7 +676,16 @@ final class PlayerModel {
 
             let finalVTT = SubtitleTranslator.buildWebVTT(cues: translatedCues)
             try finalVTT.write(to: workingURL, atomically: true, encoding: .utf8)
-            if let trackID { core.reloadSubtitle(id: trackID) }
+            // Ara adımlarda `sub-reload` yeterli ama mpv o yolda `title`'ı
+            // düşürüyor; iz artık kalıcı olacağı için burada açıkça kaldırıp
+            // başlıkla yeniden ekliyoruz — yoksa menüde "zyplayer_ceviri_...vtt"
+            // gibi çıplak dosya adı görünüyor.
+            if let trackID {
+                core.removeSubtitle(id: trackID)
+                if let freshID = await attachTranslatedSubtitle(at: workingURL, engineLabel: engine.title) {
+                    translationSourceTrackID[freshID] = sourceID
+                }
+            }
 
             // Yalnızca tamamı biten çeviri saklanıyor; yarım kalan bir çeviri
             // sonraki açılışta eksik görünmesin diye önbelleğe girmiyor.
@@ -524,14 +693,16 @@ final class PlayerModel {
                                                                       engine: engine) {
                 // Videonun kendi kimliğine de yazılıyor: içerik kapatılıp
                 // açıldığında kaynak altyazı artık ekli olmasa da çeviri bulunsun.
-                let label = subtitleTracks.first { $0.id == selectedID }?.displayName ?? "Altyazı"
+                let label = subtitleTracks.first { $0.id == sourceID }?.displayName ?? "Altyazı"
                 TranslatedSubtitleCache.record(video: translationVideoKey, file: stored,
                                                engine: engine, label: label)
             }
 
-            translationMessage = failed == 0
+            let finishedMessage = failed == 0
                 ? "Çeviri tamamlandı."
                 : "Çeviri bitti, \(failed) parça çevrilemedi."
+            translationMessage = finishedMessage
+            showTranslationCompletedBanner(finishedMessage)
             try? await Task.sleep(for: .seconds(2.0))
         } catch {
             translationMessage = "Hata: \(error.localizedDescription)"
@@ -778,9 +949,13 @@ final class PlayerModel {
               subtitles: [StreamSubtitle] = [],
               resumeKey: String? = nil,
               preferredSubtitle: String? = nil) {
+        resetScrub()
         isTrailer = false
         trackURLs = [:]
+        translationSourceTrackID = [:]
         didRestoreCachedTranslation = false
+        skipMarkers = SkipMarkers()
+        skipMarkersResolved = false
         currentHTTPHeaders = httpHeaders
         currentURL = url
         currentResumeKey = resumeKey
@@ -828,9 +1003,13 @@ final class PlayerModel {
     /// kaldığı yerden açılıyor. `ytdl=yes` şart — adresi yt-dlp çözüyor.
     func openYouTube(_ url: URL, title: String, resumeAt seconds: Double = 0,
                      resumeKey: String) {
+        resetScrub()
         isTrailer = false
         trackURLs = [:]
+        translationSourceTrackID = [:]
         didRestoreCachedTranslation = false
+        skipMarkers = SkipMarkers()
+        skipMarkersResolved = false
         currentHTTPHeaders = [:]
         currentURL = url
         currentResumeKey = resumeKey
@@ -844,14 +1023,43 @@ final class PlayerModel {
         core.play()
     }
 
+    /// Bir sonraki fragman denemesi başarısız olursa sırayla denenecek geri
+    /// kalan YouTube adresleri. TMDB genelde birden çok video döndürür
+    /// (resmi fragman, teaser, farklı yüklemeler); eskiden yalnızca ilki
+    /// deneniyordu — o video kaldırılmış/bölge kısıtlı/özel olduğunda
+    /// (yt-dlp "Video unavailable" gibi bir hatayla çıkıyor, mpv de bunu
+    /// "unrecognized file format" diye gösteriyor) kullanıcı elinde başka
+    /// aday olmasına rağmen düz bir hata görüyordu.
+    @ObservationIgnored private var trailerCandidates: [URL] = []
+    @ObservationIgnored private var trailerTitle = ""
+
     /// Plays a trailer. Progress is not recorded — trailers are not library items.
-    func openTrailer(_ url: URL, title: String) {
+    /// `candidates`: TMDB'nin döndürdüğü fragman/teaser adresleri, en iyisi
+    /// başta. İlki oynatılamazsa sırayla diğerleri denenir.
+    func openTrailer(candidates: [URL], title: String) {
+        trailerCandidates = candidates
+        trailerTitle = title
+        playNextTrailerCandidate()
+    }
+
+    /// `trailerCandidates`'ten bir sonrakini dener; hiç kalmadıysa hatayı
+    /// gösterir. `.playbackFailed` olayı, `isTrailer` açıkken ve kalan aday
+    /// varken bunu otomatik çağırıyor.
+    private func playNextTrailerCandidate() {
+        guard !trailerCandidates.isEmpty else {
+            playbackErrorMessage = "Bu içerik için oynatılabilir bir fragman bulunamadı " +
+                "(mevcut adaylar YouTube'da kaldırılmış ya da bölgesel olarak kısıtlı olabilir)."
+            return
+        }
+        let url = trailerCandidates.removeFirst()
+
+        resetScrub()
         isTrailer = true
         currentURL = url
         currentHTTPHeaders = [:]
         currentResumeKey = nil
         pendingPreferredSubtitle = nil
-        currentTitle = title
+        currentTitle = trailerTitle
         position = 0
         setSubtitleDelay(baseSubtitleDelay)
         core.setHTTPHeaders([:])
@@ -869,7 +1077,20 @@ final class PlayerModel {
 
     /// Stops playback and returns to the library.
     func close() {
+        // Kullanıcı çeviri bitmeden player'dan çıkarsa arka planda ağa istek
+        // atmaya, API kredisi harcamaya devam etmesin diye iş hemen iptal
+        // ediliyor. `translateSelectedSubtitle` içindeki `Task.isCancelled`
+        // kontrolleri bunu görüp erken çıkıyor.
+        translationTask?.cancel()
+        translationTask = nil
+        isTranslatingSubtitles = false
+        translationMessage = nil
+        translationCompletedBannerTask?.cancel()
+        translationCompletedBanner = nil
+        playbackErrorMessage = nil
+
         flushProgress()
+        resetScrub()
         core.command(["stop"])
         currentURL = nil
         currentHTTPHeaders = [:]
@@ -916,6 +1137,92 @@ final class PlayerModel {
         onControlsUserActivity?()
     }
 
+    // MARK: - Otomatik tanıtım/jenerik tespiti
+
+    /// `fileLoaded`'da çağrılır. Önce diskteki önbelleğe bakar (aynı bölüm daha
+    /// önce analiz edildiyse ffmpeg'i tekrar çalıştırmadan anında sonucu verir);
+    /// yoksa dosyaya gömülü chapter'lardan (kesin) intro ve jenerik sınırlarını
+    /// okur, ikisi de gelmezse eksik alanları arka planda ffmpeg (sessizlik +
+    /// siyah kare) analiziyle tamamlar. Infuse gibi: sınır ya dosyada yazar ya
+    /// da hesaplanır — sezgi yalnızca ikisi de yoksa devreye girer.
+    private func detectSkipMarkers() {
+        guard !isTrailer, let url = currentURL else { return }
+        let duration = core.duration
+        // Kısa klip ya da canlı yayında (süre bilinmiyor) atlama düğmesi yok.
+        guard duration > 120 else { return }
+
+        // 0) Önbellek — bu bölüm daha önce (bu oturumda ya da geçmiş bir
+        // oturumda) analiz edildiyse ağa/ffmpeg'e hiç çıkmadan doğrudan kullan.
+        // "Hiç bulunamadı" sonucu da geçerli ve saklı: tanıtımsız bir bölümü
+        // her açılışta yeniden taramak zaman kaybı.
+        let cacheKey = skipMarkersVideoKey
+        if let cached = SkipMarkersCache.load(key: cacheKey) {
+            skipMarkers = Self.clamped(cached, duration: duration)
+            skipMarkersResolved = true
+            return
+        }
+
+        // 1) Chapter'lar — kesin.
+        let chapters = IntroSkipDetector.fromChapters(core.chapterList(), duration: duration)
+        if !chapters.isEmpty { skipMarkers = Self.clamped(chapters, duration: duration) }
+
+        let needIntro = chapters.introEnd == nil
+        let needCredits = chapters.creditsStart == nil
+        // Chapter her iki sınırı da verdiyse analiz gereksiz.
+        guard needIntro || needCredits, let ffmpeg = IntroSkipDetector.ffmpegPath else {
+            SkipMarkersCache.store(skipMarkers, key: cacheKey)
+            skipMarkersResolved = true
+            return
+        }
+
+        // 2) ffmpeg analizi — yaklaşık, arka planda.
+        let headers = currentHTTPHeaders
+        let token = UUID()
+        skipDetectToken = token
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let analyzed = IntroSkipDetector.analyze(
+                url: url, headers: headers, duration: duration, ffmpegPath: ffmpeg,
+                needIntro: needIntro, needCredits: needCredits)
+            DispatchQueue.main.async {
+                guard let self, self.skipDetectToken == token, self.currentURL == url else { return }
+                // Chapter'dan gelen kesin değerleri koru, boş kalanları analizle doldur.
+                var merged = self.skipMarkers
+                if merged.introEnd == nil { merged.introEnd = analyzed.introEnd }
+                if merged.creditsStart == nil { merged.creditsStart = analyzed.creditsStart }
+                if merged.source == .none { merged.source = analyzed.source }
+                merged = Self.clamped(merged, duration: duration)
+                self.skipMarkers = merged
+                self.skipMarkersResolved = true
+                // Analiz denemesi bitti — sonuç boş olsa bile (bu bölümde
+                // tanıtım/jenerik yok demektir) saklanır ki bir daha
+                // taramayalım.
+                SkipMarkersCache.store(merged, key: cacheKey)
+            }
+        }
+    }
+
+    /// Bozuk/aşırı metadata'ya karşı güvenlik: sınırlar hiçbir zaman video
+    /// süresini aşamaz, `introStart` da `introEnd`'i geçemez.
+    private static func clamped(_ markers: SkipMarkers, duration: Double) -> SkipMarkers {
+        guard duration > 0 else { return markers }
+        var result = markers
+        if let end = result.introEnd { result.introEnd = min(end, duration) }
+        if let start = result.introStart, let end = result.introEnd, start >= end {
+            result.introStart = nil
+        }
+        if let credits = result.creditsStart { result.creditsStart = min(credits, duration) }
+        return result
+    }
+
+    /// Videoyu tanımlayan kimlik — `translationVideoKey` ile aynı biçim
+    /// (akış/torrent'te kalıcı devam anahtarı, kütüphanede dosya yolu).
+    /// "Tanıtımı Geç" önbelleğinin anahtarı: aynı içerik yeniden açıldığında
+    /// değişmiyor.
+    private var skipMarkersVideoKey: String {
+        if let key = currentResumeKey, !key.isEmpty { return key }
+        return currentURL?.absoluteString ?? ""
+    }
+
     // MARK: - Scrubbing
     //
     // Three calls rather than one setter. Firing an exact seek on every mouse move
@@ -928,6 +1235,15 @@ final class PlayerModel {
     /// The thumb went down: mpv's position stops driving the bar.
     func beginScrub() {
         isScrubbing = true
+        scrubRelease?.cancel()
+        scrubRelease = nil
+    }
+
+    /// Defensive reset so a scrub lock that got stuck (e.g. the controls bar
+    /// auto-hid mid-drag, see the comment on `isScrubbing`) can never survive
+    /// into a new playback session.
+    private func resetScrub() {
+        isScrubbing = false
         scrubRelease?.cancel()
         scrubRelease = nil
     }

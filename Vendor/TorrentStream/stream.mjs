@@ -10,7 +10,58 @@
 //    "buffer":0..1}
 //   {"event":"warn","message":...}                        survived a library error
 //   {"event":"error","message":...}                       fatal
+import dns from 'node:dns'
+import dnsPromises from 'node:dns/promises'
 import WebTorrent from 'webtorrent'
+
+// Some ISPs hijack or sinkhole DNS for tracker/DHT-bootstrap hostnames rather
+// than blocking the IPs outright — the symptom is a swarm that reports peers
+// (their fake/dead ones) but never yields a byte. Resolving those hostnames
+// straight against public resolvers instead of the OS/ISP one sidesteps that.
+// `dns.lookup` is what `net`/`http`/the tracker & DHT libraries actually call,
+// so it — not just `setServers` — is what needs overriding; `dns.resolve*`
+// alone would miss anything that resolves through the OS path.
+dns.setServers(['1.1.1.1', '8.8.8.8', '9.9.9.9'])
+const trustedResolve = (hostname) => new Promise((resolve, reject) => {
+  dns.resolve4(hostname, (err4, addrs4) => {
+    if (!err4 && addrs4?.length) return resolve({ address: addrs4[0], family: 4 })
+    dns.resolve6(hostname, (err6, addrs6) => {
+      if (!err6 && addrs6?.length) return resolve({ address: addrs6[0], family: 6 })
+      reject(err4 || err6 || new Error(`DNS: ${hostname} çözülemedi`))
+    })
+  })
+})
+const osLookup = dns.lookup.bind(dns)
+dns.lookup = (hostname, options, callback) => {
+  if (typeof options === 'function') { callback = options; options = {} }
+  const wantedFamily = typeof options === 'number' ? options : options?.family
+  trustedResolve(hostname)
+    .then(({ address, family }) => callback(null, address, wantedFamily || family))
+    .catch(() => osLookup(hostname, options, callback)) // offline/unreachable resolver: fall back rather than fail outright
+}
+dnsPromises.lookup = (hostname, options) => new Promise((resolve, reject) => {
+  dns.lookup(hostname, options || {}, (err, address, family) => {
+    if (err) reject(err); else resolve({ address, family })
+  })
+})
+
+// The magnet/torrent's own tracker list is sometimes thin or half-dead, which
+// leaves the swarm mostly (or entirely) made of unresponsive peers — visible
+// as a nonzero peer count that never turns into downloaded bytes. Widening
+// discovery with a curated set of healthy public trackers gives the client a
+// real shot at finding peers that actually answer piece requests.
+const EXTRA_TRACKERS = [
+  'udp://tracker.opentrackr.org:1337/announce',
+  'udp://open.stealth.si:80/announce',
+  'udp://tracker.torrent.eu.org:451/announce',
+  'udp://exodus.desync.com:6969/announce',
+  'udp://explodie.org:6969/announce',
+  'udp://tracker.dler.org:6969/announce',
+  'udp://open.demonii.com:1337/announce',
+  'udp://tracker-udp.gbitt.info:80/announce',
+  'http://tracker.openbittorrent.com:80/announce',
+  'https://tracker.gbitt.info:443/announce'
+]
 
 const argv = process.argv.slice(2)
 const arg = (name, fallback) => {
@@ -65,7 +116,12 @@ client.on('error', (err) => say({ event: 'error', message: String(err?.message |
 // add, and that pass discards the pieces the download is filling in — the
 // buffered count climbs and falls for ever and playback never starts. The cache
 // directory is created empty for every stream, so there is nothing to verify.
-const torrent = client.add(torrentID, { path: dir, strategy: 'sequential', assumeEmpty: true })
+const torrent = client.add(torrentID, {
+  path: dir,
+  strategy: 'sequential',
+  assumeEmpty: true,
+  announce: EXTRA_TRACKERS
+})
 torrent.on('error', (err) => say({ event: 'error', message: String(err?.message || err) }))
 
 let announcedPlayable = false
@@ -164,11 +220,32 @@ const bufferRatio = () => {
   return Math.min(got / wanted, 1)
 }
 
+/** Some swarms are mostly (or entirely) dead/poisoned peers that complete a
+ *  handshake — so they count toward `numPeers` — but choke forever and never
+ *  answer a piece request. Left alone, WebTorrent just sits on those
+ *  connections. If nothing has been downloaded for a while despite having
+ *  peers, drop every current wire: closed connections trigger WebTorrent's
+ *  own reconnect/re-announce path (torrent.js `conn.on('close', ...)`), which
+ *  gives the tracker/DHT swarm a chance to hand back a different peer set. */
+const STALL_EVICT_MS = 20_000
+let lastDownloaded = 0
+let lastDownloadedAt = Date.now()
+
 setInterval(() => {
   if (torrent.ready && headRange) {
     const headIn = have(headRange) === size(headRange)
     const tailIn = !tailRange || have(tailRange) === size(tailRange) || deadlinePassed
     if (headIn && tailIn) announcePlayable()
+
+    if (torrent.downloaded !== lastDownloaded) {
+      lastDownloaded = torrent.downloaded
+      lastDownloadedAt = Date.now()
+    } else if (!announcedPlayable && torrent.numPeers > 0 &&
+      Date.now() - lastDownloadedAt > STALL_EVICT_MS) {
+      say({ event: 'warn', message: `${torrent.numPeers} eş bağlı ama veri gelmiyor — bağlantılar yenileniyor.` })
+      torrent.wires.slice().forEach((wire) => wire.destroy())
+      lastDownloadedAt = Date.now()
+    }
   }
   say({
     event: 'progress',

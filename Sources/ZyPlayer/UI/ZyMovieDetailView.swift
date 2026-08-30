@@ -7,6 +7,10 @@ struct ZyMovieDetailView: View {
     let torrents: TorrentStore
     let streamer: TorrentStreamer
     let player: PlayerModel
+    /// İzlenen torrent burada da bir devam noktası bıraksın diye — yoksa
+    /// "İzledim" sekmesi bu içeriği hiç göremiyordu (`resumeStore.update`
+    /// hiç `begin()` edilmemiş bir anahtarda sessizce hiçbir şey yapmıyor).
+    var resume: PlaybackResumeStore?
     let onBack: () -> Void
     var onOpenRemoteTitle: (RemoteTitle) -> Void = { _ in }
     
@@ -206,8 +210,17 @@ struct ZyMovieDetailView: View {
         // Kararlı kimlik: yerel akış adresi her oynatmada değişiyor, altyazı
         // seçimi ona bağlanırsa bir sonraki açılışta hatırlanmaz.
         let key = "zymovie:\(hit.rssLink)#\(fileIndex.map(String.init) ?? "0")"
+        // TMDB eşleşmesi varsa (`hit.remoteTitle`) kaydediliyor: "İzledim"
+        // sekmesindeki kart oradan hem afişini hem detay sayfasını buluyor.
+        resume?.begin(ResumePoint(
+            id: key, kind: .torrent, title: title,
+            posterURLString: hit.remoteTitle?.posterURL?.absoluteString,
+            magnet: hit.rssLink, fileIndex: fileIndex,
+            remoteTitle: hit.remoteTitle
+        ))
+        let resumeAt = resume?.position(forKey: key) ?? 0
         streamer.start(option, title: title) { url, _ in
-            player.open(url, title: title, resumeAt: 0, resumeKey: key)
+            player.open(url, title: title, resumeAt: resumeAt, resumeKey: key)
         }
     }
     

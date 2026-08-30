@@ -21,6 +21,9 @@ struct PosterCard: View {
     var posterImage: NSImage?
     /// A corner tag such as "Kütüphanede" or a trending flame.
     var badge: PosterBadge?
+    /// "Dublaj" / "Altyazılı" — kaynak rozetinin (ör. "HDFC") hemen yanına,
+    /// aynı köşeye çizilir.
+    var audioLabel: String? = nil
     /// IMDb puanı; afişin sol alt köşesinde küçük bir etiket olarak çizilir.
     var imdbRating: Double?
     /// Set while a remove button is drawn over the card, so the badge underneath
@@ -83,8 +86,11 @@ struct PosterCard: View {
                     EmptyView()
                 } else if isFinished {
                     Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 26))
+                        .symbolRenderingMode(.palette)
                         .foregroundStyle(.white, .blue)
-                        .padding(6)
+                        .shadow(color: .black.opacity(0.5), radius: 3)
+                        .padding(7)
                 } else if is4K {
                     Text("4K")
                         .font(.system(size: 9, weight: .black))
@@ -98,13 +104,27 @@ struct PosterCard: View {
                         .shadow(radius: 2)
                         .padding(6)
                 } else if watchlisted {
-                    Image(systemName: "bookmark.fill")
-                        .font(.system(size: 13))
+                    Image(systemName: "bookmark.circle.fill")
+                        .font(.system(size: 26))
+                        .symbolRenderingMode(.palette)
                         .foregroundStyle(.white, .orange)
-                        .shadow(radius: 2)
-                        .padding(6)
+                        .shadow(color: .black.opacity(0.5), radius: 3)
+                        .padding(7)
                 } else if let badge {
-                    badge.label.padding(6)
+                    HStack(spacing: 4) {
+                        if let audioLabel {
+                            Text(audioLabel)
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(.black.opacity(0.75), in: Capsule())
+                                .overlay(Capsule().strokeBorder(.white.opacity(0.15), lineWidth: 0.5))
+                                .shadow(radius: 2)
+                        }
+                        badge.label
+                    }
+                    .padding(6)
                 }
             }
             .overlay(alignment: .topLeading) {

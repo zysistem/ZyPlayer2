@@ -272,14 +272,22 @@ struct IPTVView: View {
                         }
                     case .movies:
                         ForEach(filteredMovies) { movie in
-                            let point = resume?.point(forKey: "iptv:movie:\(movie.id)")
+                            let key = "iptv:movie:\(movie.id)"
+                            let point = resume?.point(forKey: key)
                             PosterTile(title: movie.name, imageURL: movie.iconURL,
                                        rating: movie.rating,
                                        progress: point?.progress ?? 0,
-                                       isWatched: point?.isFinished ?? false) {
+                                       isWatched: (point?.isFinished ?? false) || WatchFlagsStore.shared.isFinished(key),
+                                       watchlisted: WatchFlagsStore.shared.isWantToWatch(key)) {
                                 onPlayMovie(movie)
                             }
                             .contextMenu {
+                                watchButtons(key: key, snapshot: .iptv(IPTVFavorite(
+                                    kind: .movie, streamID: movie.id, name: movie.name,
+                                    iconURLString: movie.iconURLString,
+                                    containerExtension: movie.containerExtension
+                                )))
+                                Divider()
                                 favoriteButton(IPTVFavorite(
                                     kind: .movie, streamID: movie.id, name: movie.name,
                                     iconURLString: movie.iconURLString,
@@ -289,11 +297,19 @@ struct IPTVView: View {
                         }
                     case .series:
                         ForEach(filteredSeries) { item in
+                            let key = "iptv:series:\(item.id)"
                             PosterTile(title: item.name, imageURL: item.coverURL,
-                                       rating: item.rating) {
+                                       rating: item.rating,
+                                       isWatched: WatchFlagsStore.shared.isFinished(key),
+                                       watchlisted: WatchFlagsStore.shared.isWantToWatch(key)) {
                                 onOpenSeries(item)
                             }
                             .contextMenu {
+                                watchButtons(key: key, snapshot: .iptv(IPTVFavorite(
+                                    kind: .series, streamID: item.id, name: item.name,
+                                    iconURLString: item.coverURLString
+                                )))
+                                Divider()
                                 favoriteButton(IPTVFavorite(
                                     kind: .series, streamID: item.id, name: item.name,
                                     iconURLString: item.coverURLString
@@ -323,6 +339,20 @@ struct IPTVView: View {
         Button(isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle",
                systemImage: isFavorite ? "star.slash" : "star") {
             store.toggleFavorite(favorite)
+        }
+    }
+
+    /// "İzledim" / "İzleyeceğim" — film ve dizi kartlarının bağlam menüsünde
+    /// ortak, `key` `"iptv:movie:<id>"` ya da `"iptv:series:<id>"` biçiminde.
+    @ViewBuilder
+    private func watchButtons(key: String, snapshot: WatchSnapshot) -> some View {
+        let watched = WatchFlagsStore.shared.isFinished(key)
+        Button(watched ? "İzlemedim olarak işaretle" : "İzledim") {
+            WatchFlagsStore.shared.setFinished(key, !watched, snapshot: snapshot)
+        }
+        let listed = WatchFlagsStore.shared.isWantToWatch(key)
+        Button(listed ? "İzleyeceklerimden çıkar" : "İzleyeceğim") {
+            WatchFlagsStore.shared.setWantToWatch(key, !listed, snapshot: snapshot)
         }
     }
 
@@ -471,6 +501,9 @@ private struct PosterTile: View {
     /// içerik de izlenmiş sayılıyor ve şerit yerine tik gösteriliyor.
     var progress: Double = 0
     var isWatched: Bool = false
+    /// İzleyeceklerim listesinde mi. İzlendi tikiyle aynı köşeyi paylaşıyor,
+    /// ikisi bir arada anlamsız olduğundan tik varken hiç çizilmiyor.
+    var watchlisted: Bool = false
     let action: () -> Void
 
     @State private var isHovering = false
@@ -524,8 +557,17 @@ private struct PosterTile: View {
                 .overlay(alignment: .topLeading) {
                     if isWatched {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 15))
-                            .foregroundStyle(.white, .green)
+                            .font(.system(size: 24))
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(.white, .blue)
+                            .shadow(color: .black.opacity(0.5), radius: 3)
+                            .padding(6)
+                    } else if watchlisted {
+                        Image(systemName: "bookmark.circle.fill")
+                            .font(.system(size: 24))
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(.white, .orange)
+                            .shadow(color: .black.opacity(0.5), radius: 3)
                             .padding(6)
                     }
                 }
@@ -571,6 +613,8 @@ struct IPTVSearchCard: View {
     let imageURL: URL?
     /// "Canlı yayın", "Film", "Dizi".
     let kindLabel: String
+    var isFinished: Bool = false
+    var watchlisted: Bool = false
     let action: () -> Void
 
     @FocusState private var isFocused: Bool
@@ -580,6 +624,8 @@ struct IPTVSearchCard: View {
             PosterCard(
                 title: IPTVNaming.split(title).name,
                 subtitle: kindLabel,
+                isFinished: isFinished,
+                watchlisted: watchlisted,
                 posterURL: imageURL,
                 badge: .iptv,
                 isFocused: isFocused

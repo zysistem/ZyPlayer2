@@ -11,6 +11,10 @@ xcuserdata/
 
 # Claude Code çalışma dosyaları
 .zcode/
+.claude/
+
+# Uygulamanın çalışırken oluşturduğu görsel önbelleği (kaynak değil)
+ZyPlayerImageCache/
 
 # Not: Vendor/TorrentStream/node_modules bilerek depoda tutulur —
 # yamalanmış bir WebTorrent kopyasıdır, ayrıntılar PATCHES.md'de.

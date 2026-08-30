@@ -14,6 +14,7 @@ struct MovieDetailView: View {
     var isTrailerLoading: Bool = false
 
     @State private var credits = CreditsLoader()
+    @State private var logo = LogoLoader()
 
     var body: some View {
         ScrollView {
@@ -22,6 +23,8 @@ struct MovieDetailView: View {
                 backdropFileName: item.backdropFileName,
                 posterFileName: item.posterFileName,
                 title: item.title,
+                logoURL: logo.logoURL,
+                logoChecked: logo.hasChecked,
                 tagline: metaLine,
                 overview: item.overview,
                 genres: item.genres,
@@ -50,6 +53,11 @@ struct MovieDetailView: View {
             await library.fillMissingDetail(for: item, settings: settings)
             if let tmdbID = item.tmdbID {
                 await credits.load(kind: .movie, tmdbID: tmdbID, settings: settings)
+                await logo.load(kind: .movie, tmdbID: tmdbID, settings: settings)
+            } else {
+                // Eşleşmesi olmayan bir öğenin logosu hiç aranmaz — arama
+                // "bitti" sayılmazsa başlık metni de hiç görünmez.
+                logo.markChecked()
             }
         }
     }
@@ -89,6 +97,7 @@ struct SeriesDetailView: View {
     /// nil until the user picks one; the default follows whatever plays next.
     @State private var selectedSeason: Int?
     @State private var credits = CreditsLoader()
+    @State private var logo = LogoLoader()
     /// Pulls the full episode list from TMDB so episodes the user does not own
     /// still show up — with a torrent list instead of a play button.
     @State private var loader = RemoteDetailLoader()
@@ -102,6 +111,8 @@ struct SeriesDetailView: View {
                     backdropFileName: series.meta?.backdropFileName,
                     posterFileName: series.meta?.posterFileName,
                     title: series.displayName,
+                    logoURL: logo.logoURL,
+                    logoChecked: logo.hasChecked,
                     tagline: metaLine,
                     overview: series.meta?.overview,
                     genres: series.meta?.genres ?? [],
@@ -174,6 +185,9 @@ struct SeriesDetailView: View {
             }
             if let tmdbID = series.meta?.tmdbID {
                 await credits.load(kind: .tv, tmdbID: tmdbID, settings: settings)
+                await logo.load(kind: .tv, tmdbID: tmdbID, settings: settings)
+            } else {
+                logo.markChecked()
             }
             if let remoteTitle {
                 await loader.load(remoteTitle, settings: settings)
@@ -675,6 +689,15 @@ struct DetailHeader: View {
     /// go through AsyncImage). Wins over the URLs.
     var posterImage: NSImage?
     let title: String
+    /// Transparent title wordmark from TMDB. Wins over the plain-text title
+    /// when it has loaded; the text stays underneath as the fallback and for
+    /// VoiceOver.
+    var logoURL: URL?
+    /// True once the logo lookup for this title has finished, found or not.
+    /// Keeps the text title from flashing on screen and then being replaced
+    /// by the logo a moment later — nothing shows until we know which one it
+    /// actually is.
+    var logoChecked: Bool = true
     let tagline: String
     let overview: String?
     let genres: [String]
@@ -702,10 +725,20 @@ struct DetailHeader: View {
     var onEditMatch: (() -> Void)?
     var onTrailer: (() -> Void)?
     var isTrailerLoading: Bool = false
+    /// "İndir": akış detayında oynatın yanında görünür; yayını diske indirir.
+    /// Dizide "SEZONU İNDİR" gibi metinler için `downloadLabel` değişir.
+    var onDownload: (() -> Void)?
+    var downloadLabel: String = "İndir"
+    var isDownloadPreparing: Bool = false
     /// "Akışlarda ara": yapımı açık akış kaynaklarında arar. Yalnızca TMDB
     /// başlıklarında var — akış detayında zaten kaynağın içindesiniz.
     var onSearchStreams: (() -> Void)?
     var isSearchingStreams: Bool = false
+    /// "Torrent'te Ara": filmlerde torrent arama artık sayfa açılır açılmaz
+    /// kendiliğinden başlamıyor — kullanıcı istemeden her açılışta torrent
+    /// indeksine istek gitmesin diye bu düğmeye basılana kadar bekliyor.
+    var onSearchTorrents: (() -> Void)?
+    var isSearchingTorrents: Bool = false
 
     var body: some View {
         // Yapı IPTV detayıyla aynı: arka plan bir `background` katmanı ve
@@ -764,10 +797,7 @@ struct DetailHeader: View {
     /// Afişin sağındaki künye: başlık, bilgi çipleri, özet ve düğmeler.
     private var info: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.system(size: 27, weight: .bold))
-                .foregroundStyle(.white)
-                .lineLimit(2)
+            titleOrLogo
 
             HStack(spacing: 10) {
                 if !tagline.isEmpty { metaChip(tagline) }
@@ -787,6 +817,42 @@ struct DetailHeader: View {
             actionRow
                 .padding(.top, 4)
         }
+    }
+
+    /// Stremio afişi gibi: yapımın logosu varsa metnin yerini alır. Metin
+    /// hiçbir aşamada logonun önünde belirip sonra yerini ona bırakmaz —
+    /// arama sürerken de, logo indirilirken de ikisinden hiçbiri görünmez;
+    /// yalnızca logo olmadığı kesinleşince (arama bitti ve aday yok, ya da
+    /// görsel gerçekten indirilemedi) metin çıkar.
+    @ViewBuilder
+    private var titleOrLogo: some View {
+        if let logoURL {
+            CachedAsyncImage(url: logoURL) { phase in
+                switch phase {
+                case .success(let image):
+                    image.resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: 320, maxHeight: 90, alignment: .leading)
+                        .shadow(color: .black.opacity(0.5), radius: 8, y: 2)
+                case .failure:
+                    titleText
+                default:
+                    Color.clear.frame(width: 1, height: 1)
+                }
+            }
+            .frame(maxWidth: 320, maxHeight: 90, alignment: .bottomLeading)
+        } else if logoChecked {
+            titleText
+        } else {
+            Color.clear.frame(width: 1, height: 1)
+        }
+    }
+
+    private var titleText: some View {
+        Text(title)
+            .font(.system(size: 27, weight: .bold))
+            .foregroundStyle(.white)
+            .lineLimit(2)
     }
 
     private func metaChip(_ text: String) -> some View {
@@ -810,6 +876,27 @@ struct DetailHeader: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .focusEffectDisabled()
+            }
+
+            if let onDownload {
+                Button(action: onDownload) {
+                    HStack(spacing: 6) {
+                        if isDownloadPreparing {
+                            ProgressView().controlSize(.small).scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "arrow.down.circle")
+                        }
+                        Text(downloadLabel)
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .padding(.horizontal, 14)
+                    .frame(height: 34)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .focusEffectDisabled()
+                .disabled(isDownloadPreparing)
+                .help("Seçili klasöre indir")
             }
 
             if let onTrailer {
@@ -849,6 +936,26 @@ struct DetailHeader: View {
                 .focusEffectDisabled()
                 .disabled(isSearchingStreams)
                 .help("Bu yapımı açık akış kaynaklarında ara")
+            }
+
+            if let onSearchTorrents {
+                Button(action: onSearchTorrents) {
+                    HStack(spacing: 6) {
+                        if isSearchingTorrents {
+                            ProgressView().controlSize(.small).scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "arrow.down.left.arrow.up.right.circle")
+                        }
+                        Text("Torrent'te Ara")
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                    .padding(.horizontal, 12)
+                    .frame(height: 34)
+                }
+                .buttonStyle(.bordered)
+                .focusEffectDisabled()
+                .disabled(isSearchingTorrents)
+                .help("Bu yapımı torrent indeksinde ara")
             }
 
             if showsLibraryControls {

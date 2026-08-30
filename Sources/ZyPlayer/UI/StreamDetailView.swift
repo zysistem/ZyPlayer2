@@ -61,12 +61,15 @@ struct StreamDetailView: View {
     let library: LibraryStore
     let settings: AppSettings
     let resume: PlaybackResumeStore
+    /// Akış indirmelerini yürüten depo — film ya da seçili sezon buraya kuyruklanır.
+    var downloads: StreamDownloadStore
     let onBack: () -> Void
     /// Plays the TMDB trailer for the matched title.
     var onTrailer: (RemoteTitle) -> Void = { _ in }
     var isTrailerLoading: Bool = false
 
     @State private var loader = StreamDetailLoader()
+    @State private var logo = LogoLoader()
     @State private var poster: NSImage?
     @State private var season: Int = 1
     /// TMDB episode stills: key is "s{season}e{episode}" -> still URL.
@@ -74,6 +77,8 @@ struct StreamDetailView: View {
     @State private var episodeStills: [String: URL] = [:]
     /// Tracks which seasons we've already fetched stills for (avoids repeat requests).
     @State private var fetchedStillSeasons: Set<Int> = []
+    /// "İndirilenlere eklendi" bildirimini kısa süre gösterir.
+    @State private var downloadNotice: String?
 
     private var episodes: [StreamEpisode] { loader.details?.episodes ?? [] }
     private var isSeries: Bool { !episodes.isEmpty }
@@ -88,6 +93,8 @@ struct StreamDetailView: View {
                     posterURL: loader.match?.posterURL,
                     posterImage: loader.match == nil ? poster : nil,
                     title: displayTitle,
+                    logoURL: logo.logoURL,
+                    logoChecked: logo.hasChecked,
                     tagline: metaLine,
                     overview: loader.match?.overview,
                     genres: [],
@@ -99,7 +106,9 @@ struct StreamDetailView: View {
                     onPlay: isSeries ? nil : { playMovie() },
                     onToggleFavorite: { library.toggleStreamFavorite(hit) },
                     onTrailer: loader.match.map { m in { onTrailer(m) } },
-                    isTrailerLoading: isTrailerLoading
+                    isTrailerLoading: isTrailerLoading,
+                    onDownload: isSeries ? nil : (loader.isLoading ? nil : { downloadMovie() }),
+                    downloadLabel: "İndir"
                 )
 
                 if isSeries {
@@ -114,6 +123,13 @@ struct StreamDetailView: View {
                         .font(.callout).foregroundStyle(.orange)
                         .padding(.horizontal, 24).padding(.top, 16)
                 }
+
+                // Film yolunda sezon çubuğu olmadığından bildirimi burada gösteriyoruz.
+                if !isSeries, let downloadNotice {
+                    Label(downloadNotice, systemImage: "checkmark.circle.fill")
+                        .font(.callout).foregroundStyle(.green)
+                        .padding(.horizontal, 24).padding(.top, 16)
+                }
             }
             .padding(.bottom, 30)
         }
@@ -124,6 +140,15 @@ struct StreamDetailView: View {
         }
         .task(id: hit.id) {
             await loader.load(hit, provider: store.lookup(hit.providerID), settings: settings)
+            // Aynı görevin devamında: eşleşme varsa logosu aranır, yoksa
+            // "kontrol bitti" işaretlenir ki başlık metni hemen görünsün —
+            // ayrı bir `.task` burada eşleşmenin henüz gelmediği anda erken
+            // tetiklenip başlığı zamanından önce gösterirdi.
+            if let match = loader.match {
+                await logo.load(kind: match.kind, tmdbID: match.tmdbID, settings: settings)
+            } else {
+                logo.markChecked()
+            }
         }
         // Fetch TMDB episode stills whenever the matched tmdbID or displayed season changes.
         .task(id: "\(loader.match?.tmdbID ?? 0)-\(season)") {
@@ -165,6 +190,52 @@ struct StreamDetailView: View {
         }
     }
 
+    // MARK: - İndirme
+
+    /// Filmi tek başına, "Ad (Yıl)" adlı bir klasöre indirir.
+    private func downloadMovie() {
+        let folder = downloadFolderName
+        downloads.enqueue([StreamDownloadRequest(
+            pageURL: hit.pageURL, providerID: hit.providerID,
+            title: displayTitle,
+            fileName: "\(folder).mp4",
+            folderName: folder)])
+        flashNotice("İndirilenlere eklendi")
+    }
+
+    /// Seçili sezonun tüm bölümlerini, dizi adıyla açılan klasörün içindeki
+    /// "Sezon N" alt klasörüne indirir (ör. "Breaking Bad/Sezon 2/…").
+    private func downloadSeason(_ season: Int) {
+        let episodes = loader.details?.episodes(inSeason: season) ?? []
+        guard !episodes.isEmpty else { return }
+        let requests = episodes.map { episode -> StreamDownloadRequest in
+            let code = String(format: "S%02dE%02d", episode.season, episode.episode)
+            return StreamDownloadRequest(
+                pageURL: episode.pageURL, providerID: hit.providerID,
+                title: "\(displayTitle) · \(code)",
+                fileName: "\(displayTitle) \(code).mp4",
+                folderName: "\(downloadFolderName)/Sezon \(episode.season)")
+        }
+        downloads.enqueue(requests)
+        flashNotice("Sezon \(season) indirilenlere eklendi (\(episodes.count) bölüm)")
+    }
+
+    /// IMDb/TMDB adıyla klasör adı: filmde yıl da eklenir.
+    private var downloadFolderName: String {
+        if !isSeries, let year = loader.match?.year ?? hit.year {
+            return "\(displayTitle) (\(year))"
+        }
+        return displayTitle
+    }
+
+    private func flashNotice(_ text: String) {
+        downloadNotice = text
+        Task {
+            try? await Task.sleep(for: .seconds(4))
+            if downloadNotice == text { downloadNotice = nil }
+        }
+    }
+
     private var resumeLabel: String {
         guard !isSeries, let point = resume.point(forKey: hit.pageURL),
               point.progress > 0.01, !point.isFinished else { return "Oynat" }
@@ -182,13 +253,49 @@ struct StreamDetailView: View {
                            onSelect: { season = $0 })
                 .padding(.top, 18)
             }
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(loader.details?.episodes(inSeason: effectiveSeason) ?? []) { episode in
-                    episodeRow(episode)
-                }
-            }
-            .padding(.top, 12)
+
+            seasonDownloadBar
+            episodeList
         }
+    }
+
+    /// Seçili sezonu indiren düğme + geçici bilgilendirme.
+    private var seasonDownloadBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                downloadSeason(effectiveSeason)
+            } label: {
+                Label("SEZON \(effectiveSeason) İNDİR", systemImage: "arrow.down.circle")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+            .controlSize(.large)
+            .disabled(!downloads.isEngineAvailable
+                      || (loader.details?.episodes(inSeason: effectiveSeason).isEmpty ?? true))
+
+            if let downloadNotice {
+                Text(downloadNotice)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if !downloads.isEngineAvailable {
+                Text("ffmpeg gerekli: `brew install ffmpeg`")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 16)
+    }
+
+    private var episodeList: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(loader.details?.episodes(inSeason: effectiveSeason) ?? []) { episode in
+                episodeRow(episode)
+            }
+        }
+        .padding(.top, 12)
     }
 
     private func episodeRow(_ episode: StreamEpisode) -> some View {

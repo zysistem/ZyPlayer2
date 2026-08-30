@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct DownloadsView: View {
     let library: LibraryStore
     let torrents: TorrentStore
+    @Bindable var streamDownloads: StreamDownloadStore
     let streamer: TorrentStreamer
     @Bindable var settings: AppSettings
     /// Bir magnet/torrent adresini diske hiç yazmadan oynatıcıya açar.
@@ -21,9 +22,9 @@ struct DownloadsView: View {
             header
             Divider()
 
-            if !torrents.isEngineAvailable {
+            if !torrents.isEngineAvailable && streamDownloads.items.isEmpty {
                 missingEngine
-            } else if torrents.downloads.isEmpty {
+            } else if torrents.downloads.isEmpty && streamDownloads.items.isEmpty {
                 empty
             } else {
                 list
@@ -85,6 +86,12 @@ struct DownloadsView: View {
                     .buttonStyle(.link)
                     .font(.caption)
                 Spacer()
+                if canClearFinished {
+                    Button("Tümünü Temizle") { clearFinished() }
+                        .buttonStyle(.link)
+                        .font(.caption)
+                        .help("Biten, hatalı ve iptal edilenleri listeden kaldırır")
+                }
                 if torrents.isStarting { ProgressView().controlSize(.small) }
             }
 
@@ -100,6 +107,11 @@ struct DownloadsView: View {
     private var list: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
+                // Akış indirmeleri (ffmpeg) üstte; torrentler altta.
+                ForEach(streamDownloads.items) { item in
+                    StreamDownloadRow(item: item, store: streamDownloads)
+                    Divider()
+                }
                 ForEach(torrents.downloads) { download in
                     DownloadRow(download: download, torrents: torrents, library: library)
                     Divider()
@@ -135,6 +147,23 @@ struct DownloadsView: View {
     }
 
     // MARK: - Actions
+
+    /// Temizlenebilecek bir şey var mı: biten/hatalı akış indirmesi ya da biten/
+    /// hatalı torrent.
+    private var canClearFinished: Bool {
+        streamDownloads.hasClearable
+            || torrents.downloads.contains { $0.isFinished || $0.status == "error" }
+    }
+
+    /// Biten, hatalı ve iptal edilen indirmeleri listeden kaldırır; süren ve
+    /// bekleyenlere dokunmaz. Torrent dosyaları silinmez, yalnızca listeden çıkar.
+    private func clearFinished() {
+        streamDownloads.clearFinished()
+        let done = torrents.downloads.filter { $0.isFinished || $0.status == "error" }
+        for download in done {
+            Task { await torrents.remove(download, deleteFiles: false, library: library) }
+        }
+    }
 
     private func addLink() {
         let value = linkInput
@@ -176,6 +205,89 @@ struct DownloadsView: View {
             Task { await torrents.addTorrentFile(url, library: library) }
         }
         return true
+    }
+}
+
+/// Bir akış (ffmpeg) indirmesinin satırı — torrent satırıyla aynı görünümde.
+private struct StreamDownloadRow: View {
+    @Bindable var item: StreamDownloadItem
+    let store: StreamDownloadStore
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(iconColor)
+                .frame(width: 26)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(item.title)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                if item.status == .downloading, item.durationSeconds > 0 {
+                    ProgressView(value: item.progress).progressViewStyle(.linear)
+                } else if item.isActive {
+                    ProgressView().progressViewStyle(.linear)
+                }
+
+                HStack(spacing: 10) {
+                    Text(item.statusLine)
+                    if item.status == .downloading, item.durationSeconds > 0 {
+                        Text("%\(Int(item.progress * 100))")
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(item.status == .error ? .red : .secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 6) {
+                if item.isActive || item.status == .waiting {
+                    Button { store.cancel(item) } label: {
+                        Image(systemName: "xmark.circle")
+                    }
+                    .help("İptal et")
+                }
+                Menu {
+                    Button("Listeden Kaldır") { store.remove(item) }
+                    if item.status == .complete {
+                        Divider()
+                        Button("Finder'da Göster") {
+                            NSWorkspace.shared.activateFileViewerSelecting(
+                                [URL(fileURLWithPath: item.destinationPath)])
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    private var icon: String {
+        switch item.status {
+        case .complete: "checkmark.circle.fill"
+        case .error: "exclamationmark.circle.fill"
+        case .cancelled: "xmark.circle.fill"
+        default: "arrow.down.circle"
+        }
+    }
+
+    private var iconColor: Color {
+        switch item.status {
+        case .complete: .green
+        case .error: .red
+        case .cancelled: .secondary
+        default: .accentColor
+        }
     }
 }
 

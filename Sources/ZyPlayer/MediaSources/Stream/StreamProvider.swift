@@ -22,10 +22,21 @@ protocol StreamProvider {
     /// The landing-page rows (recently added, etc.), refreshed on each visit.
     /// Providers with nothing to show return an empty array.
     func discover() async throws -> [StreamShelf]
+
+    /// Sitenin kendi menüsündeki kategoriler. `kind` istenen görünümü söyler:
+    /// "Filmler" (.movie) ile "Diziler" (.series) farklı kategori kümeleri
+    /// isteyebiliyor. Desteklemeyen kaynak boş dizi döner.
+    func categories(for kind: StreamKind) async throws -> [StreamCategory]
+    /// Bir kategori liste sayfasının `page`. sayfasındaki kartlar (1'den başlar).
+    /// Film ve dizi karışık gelebilir; görünüm bunları `hit.kind` ile ayırıyor.
+    /// Sayfa yoksa boş döner — çağıran boş sayfada durur.
+    func categoryHits(_ pageURL: String, page: Int) async throws -> [StreamHit]
 }
 
 extension StreamProvider {
     func discover() async throws -> [StreamShelf] { [] }
+    func categories(for kind: StreamKind) async throws -> [StreamCategory] { [] }
+    func categoryHits(_ pageURL: String, page: Int) async throws -> [StreamHit] { [] }
 }
 
 /// Shared HTTP + HTML helpers so each provider stays small.

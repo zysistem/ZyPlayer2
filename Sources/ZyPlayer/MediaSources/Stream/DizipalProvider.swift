@@ -17,7 +17,7 @@ import Foundation
 /// The domain moves constantly (the site itself announces the next one in a
 /// banner), which is exactly what the editable base URL in Settings is for.
 struct DizipalProvider: StreamProvider {
-    static let defaultBaseURL = "https://dizipal2108.com"
+    static let defaultBaseURL = "https://dizipal2109.com"
 
     let id = "dizipal"
     let displayName = "ZySeries"
@@ -102,6 +102,46 @@ struct DizipalProvider: StreamProvider {
         guard let m = regex.firstMatch(in: text, range: range), m.numberOfRanges > 1,
               let r = Range(m.range(at: 1), in: text) else { return nil }
         return String(text[r]).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // MARK: - Categories (site menu)
+
+    /// Sitenin menüsündeki `/kategori/{slug}` bağlantıları. Başlık, bağlantı
+    /// metninden alınıyor; boşsa slug'dan türetiliyor ("aksiyon-macera" →
+    /// "Aksiyon Macera"). Aynı slug birden çok yerde geçebildiği için tekilleniyor
+    /// ve menüdeki sıra korunuyor.
+    func categories(for kind: StreamKind) async throws -> [StreamCategory] {
+        let html = try await load(baseURL)
+        let pattern = "href=\"([^\"]*?/kategori/([^\"/]+)/?)\"[^>]*>([^<]*)<"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return [] }
+        let ns = html as NSString
+        var seen = Set<String>()
+        var out: [StreamCategory] = []
+        for m in regex.matches(in: html, range: NSRange(location: 0, length: ns.length)) {
+            let href = absolute(ns.substring(with: m.range(at: 1)))
+            let slug = ns.substring(with: m.range(at: 2))
+            guard seen.insert(slug).inserted else { continue }
+            let label = ns.substring(with: m.range(at: 3)).trimmingCharacters(in: .whitespacesAndNewlines)
+            let title = label.isEmpty ? Self.titleize(slug) : decodeEntities(label)
+            out.append(StreamCategory(providerID: id, title: title, pageURL: href))
+        }
+        return out
+    }
+
+    func categoryHits(_ pageURL: String, page: Int) async throws -> [StreamHit] {
+        // Dizipal kategori listelerinde sayfalama bu görünümde kullanılmıyor;
+        // yalnızca ilk sayfa döner.
+        guard page == 1 else { return [] }
+        let html = try await load(absolute(pageURL))
+        return Self.hits(fromCards: html, providerID: id, providerName: displayName,
+                         absolutize: absolute, decode: decodeEntities)
+    }
+
+    /// "bilim-kurgu-fantastik" → "Bilim Kurgu Fantastik".
+    private static func titleize(_ slug: String) -> String {
+        slug.split(separator: "-")
+            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+            .joined(separator: " ")
     }
 
     // MARK: - Details
@@ -189,29 +229,57 @@ struct DizipalProvider: StreamProvider {
 
     // MARK: - Embeds
 
-    /// A film or episode page carries only a `data-cfg` hash; the embed comes from
-    /// `/ajax-player-config`, which answers `{"success":true,"config":{"v":…,"t":…}}`.
-    /// A series landing page has no `data-cfg` at all, so it throws `.noEmbed` and
-    /// the store falls through to the episode list — the same shape
+    /// A film or episode page carries a `data-cfg` hash on `#videoContainer`.
+    ///
+    /// Until 2026-08-28 this was an opaque token that had to be POSTed to
+    /// `/ajax-player-config`, which answered `{"success":true,"config":{"v":…}}`.
+    /// The site removed that endpoint (it now 404s) and switched to putting
+    /// the config directly on the page as base64 — decoding `cfg` locally
+    /// yields the exact same `{"v":…,"t":…,"p":…}` shape the endpoint used to
+    /// return. The POST is kept as a fallback in case the site brings a
+    /// server round-trip back for some content.
+    ///
+    /// A series landing page has no `data-cfg` at all, so it throws `.noEmbed`
+    /// and the store falls through to the episode list — the same shape
     /// `HdFilmCehennemiProvider` relies on.
     func embeds(forPage pageURL: String) async throws -> [StreamEmbed] {
         let html = try await load(pageURL)
         guard let cfg = firstMatch("data-cfg=\"([^\"]+)\"", in: html) else { throw StreamError.noEmbed }
+
+        if let config = Self.decodeCfg(cfg), let embed = embed(from: config, pageURL: pageURL) {
+            return [embed]
+        }
 
         let raw = try await WebFetcherPool.fetcher(for: baseURL)
             .post("\(baseURL)/ajax-player-config", form: ["cfg": cfg])
         guard let data = raw.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let config = object["config"] as? [String: Any],
-              let value = config["v"] as? String, !value.isEmpty else { throw StreamError.noEmbed }
+              let embed = embed(from: config, pageURL: pageURL) else { throw StreamError.noEmbed }
 
-        // `v` is normally the embed URL outright; when the site returns a whole
-        // iframe tag instead, the src is what we want out of it.
+        return [embed]
+    }
+
+    /// `data-cfg` is standard base64 (the site's own JS never decodes it with
+    /// `-`/`_` URL-safe substitutes, but a defensive swap costs nothing) of a
+    /// JSON object; padding is sometimes stripped from the HTML attribute so
+    /// it's restored before decoding.
+    private static func decodeCfg(_ cfg: String) -> [String: Any]? {
+        var base64 = cfg.replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        while base64.count % 4 != 0 { base64 += "=" }
+        guard let data = Data(base64Encoded: base64) else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+
+    /// `v` is normally the embed URL outright; when the site returns a whole
+    /// iframe tag instead, the src is what we want out of it.
+    private func embed(from config: [String: Any], pageURL: String) -> StreamEmbed? {
+        guard let value = config["v"] as? String, !value.isEmpty else { return nil }
         let url = value.contains("<iframe")
             ? (firstMatch("src=\"([^\"]+)\"", in: value) ?? "")
             : value
-        guard !url.isEmpty else { throw StreamError.noEmbed }
-
-        return [StreamEmbed(url: absolute(url), referer: pageURL, label: displayName)]
+        guard !url.isEmpty else { return nil }
+        return StreamEmbed(url: absolute(url), referer: pageURL, label: displayName)
     }
 }
