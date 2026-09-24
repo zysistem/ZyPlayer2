@@ -1,5 +1,12 @@
 import Foundation
 
+private extension StringProtocol {
+    /// Sondan başlayarak koşulu sağlayan parça — "dizipal2134" → "2134".
+    func suffix(while predicate: (Character) -> Bool) -> String {
+        String(reversed().prefix(while: predicate).reversed())
+    }
+}
+
 /// A stored streaming source: its on/off flag and its current base URL. The URL
 /// is persisted (and editable in Settings) because these sites move domains
 /// often; the display name and kind come from the catalog.
@@ -7,25 +14,21 @@ struct StreamSourceToggle: Codable, Identifiable, Hashable {
     var id: String
     var isEnabled: Bool
     var baseURL: String
-    /// Sitenin ana sayfasında duyurduğu bir sonraki alan adı. Bugün değil,
-    /// site taşındığında işe yarar: eski adres kapandığında elde hazır bir
-    /// hedef bulunsun diye önceden saklanır. Boş = henüz duyurulmadı.
-    var nextBaseURL: String
 
-    init(id: String, isEnabled: Bool, baseURL: String, nextBaseURL: String = "") {
+    init(id: String, isEnabled: Bool, baseURL: String) {
         self.id = id
         self.isEnabled = isEnabled
         self.baseURL = baseURL
-        self.nextBaseURL = nextBaseURL
     }
 
-    /// Tolerant: a toggle saved before the URL field existed still decodes.
+    /// Tolerant: a toggle saved before the URL field existed still decodes, and
+    /// an abandoned "next address" key from the removed domain tracker is
+    /// ignored (unknown JSON keys drop on the floor) rather than failing.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = c.value(.id, "")
         isEnabled = c.value(.isEnabled, true)
         baseURL = c.value(.baseURL, "")
-        nextBaseURL = c.value(.nextBaseURL, "")
     }
 }
 
@@ -99,19 +102,34 @@ enum StreamRegistry {
             if toggle.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 toggle.baseURL = info.defaultBaseURL
             }
-            // İleriye dönük göç: kayıtlı adres, kodun bildiği default'la aynı kök
-            // ve uzantıya sahipse ama numarası daha küçükse (ör. saklanan
-            // dizipal2108, default dizipal2109), default'a çekilir. Yalnızca
-            // ileri: takipçi daha yenisini bulup sakladıysa (2115 > 2109) ona
-            // dokunulmaz. Bu, otomatik takip ağ yüzünden tökezlese bile adresin
-            // en az kodun bildiği güncel noktaya gelmesini garanti eder.
-            if let stored = StreamDomainTracker.parts(of: toggle.baseURL),
-               let fresh = StreamDomainTracker.parts(of: info.defaultBaseURL),
-               stored.stem == fresh.stem, stored.suffix == fresh.suffix,
-               stored.number < fresh.number {
+            // Otomatik adres takibi kaldırıldı; kayıtlı dizipal adresi hâlâ
+            // takipçinin bıraktığı numaralı bir alan adıysa (dizipal2134 gibi)
+            // varsayılana (dizipal1583) çekilir. Aynı aile dışında bir adres —
+            // kullanıcının elle girdiği — olduğu gibi kalır.
+            if toggle.baseURL != info.defaultBaseURL,
+               let stored = Self.numberedDomain(of: toggle.baseURL),
+               let fresh = Self.numberedDomain(of: info.defaultBaseURL),
+               stored.stem == fresh.stem, stored.suffix == fresh.suffix {
                 toggle.baseURL = info.defaultBaseURL
             }
             return toggle
         }
+    }
+
+    /// "https://dizipal2134.com" → ("dizipal", 2134, "com"). Numaralı taşınma
+    /// ailesine ait adresleri tanır; sayı ile bitmeyen bir ad için nil.
+    private static func numberedDomain(of baseURL: String) -> (stem: String, number: Int, suffix: String)? {
+        guard var host = URL(string: baseURL)?.host?.lowercased() else { return nil }
+        if host.hasPrefix("www.") { host = String(host.dropFirst(4)) }
+
+        guard let dot = host.firstIndex(of: ".") else { return nil }
+        let name = String(host[host.startIndex..<dot])
+        let suffix = String(host[host.index(after: dot)...])
+
+        let digits = name.suffix(while: \.isNumber)
+        guard !digits.isEmpty, let number = Int(digits) else { return nil }
+        let stem = String(name.dropLast(digits.count))
+        guard !stem.isEmpty else { return nil }
+        return (stem, number, suffix)
     }
 }

@@ -23,6 +23,13 @@ final class StreamResolver: NSObject, WKScriptMessageHandler, WKNavigationDelega
     /// Referer the media CDN expects: the embed's site origin.
     private var resultReferer: String = ""
     private var jwAttempted = false
+    /// Çözülmekte olan embed'in bayrakları (`tapToStart`, `localizePlaylists`).
+    private var embed: StreamEmbed?
+    /// Her `resolve` çağrısında artar; asenkron bir bitiş adımı, arada başka bir
+    /// çözüm başladıysa eskisinin sonucunu yeni continuation'a yazmasın diye.
+    private var session = 0
+    /// Playerjs'in `openPlayer` çağrısından yakalanan altyazıların indirilmesi.
+    private var trackTask: Task<[StreamSubtitle], Never>?
 
     /// Sniffer state (fallback path).
     private var mediaURL: URL?
@@ -102,6 +109,8 @@ final class StreamResolver: NSObject, WKScriptMessageHandler, WKNavigationDelega
 
     func resolve(_ embed: StreamEmbed, timeout: Duration = .seconds(25)) async throws -> ResolvedStream {
         teardown(resumingWith: .failure(CancellationError()))
+        session += 1
+        self.embed = embed
         resultReferer = Self.origin(of: embed.url) ?? embed.url
 
         return try await withCheckedThrowingContinuation { cont in
@@ -142,7 +151,58 @@ final class StreamResolver: NSObject, WKScriptMessageHandler, WKNavigationDelega
     // MARK: - JWPlayer path
 
     nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        Task { @MainActor in self.attemptJWPlayer() }
+        Task { @MainActor in
+            self.tapToStartIfNeeded()
+            self.attemptJWPlayer()
+        }
+    }
+
+    // MARK: - Tap-to-start path (Dizipal / Playerjs)
+
+    /// Playerjs'li dplayer sayfası `$("body").click(initP)` ile bekliyor; tıklama
+    /// `openPlayer(…, subtitles)`'ı çağırıyor, o da `source2.php` → master.m3u8
+    /// istiyor (sniffer yakalar). Tıklamadan önce `openPlayer` sarılır: son
+    /// argümanı `[{file,label,kind,lang}]` altyazı listesi, "TRACKS" olarak iletilir.
+    private static let tapJS = """
+    (function () {
+      var original = window.openPlayer;
+      if (typeof original === 'function' && !original.__zy) {
+        var wrapped = function () {
+          try {
+            var subs = arguments[arguments.length - 1];
+            if (Array.isArray(subs)) {
+              window.webkit.messageHandlers.zystream.postMessage('TRACKS ' + JSON.stringify(subs));
+            }
+          } catch (e) {}
+          return original.apply(this, arguments);
+        };
+        wrapped.__zy = true;
+        window.openPlayer = wrapped;
+      }
+      if (document.body) { document.body.click(); }
+    })();
+    """
+
+    private func tapToStartIfNeeded() {
+        guard embed?.tapToStart == true, continuation != nil, let webView else { return }
+        webView.evaluateJavaScript(Self.tapJS, completionHandler: nil)
+    }
+
+    /// Playerjs'in altyazı listesini JWPlayer yolunun indiricisine uygun biçime
+    /// getirip (`lang` → `language`) arka planda indirmeye başlar.
+    private func handleTracks(_ json: String) {
+        guard trackTask == nil,
+              let data = json.data(using: .utf8),
+              let list = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+              !list.isEmpty else { return }
+        let tracks = list.map { track -> [String: Any] in
+            var track = track
+            if track["language"] == nil, let lang = track["lang"] { track["language"] = lang }
+            return track
+        }
+        trackTask = Task { [weak self] in
+            await self?.fetchJWSubtitles(tracks) ?? []
+        }
     }
 
     private func attemptJWPlayer() {
@@ -322,6 +382,10 @@ final class StreamResolver: NSObject, WKScriptMessageHandler, WKNavigationDelega
 
     private func handleCandidate(_ tagged: String) {
         guard continuation != nil else { return }
+        if tagged.hasPrefix("TRACKS ") {
+            handleTracks(String(tagged.dropFirst(7)))
+            return
+        }
         let isSubtitle = tagged.hasPrefix("SUB ")
         let urlString = String(tagged.dropFirst(isSubtitle ? 4 : 6))
         guard let url = URL(string: urlString) else { return }
@@ -343,11 +407,31 @@ final class StreamResolver: NSObject, WKScriptMessageHandler, WKNavigationDelega
 
     private func completeWithMedia() {
         guard let url = mediaURL else { return }
-        finish(.success(ResolvedStream(
-            url: url,
-            headers: ["Referer": resultReferer, "User-Agent": StreamProviderUserAgent.value],
-            subtitles: subtitles
-        )))
+        let headers = ["Referer": resultReferer, "User-Agent": StreamProviderUserAgent.value]
+        let needsLocalCopy = embed?.localizePlaylists == true
+        guard needsLocalCopy || trackTask != nil else {
+            finish(.success(ResolvedStream(url: url, headers: headers, subtitles: subtitles)))
+            return
+        }
+
+        // Adres bulundu; kalan iş (listeleri ve altyazıları indirmek) kendi ağ
+        // zaman aşımlarıyla sınırlı. Embed zaman aşımı bunu yarıda kesmesin.
+        timeoutTask?.cancel(); timeoutTask = nil
+        let current = session
+        let tracks = trackTask
+        let sniffed = subtitles
+        Task { @MainActor [weak self] in
+            var playURL = url
+            if needsLocalCopy, let local = await HLSPlaylistLocalizer.localize(url, headers: headers) {
+                playURL = local
+            }
+            let fetched = await tracks?.value ?? []
+            guard let self, self.session == current else { return }
+            self.finish(.success(ResolvedStream(
+                url: playURL, headers: headers,
+                subtitles: fetched.isEmpty ? sniffed : fetched
+            )))
+        }
     }
 
     private static func subtitleLabel(for url: URL) -> String {
@@ -378,6 +462,7 @@ final class StreamResolver: NSObject, WKScriptMessageHandler, WKNavigationDelega
         mediaURL = nil
         subtitles = []
         jwAttempted = false
+        trackTask = nil
         if let view = webView {
             view.navigationDelegate = nil
             view.stopLoading()

@@ -83,10 +83,6 @@ struct ZyPlayerApp: App {
                     // Removed eager loading to improve launch performance.
                     // HomeView will fetch its own content when it appears.
                     // Heavy file sync runs concurrently in background
-                    // Akış siteleri birkaç günde bir alan adı değiştiriyor.
-                    // Açılışta denetlenir ki kullanıcı ZyStream'e girdiğinde
-                    // adres çoktan güncel olsun.
-                    Task { await StreamDomainTracker.refreshAll(settings: settings) }
                     Task {
                         await smb.remountAll(library: library)
                         if !library.folders.isEmpty { await library.rescan() }

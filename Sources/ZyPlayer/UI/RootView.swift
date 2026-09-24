@@ -724,8 +724,6 @@ struct RootView: View {
                                  onOpenSeries: { route = .iptv(.series($0)) },
                                  resume: resumeStore
                              )
-            case .music:     MusicView()
-            case .games:     GamesView()
             }
         }
     }
@@ -1462,7 +1460,7 @@ struct SearchResultsView: View {
 }
 
 enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
-    case home, library, movies, shows, favorites, appleTV, netflix, primeVideo, disneyPlus, hboMax, bollywood, zyMovie, iptv, stream, downloads, settings, music, games
+    case home, library, movies, shows, favorites, appleTV, netflix, primeVideo, disneyPlus, hboMax, bollywood, zyMovie, iptv, stream, downloads, settings
 
     var id: String { rawValue }
 
@@ -1484,8 +1482,6 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
         case .stream: "ZyStream"
         case .downloads: "İndirilenler"
         case .settings: "Ayarlar"
-        case .music: "Müzik"
-        case .games: "Oyunlar"
         }
     }
 
@@ -1504,8 +1500,6 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
         case .stream: "play.tv"
         case .downloads: "arrow.down.circle"
         case .settings: "gearshape"
-        case .music: "music.note"
-        case .games: "gamecontroller"
         }
     }
 
@@ -1546,7 +1540,7 @@ struct Sidebar: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     sectionLabel("Diğer")
-                    ForEach([SidebarItem.music, .games, .downloads, .settings]) { item in
+                    ForEach([SidebarItem.downloads, .settings]) { item in
                         row(item)
                     }
                 }

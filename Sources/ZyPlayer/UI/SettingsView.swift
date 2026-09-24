@@ -166,8 +166,6 @@ struct SettingsView: View {
     @State private var rememberedVideoCount = 0
     @State private var cacheClearedNote: String?
     @State private var torrentResumeClearedNote: String?
-    @State private var isCheckingDomains = false
-    @State private var domainCheckNote: String?
     @State private var iptvInput = ""
     @State private var iptvNote: String?
     @State private var currentImageCacheSize: String = ImageCacheManager.formattedCacheSize
@@ -854,42 +852,11 @@ struct SettingsView: View {
                         }
                     }
                     .padding(.leading, 31)
-
-                    if !source.nextBaseURL.isEmpty {
-                        Text("Sitenin duyurduğu sonraki adres: \(source.nextBaseURL) — bu adres kapandığında oraya geçilecek.")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .padding(.leading, 31)
-                    }
                 }
                 .padding(.vertical, 4)
             }
 
-            HStack(spacing: 8) {
-                Button("Adresleri Şimdi Denetle") {
-                    isCheckingDomains = true
-                    domainCheckNote = nil
-                    Task {
-                        let moved = await StreamDomainTracker.refreshAll(settings: settings)
-                        isCheckingDomains = false
-                        domainCheckNote = moved.isEmpty
-                            ? "Adresler güncel."
-                            : "Güncellendi: \(moved.joined(separator: ", "))"
-                    }
-                }
-                .controlSize(.small)
-                .disabled(isCheckingDomains)
-
-                if isCheckingDomains {
-                    ProgressView().controlSize(.small)
-                } else if let note = domainCheckNote {
-                    Text(note).font(.caption).foregroundStyle(.secondary)
-                }
-            }
-
-            Text("Adresler uygulama açılışında ve ZyStream sekmesine her girişte kendiliğinden "
-                 + "denetlenir: site taşındığında ana sayfasında duyurduğu yeni adrese geçilir, "
-                 + "elle güncellemeniz gerekmez. Yukarıdaki alandan yine de kendiniz "
+            Text("Kaynak adreslerini yukarıdaki alandan kendiniz "
                  + "değiştirebilirsiniz. Not: Bu siteler telif korumalı içerik barındırabilir ve "
                  + "yapıları sık değiştiği için zaman zaman çalışmayabilir.")
                 .font(.caption2)

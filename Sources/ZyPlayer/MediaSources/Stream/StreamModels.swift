@@ -79,6 +79,14 @@ struct StreamEmbed: Hashable {
     /// "Türkçe Dublaj", "Altyazılı", or the embed host — shown when a page has
     /// more than one option.
     var label: String?
+    /// Oynatıcı, sayfaya tıklanana kadar video listesini istemiyor (Dizipal'in
+    /// Playerjs'i `$("body").click(initP)` bekliyor) — çözücü yüklemeden sonra
+    /// gövdeye tıklatır.
+    var tapToStart = false
+    /// İç HLS listeleri, ffmpeg'in TLS parmak izini engelleyen bir WAF'ın
+    /// arkasında: mpv master'ı açabiliyor ama varyantlar 403. Çözücü listeleri
+    /// URLSession ile (Safari'yle aynı TLS) çekip yerel kopyasını verir.
+    var localizePlaylists = false
 }
 
 /// An external subtitle track found alongside a stream.
