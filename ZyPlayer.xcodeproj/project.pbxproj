@@ -67,6 +67,7 @@
 		7B1322A0BCFBE55ECA3417A2 /* BollywoodStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A55BC2436C24F2044B1C668 /* BollywoodStore.swift */; };
 		7DDF79A972A6C4B6ACDAD264 /* SMBSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF2A53E12F4731EC197C9684 /* SMBSettingsView.swift */; };
 		840AF4A808D9E8D845954769 /* ZyMovieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6632CD8938AC3179DA14E5 /* ZyMovieView.swift */; };
+		84F463DD8546ACB9369607F7 /* StreamDomainTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02CE70BE30673C9A0C7519B5 /* StreamDomainTracker.swift */; };
 		880629B197DDAE4BD2E48CEA /* StreamProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5182396E453E4A29DBB9909F /* StreamProvider.swift */; };
 		8C15D6892D3F8BB4B164C1BB /* PlaybackResumeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19071F1C106F47B7C69E03F3 /* PlaybackResumeStore.swift */; };
 		8D894E186591E2F60A74439D /* StreamDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D74AB70B669E1000817395 /* StreamDetailView.swift */; };
@@ -122,6 +123,7 @@
 
 /* Begin PBXFileReference section */
 		01A1A274CAA76E1DA2993100 /* IPTVDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPTVDetailView.swift; sourceTree = "<group>"; };
+		02CE70BE30673C9A0C7519B5 /* StreamDomainTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamDomainTracker.swift; sourceTree = "<group>"; };
 		033B091E03A51B441F007F30 /* ZyStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZyStreamView.swift; sourceTree = "<group>"; };
 		0751D5968748550F613C1F88 /* SubtitleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleStyle.swift; sourceTree = "<group>"; };
 		0858A1F8A95153B23771ED18 /* CinemaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaStore.swift; sourceTree = "<group>"; };
@@ -346,6 +348,7 @@
 				BA3CCF5F860BB62E0B6B5CA1 /* DizipalProvider.swift */,
 				C1E44F3F65ECC48778DC2ACB /* HdFilmCehennemiProvider.swift */,
 				D6909EA6EE699AEDF339650B /* HLSPlaylistLocalizer.swift */,
+				02CE70BE30673C9A0C7519B5 /* StreamDomainTracker.swift */,
 				C65AC899E798656BF29A318E /* StreamDownloadStore.swift */,
 				8625FBEACF2508D7B83D8ACC /* StreamImageLoader.swift */,
 				3F1A058DBE636CB89E35C023 /* StreamLookup.swift */,
@@ -624,6 +627,7 @@
 				CEB3D54389940486D655F44F /* SettingsView.swift in Sources */,
 				40B0885877182D5622970735 /* SkipMarkersCache.swift in Sources */,
 				8D894E186591E2F60A74439D /* StreamDetailView.swift in Sources */,
+				84F463DD8546ACB9369607F7 /* StreamDomainTracker.swift in Sources */,
 				D6BFF720A113E0DA27E50385 /* StreamDownloadStore.swift in Sources */,
 				937EB942119082A901706CCD /* StreamImageLoader.swift in Sources */,
 				BD1FFD8794184A71512F1014 /* StreamLookup.swift in Sources */,

@@ -84,6 +84,10 @@ final class PlayerModel {
     /// A subtitle track to re-select once tracks are known — the language the user
     /// last watched this title with. Cleared once matched.
     @ObservationIgnored private var pendingPreferredSubtitle: String?
+    /// Bu dosya için varsayılan altyazı seçimi bir kez yapıldı mı. Yapıldıktan
+    /// sonra parça tazelenmeleri (geç eklenen dış altyazılar dâhil) seçimi
+    /// tekrar ezmez — kullanıcının "Kapalı" seçimini de geri almaz.
+    @ObservationIgnored private var preferredSubtitleApplied = false
 
     /// Kayıtlı çeviri her dosya için bir kez aranır; `fileLoaded` olayı bir
     /// oynatma sırasında birden çok kez gelebiliyor.
@@ -918,17 +922,64 @@ final class PlayerModel {
     /// Re-selects the subtitle language the user last watched this title with, once
     /// a matching track is present. Matched by display name so it survives the
     /// track ids changing between sessions.
+    ///
+    /// Kayıtlı seçim bulunamazsa (ya da hiç yoksa) **Türkçe varsayılanı**
+    /// devreye girer: önce "Türkçe (Zorunlu)", o yoksa düz "Türkçe" tikli
+    /// gelir. Dış parçalar mpv'ye geç kaydedilebildiği için bu işlev parça
+    /// listesi tazelendikçe yeniden çağrılır; ilk seçimden sonra
+    /// (`preferredSubtitleApplied`) dokunulmaz.
     private func applyPreferredSubtitle() {
-        guard let want = pendingPreferredSubtitle, !want.isEmpty else { return }
-        // The track's display name may carry a codec suffix ("Türkçe (Zorunlu) ·
-        // WEBVTT"), so match by the track name *containing* the wanted label. This
-        // is one-directional on purpose: "Türkçe (Zorunlu)" won't fall onto a plain
-        // "Türkçe" track, but a plain "Türkçe" won't grab the forced one either.
-        guard let match = subtitleTracks.first(where: {
-            $0.displayName.localizedCaseInsensitiveContains(want)
-        }) else { return }
-        if selectedSubtitleID != match.id { selectSubtitle(match) }
-        pendingPreferredSubtitle = nil
+        if preferredSubtitleApplied { return }
+
+        // 1) Bu başlıkta kayıtlı seçim önceliklidir. Parçanın görünen adı codec
+        //    eki taşıyabilir ("Türkçe (Zorunlu) · WEBVTT"), o yüzden eşleşme
+        //    "içerir" üzerinden yapılır.
+        if let want = pendingPreferredSubtitle, !want.isEmpty {
+            if let match = subtitleTracks.first(where: {
+                $0.displayName.localizedCaseInsensitiveContains(want)
+            }) {
+                if selectedSubtitleID != match.id { selectSubtitle(match) }
+                pendingPreferredSubtitle = nil
+                preferredSubtitleApplied = true
+                return
+            }
+        }
+
+        // 2) Türkçe varsayılanı — fragmanlar hariç.
+        guard !isTrailer else { return }
+        let turkish = subtitleTracks.filter { isTurkishTrack($0) }
+        if let forced = turkish.first(where: { isForcedTrack($0) }) {
+            if selectedSubtitleID != forced.id { selectSubtitle(forced) }
+            preferredSubtitleApplied = true
+        } else if let plain = turkish.first {
+            if selectedSubtitleID != plain.id { selectSubtitle(plain) }
+            preferredSubtitleApplied = true
+        }
+    }
+
+    /// Parça Türkçe mi — lang kodu ("tur"/"tr"), mpv başlığı, görünen ad ya da
+    /// dış dosya adı üzerinden ("Türkçe", "Turkish", "…_tur.vtt" hepsi sayılır).
+    private func isTurkishTrack(_ track: MediaTrack) -> Bool {
+        if let lang = track.lang?.lowercased(), lang == "tur" || lang == "tr" { return true }
+        let haystacks: [String?] = [
+            track.title,
+            track.displayName,
+            track.externalFilename.map { URL(fileURLWithPath: $0).lastPathComponent }
+        ]
+        for case let text? in haystacks where !text.isEmpty {
+            if text.range(of: "türk", options: [.caseInsensitive, .diacriticInsensitive]) != nil { return true }
+        }
+        return false
+    }
+
+    /// Zorunlu izi — mpv'nin `forced` bayrağı ya da başlıklardaki
+    /// "Zorunlu/forced" etiketi (dış altyazı adlarında taşıdığımız).
+    private func isForcedTrack(_ track: MediaTrack) -> Bool {
+        if track.isForced { return true }
+        for text in [track.title, track.displayName].compactMap({ $0 }) {
+            if text.range(of: "zorunlu|forced", options: [.caseInsensitive, .regularExpression]) != nil { return true }
+        }
+        return false
     }
 
     func toggleFullscreen() {
@@ -962,15 +1013,10 @@ final class PlayerModel {
         currentTitle = title ?? url.deletingPathExtension().lastPathComponent
         position = seconds
         pendingSubtitles = subtitles
-        // Saved choice wins; otherwise a stream defaults to the forced Turkish
-        // track ("Türkçe (Zorunlu)") when one exists. Library files are left alone.
-        if let preferredSubtitle {
-            pendingPreferredSubtitle = preferredSubtitle
-        } else if resumeKey != nil {
-            pendingPreferredSubtitle = "Türkçe (Zorunlu)"
-        } else {
-            pendingPreferredSubtitle = nil
-        }
+        // Kayıtlı seçim varsa o kazanır; yoksa applyPreferredSubtitle'daki
+        // Türkçe varsayılanı devreye girer (zorunlu Türkçe öncelikli).
+        pendingPreferredSubtitle = preferredSubtitle
+        preferredSubtitleApplied = false
         // mpv keeps `sub-delay` across files; a new file starts from the default.
         setSubtitleDelay(baseSubtitleDelay)
         core.setHTTPHeaders(httpHeaders)
@@ -1017,6 +1063,7 @@ final class PlayerModel {
         position = seconds
         pendingSubtitles = []
         pendingPreferredSubtitle = nil
+        preferredSubtitleApplied = false
         setSubtitleDelay(baseSubtitleDelay)
         core.setHTTPHeaders([:])
         core.loadFile(url, startAt: seconds > 5 ? seconds : nil, options: ["ytdl": "yes"])
@@ -1059,6 +1106,7 @@ final class PlayerModel {
         currentHTTPHeaders = [:]
         currentResumeKey = nil
         pendingPreferredSubtitle = nil
+        preferredSubtitleApplied = false
         currentTitle = trailerTitle
         position = 0
         setSubtitleDelay(baseSubtitleDelay)

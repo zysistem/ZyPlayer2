@@ -2,26 +2,28 @@ import Foundation
 import CommonCrypto
 
 /// Dizipal — a Turkish series-first streaming site, shown in the app as
-/// "ZySeries". Built against the site's "bg" generation (`dizipal1583.com`):
+/// "ZySeries".
 ///
-///   1. **Search is a form POST.** `/bg/searchcontent` answers with JSON
-///      (`data.result[]`: slug, ad, yıl, IMDb puanı, poster) rather than an
-///      HTML page, so hits come straight out of the payload — with year,
-///      rating and audio label already filled in.
-///   2. **The player is on the page but encrypted.** A watch page carries a
-///      hidden `data-rm-k` div holding `{"ciphertext","iv","salt"}`; the
-///      site's own JS (PBKDF2-SHA512, 999 tur, AES-256-CBC) decrypts it to
-///      the embed URL. We run the same routine with CommonCrypto.
-///   3. **No IMDb id on the pages.** Only the search payload carries one
-///      (as a rating); `details` returns `imdbID: nil`, which sends
-///      `StreamDetailLoader` down its title-search path for the TMDB match.
+/// Two things set it apart from `HdFilmCehennemiProvider`:
+///
+///   1. **The player is not in the page.** A watch page only carries a
+///      `data-cfg` hash; the embed URL comes back from a POST to
+///      `/ajax-player-config`, and only when that POST rides the same session
+///      that was served the page. So both the page and the POST go through the
+///      site's one warmed `WebFetcher`.
+///   2. **No IMDb id anywhere.** `details` returns `imdbID: nil`, which sends
+///      `StreamDetailLoader` down its title-search path for the TMDB match —
+///      matching by name is the only option here.
+///
+/// The domain moves constantly (the site itself announces the next one in a
+/// banner), which is exactly what the editable base URL in Settings is for.
 struct DizipalProvider: StreamProvider {
-    static let defaultBaseURL = "https://dizipal1583.com"
+    static let defaultBaseURL = "https://dizipal2134.com"
 
     let id = "dizipal"
     let displayName = "ZySeries"
     let kind: StreamKind = .series
-    /// Injected from settings so the address can be changed by hand.
+    /// Injected from settings so the domain can be changed when the site moves.
     var baseURL: String
 
     init(baseURL: String = DizipalProvider.defaultBaseURL) {
@@ -33,71 +35,21 @@ struct DizipalProvider: StreamProvider {
         try await WebFetcherPool.fetcher(for: baseURL).text(url)
     }
 
-    @MainActor
-    private func post(_ url: String, form: [String: String]) async throws -> String {
-        try await WebFetcherPool.fetcher(for: baseURL).post(url, form: form)
-    }
-
     // MARK: - Search
 
     func search(_ query: String) async throws -> [StreamHit] {
-        let raw = try await post("\(baseURL)/bg/searchcontent", form: ["searchterm": query])
-        guard let data = raw.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let payload = object["data"] as? [String: Any],
-              (payload["state"] as? Bool) ?? false,
-              let results = payload["result"] as? [[String: Any]] else { return [] }
-
-        var seen = Set<String>()
-        var hits: [StreamHit] = []
-        for row in results {
-            guard let slug = row["used_slug"] as? String else { continue }
-            let url = absolute("/" + slug)
-            guard seen.insert(url).inserted else { continue }
-            guard let name = row["object_name"] as? String,
-                  !name.trimmingCharacters(in: .whitespaces).isEmpty else { continue }
-            hits.append(StreamHit(
-                providerID: id,
-                providerName: displayName,
-                kind: url.contains("/series/") ? .series : .movie,
-                title: decodeEntities(name),
-                year: (row["object_release_year"] as? Int) ?? Int((row["object_release_year"] as? String) ?? ""),
-                posterURL: (row["object_poster_url"] as? String)
-                    .map(Self.directImageURL)
-                    .flatMap(URL.init(string:)),
-                pageURL: url,
-                imdbRating: (row["object_related_imdb_point"] as? Double)
-                    ?? ((row["object_related_imdb_point"] as? NSNumber)?.doubleValue),
-                audioLabel: Self.audioLabel(fromLanguage: row["object_language"] as? String)
-            ))
-        }
-        return hits
-    }
-
-    /// Arama yanıtındaki poster adresleri AMP vekilinden geçer
-    /// ("https://images-cdnhipter-xyz.cdn.ampproject.org/i/s/images.cdnhipter.xyz/…").
-    /// Doğrudan kaynak adrese çevrilir — vekil yavaş ve taşınabilir değil.
-    private static func directImageURL(_ url: String) -> String {
-        guard let range = url.range(of: "/i/s/") else { return url }
-        return "https://" + String(url[range.upperBound...])
-    }
-
-    /// "Türkçe Dublaj" → "Dublaj", "Türkçe Altyazı" → "Altyazılı" — HdFilmCehennemi
-    /// tarafındaki rozet söz dağarcığıyla aynı tutuldu.
-    private static func audioLabel(fromLanguage text: String?) -> String? {
-        guard let text else { return nil }
-        if text.localizedCaseInsensitiveContains("dublaj") { return "Dublaj" }
-        if text.localizedCaseInsensitiveContains("altyaz") { return "Altyazılı" }
-        return nil
+        let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        let html = try await load("\(baseURL)/arama?q=\(q)")
+        return Self.hits(fromCards: html, providerID: id, providerName: displayName,
+                         absolutize: absolute, decode: decodeEntities)
     }
 
     // MARK: - Discover (landing rows)
 
     func discover() async throws -> [StreamShelf] {
-        // Ana sayfada yalnızca iki raf: son eklenen filmler ve son eklenen
-        // diziler — sitenin ana listelerinden onar kart.
-        async let films = shelf(title: "ZySeries · Son Eklenen Filmler", path: "/hd-film-izle", limit: 10)
-        async let series = shelf(title: "ZySeries · Son Eklenen Diziler", path: "/yabanci-dizi-izle", limit: 10)
+        // Ten of each, the two rows the site's own menu leads with.
+        async let films = shelf(title: "ZySeries · Son Filmler", path: "/filmler", limit: 10)
+        async let series = shelf(title: "ZySeries · Son Diziler", path: "/diziler", limit: 10)
         return await [films, series].filter { !$0.hits.isEmpty }
     }
 
@@ -108,47 +60,45 @@ struct DizipalProvider: StreamProvider {
         return StreamShelf(title: title, hits: Array(hits.prefix(limit)))
     }
 
-    /// Liste sayfalarının kartları `<a data-dizipal-pageloader
-    /// href="/movies|/series/{slug}" title="… izle">` biçiminde: afiş
-    /// `data-src`te (lazy-load, `src` base64 piksel), dil rozeti `bg-fl`
-    /// sınıflı `<span>`da. Kartların başında bölünüp tek tek okunur; tür
-    /// href'ten gelir ("/series/" ya da "/movies/").
+    /// Both the listing grids (`<li class="content-card">`) and the search page
+    /// (`<article class="content-card">`) use the same card markup, so one split on
+    /// the class name feeds every screen. The kind comes from the href — `/dizi/`
+    /// or `/film/` — rather than the badge text, which is styled markup.
     private static func hits(fromCards html: String, providerID: String, providerName: String,
                              absolutize: (String) -> String, decode: (String) -> String) -> [StreamHit] {
         var seen = Set<String>()
-        return html.components(separatedBy: "data-dizipal-pageloader").dropFirst().compactMap { fragment in
+        return html.components(separatedBy: "content-card").dropFirst().compactMap { fragment in
             // Stop at the card's end so a regex can't reach into the next one.
             let card = fragment.components(separatedBy: "</a>").first ?? fragment
-            guard let href = match("href=\"([^\"]+/(?:movies|series)/[^\"]+)\"", in: card) else { return nil }
+            guard let href = match("href=\"([^\"]+/(?:dizi|film)/[^\"]+)\"", in: card) else { return nil }
             let url = absolutize(href)
             guard seen.insert(url).inserted else { return nil }
 
-            let title = match("title=\"([^\"]+?)\\s*izle\"", in: card)
-                ?? match("<h2[^>]*>([^<]+)</h2>", in: card)
-                ?? match("alt=\"([^\"]+)\"", in: card).map { $0.replacingOccurrences(of: " izle", with: "") }
+            let title = match("class=\"card-title\"[^>]*>([^<]+)<", in: card)
+                ?? match("<img[^>]+alt=\"([^\"]+)\"", in: card)
             guard let title, !title.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
 
+            // Posters are lazy-loaded: the real URL is on `data-src`, and `src`
+            // holds a base64 placeholder pixel.
             let poster = match("data-src=\"(https?://[^\"]+)\"", in: card)
-            let badge = match("class=\"bg-fl[^\"]*\"[^>]*>\\s*([^<]+?)\\s*<", in: card)
+            let year = match("class=\"card-year\"[^>]*>\\s*(\\d{4})", in: card).flatMap(Int.init)
 
             return StreamHit(
                 providerID: providerID,
                 providerName: providerName,
-                kind: url.contains("/series/") ? .series : .movie,
-                title: decode(title),
-                year: nil,
+                kind: url.contains("/dizi/") ? .series : .movie,
+                title: decode(title).replacingOccurrences(of: " izle", with: ""),
+                year: year,
                 posterURL: poster.flatMap { URL(string: $0) },
-                pageURL: url,
-                audioLabel: badge.map { $0.localizedCaseInsensitiveContains("dublaj") ? "Dublaj" : "Altyazılı" }
+                pageURL: url
             )
         }
     }
 
     /// Free function so the card parser can stay `static` (it runs off one HTML
     /// blob and needs nothing from the instance but `absolute`/`decodeEntities`).
-    private static func match(_ pattern: String, in text: String,
-                              options: NSRegularExpression.Options = [.caseInsensitive]) -> String? {
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else { return nil }
+    private static func match(_ pattern: String, in text: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return nil }
         let range = NSRange(text.startIndex..., in: text)
         guard let m = regex.firstMatch(in: text, range: range), m.numberOfRanges > 1,
               let r = Range(m.range(at: 1), in: text) else { return nil }
@@ -157,35 +107,42 @@ struct DizipalProvider: StreamProvider {
 
     // MARK: - Categories (site menu)
 
-    /// Sitenin üst menüsü: Diziler `/yabanci-dizi-izle`, Hd Film
-    /// `/hd-film-izle`, Anime `/anime`; platform rafları `/kanal/{slug}`.
-    /// Listelerde klasik sayfalama yok, menü de kararlı olduğu için sabit
-    /// yazıldı — her görünüm kendi kümesini döner.
+    /// Sitenin menüsündeki `/kategori/{slug}` bağlantıları. Başlık, bağlantı
+    /// metninden alınıyor; boşsa slug'dan türetiliyor ("aksiyon-macera" →
+    /// "Aksiyon Macera"). Aynı slug birden çok yerde geçebildiği için tekilleniyor
+    /// ve menüdeki sıra korunuyor.
     func categories(for kind: StreamKind) async throws -> [StreamCategory] {
-        func category(_ title: String, _ path: String) -> StreamCategory {
-            StreamCategory(providerID: id, title: title, pageURL: absolute(path))
+        let html = try await load(baseURL)
+        let pattern = "href=\"([^\"]*?/kategori/([^\"/]+)/?)\"[^>]*>([^<]*)<"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return [] }
+        let ns = html as NSString
+        var seen = Set<String>()
+        var out: [StreamCategory] = []
+        for m in regex.matches(in: html, range: NSRange(location: 0, length: ns.length)) {
+            let href = absolute(ns.substring(with: m.range(at: 1)))
+            let slug = ns.substring(with: m.range(at: 2))
+            guard seen.insert(slug).inserted else { continue }
+            let label = ns.substring(with: m.range(at: 3)).trimmingCharacters(in: .whitespacesAndNewlines)
+            let title = label.isEmpty ? Self.titleize(slug) : decodeEntities(label)
+            out.append(StreamCategory(providerID: id, title: title, pageURL: href))
         }
-        switch kind {
-        case .movie:
-            return [category("Filmler", "/hd-film-izle")]
-        default:
-            return [
-                category("Diziler", "/yabanci-dizi-izle"),
-                category("Anime", "/anime"),
-                category("Exxen Dizileri", "/kanal/exxen"),
-                category("Disney+ Dizileri", "/kanal/disney"),
-                category("Netflix Dizileri", "/kanal/netflix")
-            ]
-        }
+        return out
     }
 
     func categoryHits(_ pageURL: String, page: Int) async throws -> [StreamHit] {
-        // Bu listelerde sayfalama sunucu tarafında yok (sonsuz kaydırma AJAX'la
-        // besleniyor); yalnızca ilk sayfa döner.
+        // Dizipal kategori listelerinde sayfalama bu görünümde kullanılmıyor;
+        // yalnızca ilk sayfa döner.
         guard page == 1 else { return [] }
         let html = try await load(absolute(pageURL))
         return Self.hits(fromCards: html, providerID: id, providerName: displayName,
                          absolutize: absolute, decode: decodeEntities)
+    }
+
+    /// "bilim-kurgu-fantastik" → "Bilim Kurgu Fantastik".
+    private static func titleize(_ slug: String) -> String {
+        slug.split(separator: "-")
+            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+            .joined(separator: " ")
     }
 
     // MARK: - Details
@@ -199,40 +156,73 @@ struct DizipalProvider: StreamProvider {
         var hit = hit
         hit.title = title
 
+        let episodes = Self.parseEpisodes(html: html, absolutize: absolute)
         // No IMDb id on this site — the TMDB match has to come from the title.
-        if hit.kind == .movie {
+        if episodes.isEmpty {
             return StreamDetails(hit: hit, overview: overview, imdbID: nil,
                                  episodes: [], moviePageURL: hit.pageURL)
         }
         return StreamDetails(hit: hit, overview: overview, imdbID: nil,
-                             episodes: Self.parseEpisodes(html: html, absolutize: absolute),
-                             moviePageURL: nil)
+                             episodes: episodes, moviePageURL: nil)
     }
 
-    /// Episode links are `/bolum/{slug}-{season}x{episode}`, optionally with a
-    /// `-cNN` sürüm eki; sayılar URL'den, etiket işaretlemesinden değil okunur.
-    /// Aynı bölümün dublaj/altyazı kartları URL'de tekrar edebildiği için
-    /// sezon+bölüm üzerinden tekillenir. Bu sayfada bölüm afişleri yok.
+    /// Episode links are `/bolum/{slug}-{season}-sezon-{episode}-bolum`, so the
+    /// numbers come from the URL rather than the row's label markup.
+    /// Thumbnails are scraped from the `img` tag in each episode's list row.
     private static func parseEpisodes(html: String, absolutize: (String) -> String) -> [StreamEpisode] {
         guard let regex = try? NSRegularExpression(
-            pattern: "href=\"([^\"]*/bolum/[^\"]*?-(\\d+)x(\\d+)(?:-c\\d+)?/?)\"",
+            pattern: "href=\"([^\"]*/bolum/[^\"]*?-(\\d+)-sezon-(\\d+)-bolum/?)\"",
             options: [.caseInsensitive]
         ) else { return [] }
+
+        // Also build a thumbnail map: look for episode-card/episode-item blocks
+        // and extract img src alongside the href.
+        let thumbRegex = try? NSRegularExpression(
+            pattern: "href=\"([^\"]*/bolum/[^\"]+?)\"|data-src=\"(https?://[^\"]+)\"|src=\"(https?://[^\",]+\\.(?:jpe?g|png|webp)[^\"]*)\"",
+            options: [.caseInsensitive]
+        )
+
+        // Build href -> thumbnail map by scanning episode blocks
+        var thumbMap: [String: URL] = [:]
+        if let thumbRegex {
+            // Split on common episode-list item delimiters
+            for block in html.components(separatedBy: "episode-item").dropFirst() +
+                          html.components(separatedBy: "bolum-item").dropFirst() {
+                let ns = block as NSString
+                let fullRange = NSRange(location: 0, length: min(ns.length, 800))
+                var href: String?
+                var thumb: URL?
+                for m in thumbRegex.matches(in: block, range: fullRange) {
+                    if m.range(at: 1).location != NSNotFound,
+                       let r = Range(m.range(at: 1), in: block) {
+                        href = String(block[r])
+                    } else if m.range(at: 2).location != NSNotFound,
+                              let r = Range(m.range(at: 2), in: block),
+                              thumb == nil {
+                        thumb = URL(string: String(block[r]))
+                    } else if m.range(at: 3).location != NSNotFound,
+                              let r = Range(m.range(at: 3), in: block),
+                              thumb == nil {
+                        thumb = URL(string: String(block[r]))
+                    }
+                }
+                if let href, let thumb { thumbMap[absolutize(href)] = thumb }
+            }
+        }
 
         let ns = html as NSString
         var seen = Set<String>()
         var episodes: [StreamEpisode] = []
         for m in regex.matches(in: html, range: NSRange(location: 0, length: ns.length)) {
             let href = ns.substring(with: m.range(at: 1))
-            let key = href.replacingOccurrences(
-                of: "-c\\d+(/?)$", with: "$1", options: [.regularExpression, .caseInsensitive])
-            guard seen.insert(key).inserted else { continue }
+            guard seen.insert(href).inserted else { continue }
+            let absURL = absolutize(href)
             episodes.append(StreamEpisode(
                 season: Int(ns.substring(with: m.range(at: 2))) ?? 1,
                 episode: Int(ns.substring(with: m.range(at: 3))) ?? 0,
                 title: nil,
-                thumbnailURL: nil,
-                pageURL: absolutize(href)
+                thumbnailURL: thumbMap[absURL],
+                pageURL: absURL
             ))
         }
         return episodes.sorted { ($0.season, $0.episode) < ($1.season, $1.episode) }
@@ -240,95 +230,82 @@ struct DizipalProvider: StreamProvider {
 
     // MARK: - Embeds
 
-    /// A film or episode page carries a hidden `<div data-rm-k="true">` holding
-    /// `{"ciphertext": base64, "iv": hex, "salt": hex}` — the embed URL in
-    /// CryptoJS's package format. The site's own JS (`app-dizipals.js`,
-    /// `oyunculistdc`) opens it with PBKDF2-SHA512 (999 tur, 256 bitlik
-    /// anahtar) + AES-256-CBC and drops the plaintext into `#cstk iframe`'s
-    /// `src` ("//host/iframe.php?v=…"). Same routine, CommonCrypto ile.
+    /// A film or episode page carries a `data-cfg` token on `#videoContainer`.
+    ///
+    /// 2026-09 itibarıyla token yine sunucuya POST ediliyor
+    /// (`/ajax-player-config`) ama yanıtın içindeki embed adresi artık şifreli:
+    /// `{"success":true,"config":{"v":"","t":…,"p":…},"enc":{"k1","k2","iv","c"}}`
+    /// — anahtar `k1 ⊕ k2`, AES-CBC + PKCS7. Sitenin kendi JS'i (main.js →
+    /// PatchedXHR/decryptEnc) XHR yanıtını yakalayıp açtığı için sayfa
+    /// kaynağında adres hiç görünmez. POST, sayfayı yükleyen aynı ısınmış
+    /// `WebFetcher` oturumuyla gitmek zorunda: yabancı bir oturum
+    /// "Invalid token" alıyor.
+    ///
+    /// Eski günlerden kalan base64-JSON `data-cfg` gelirse öncelik o yolda.
+    ///
+    /// A series landing page has no `data-cfg` at all, so it throws `.noEmbed`
+    /// and the store falls through to the episode list — the same shape
+    /// `HdFilmCehennemiProvider` relies on.
     func embeds(forPage pageURL: String) async throws -> [StreamEmbed] {
         let html = try await load(pageURL)
-        guard let blob = Self.match("data-rm-k=\"true\"[^>]*>(.*?)</div>", in: html,
-                                    options: [.caseInsensitive, .dotMatchesLineSeparators]),
-              let url = Self.decryptPlayerBlob(blob), !url.isEmpty else { throw StreamError.noEmbed }
-        // Oynatıcı (dplayer) artık Playerjs: tıklanmadan `source2.php`'yi
-        // istemiyor, alt listeleri (`l.php`/`ld.php`) de mpv'ye 403 veriyor.
-        return [StreamEmbed(url: url, referer: pageURL, label: displayName,
-                            tapToStart: true, localizePlaylists: true)]
-    }
+        guard let cfg = firstMatch("data-cfg=\"([^\"]+)\"", in: html) else { throw StreamError.noEmbed }
 
-    /// `oyunculistdc`'nin paket açan anahtarı — sitenin kendi JS'inden
-    /// çözülmüş, uygulamanın siteyle birlikte güncellenmesi gereken bir sabit.
-    private static let playerKey = "3hPn4uCjTVtfYWcjIcoJQ4cL1WWk1qxXI39egLYOmNv6IblA7eKJz68uU3eLzux1biZLCms0quEjTYniGv5z1JcKbNIsDQFSeIZOBZJz4is6pD7UyWDggWWzTLBQbHcQFpBQdClnuQaMNUHtLHTpzCvZy33p6I7wFBvL4fnXBYH84aUIyWGTRvM2G5cfoNf4705tO2kv"
-
-    private static func decryptPlayerBlob(_ escapedJSON: String) -> String? {
-        // Div'in içeriği HTML-öncelenmiş JSON gelir ("&quot;"): önce düzelt.
-        let json = escapedJSON
-            .replacingOccurrences(of: "&quot;", with: "\"")
-            .replacingOccurrences(of: "&#039;", with: "'")
-            .replacingOccurrences(of: "&#39;", with: "'")
-            .replacingOccurrences(of: "&amp;", with: "&")
-            .replacingOccurrences(of: "&lt;", with: "<")
-            .replacingOccurrences(of: "&gt;", with: ">")
-        guard let data = json.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let cipherB64 = object["ciphertext"] as? String,
-              let ivHex = object["iv"] as? String,
-              let saltHex = object["salt"] as? String,
-              let ciphertext = Data(base64Encoded: cipherB64),
-              let iv = hexData(ivHex), let salt = hexData(saltHex),
-              let key = pbkdf2Key(password: playerKey, salt: salt, iterations: 999, length: 32),
-              let plain = aesCBCDecrypt(ciphertext, key: key, iv: iv) else { return nil }
-        return normalizeEmbedURL(plain)
-    }
-
-    /// Paketten çıkan adres protokolsüz olabilir ("//host/path"); https'e bağlanır.
-    private static func normalizeEmbedURL(_ url: String) -> String? {
-        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.hasPrefix("//") { return "https:" + trimmed }
-        if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") { return trimmed }
-        guard !trimmed.isEmpty, trimmed.contains(".") else { return nil }
-        return "https://" + trimmed
-    }
-
-    private static func hexData(_ hex: String) -> Data? {
-        guard hex.count % 2 == 0 else { return nil }
-        var out = Data(capacity: hex.count / 2)
-        var index = hex.startIndex
-        while index < hex.endIndex {
-            let next = hex.index(index, offsetBy: 2)
-            guard let byte = UInt8(hex[index..<next], radix: 16) else { return nil }
-            out.append(byte)
-            index = next
-        }
-        return out
-    }
-
-    /// CCKeyDerivationPBKDF — HMAC-SHA512 ile 256 bitlik anahtar.
-    private static func pbkdf2Key(password: String, salt: Data, iterations: Int, length: Int) -> Data? {
-        let passwordData = Data(password.utf8)
-        var out = Data(count: length)
-        let status = out.withUnsafeMutableBytes { (outBuffer: UnsafeMutableRawBufferPointer) -> Int32 in
-            passwordData.withUnsafeBytes { (passwordBuffer: UnsafeRawBufferPointer) -> Int32 in
-                salt.withUnsafeBytes { (saltBuffer: UnsafeRawBufferPointer) -> Int32 in
-                    CCKeyDerivationPBKDF(
-                        CCPBKDFAlgorithm(kCCPBKDF2),
-                        passwordBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                        passwordData.count,
-                        saltBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                        salt.count,
-                        CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA512),
-                        UInt32(iterations),
-                        outBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                        length
-                    )
+        var value = Self.decodeCfg(cfg).flatMap(Self.embedValue)
+        if value == nil {
+            let raw = try await WebFetcherPool.fetcher(for: baseURL)
+                .post("\(baseURL)/ajax-player-config", form: ["cfg": cfg])
+            if let data = raw.data(using: .utf8),
+               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let enc = object["enc"] as? [String: Any] {
+                    value = Self.decryptEnc(enc)
+                } else if let config = object["config"] as? [String: Any] {
+                    value = Self.embedValue(in: config)
                 }
             }
         }
-        return status == kCCSuccess ? out : nil
+        guard var url = value, !url.isEmpty else { throw StreamError.noEmbed }
+        if url.hasPrefix("//") { url = "https:" + url }
+        return [StreamEmbed(url: absolute(url), referer: pageURL, label: displayName)]
     }
 
-    /// AES-256-CBC, PKCS7 dolgulu — CryptoJS `AES.decrypt`'in varsayılanı.
+    /// `v` is normally the embed URL outright; when the site returns a whole
+    /// iframe tag instead, the src is what we want out of it.
+    private static func embedValue(in config: [String: Any]) -> String? {
+        guard let raw = config["v"] as? String, !raw.isEmpty else { return nil }
+        let url = raw.contains("<iframe")
+            ? (match("src=\"([^\"]+)\"", in: raw) ?? "")
+            : raw
+        return url.isEmpty ? nil : url
+    }
+
+    /// `data-cfg` is standard base64 (the site's own JS never decodes it with
+    /// `-`/`_` URL-safe substitutes, but a defensive swap costs nothing) of a
+    /// JSON object; padding is sometimes stripped from the HTML attribute so
+    /// it's restored before decoding. Bugün token opak bir hash olduğu için
+    /// bu yol genelde nil döner ve POST'a düşülür.
+    private static func decodeCfg(_ cfg: String) -> [String: Any]? {
+        var base64 = cfg.replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        while base64.count % 4 != 0 { base64 += "=" }
+        guard let data = Data(base64Encoded: base64) else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+
+    /// `enc` paketini açar: `k1 ⊕ k2` 32 baytlık anahtar, AES-CBC + PKCS7.
+    /// Birebir `main.js` → `decryptEnc` karşılığı.
+    private static func decryptEnc(_ enc: [String: Any]) -> String? {
+        func b64(_ key: String) -> Data? {
+            guard let text = enc[key] as? String else { return nil }
+            return Data(base64Encoded: text)
+        }
+        guard let k1 = b64("k1"), let k2 = b64("k2"),
+              let iv = b64("iv"), let ct = b64("c"), k1.count == k2.count else { return nil }
+        let key = Data((0..<k1.count).map { k1[k1.startIndex + $0] ^ k2[k2.startIndex + $0] })
+        guard let plain = aesCBCDecrypt(ct, key: key, iv: iv), !plain.isEmpty else { return nil }
+        return plain
+    }
+
+    /// AES-CBC, PKCS7 dolgulu; anahtar uzunluğu veriden gelir (16/24/32 bayt).
     private static func aesCBCDecrypt(_ data: Data, key: Data, iv: Data) -> String? {
         guard data.count % kCCBlockSizeAES128 == 0 else { return nil }
         var out = Data(count: data.count + kCCBlockSizeAES128)

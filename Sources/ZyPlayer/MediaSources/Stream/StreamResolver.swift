@@ -142,6 +142,18 @@ final class StreamResolver: NSObject, WKScriptMessageHandler, WKNavigationDelega
             finish(.failure(StreamError.badURL))
             return
         }
+        // Embed'in kendisi doğrudan medya adresiyse (Dizipal'in player config'i
+        // "t": "m3u8"/"mp4" tipli, sayfaya gömülü oynatıcısız değerler
+        // döndürebiliyor) webview'e girmenin anlamı yok: ne sniffer tetiklenir
+        // ne JWPlayer vardır. Adresi olduğu için, embed'in kendi kökü Referer
+        // olacak şekilde bitir.
+        if Self.isDirectMedia(url) {
+            finish(.success(ResolvedStream(
+                url: url,
+                headers: ["Referer": resultReferer, "User-Agent": StreamProviderUserAgent.value]
+            )))
+            return
+        }
         var request = URLRequest(url: url)
         request.setValue(embed.referer ?? "", forHTTPHeaderField: "Referer")
         request.setValue(StreamProviderUserAgent.value, forHTTPHeaderField: "User-Agent")
@@ -370,6 +382,14 @@ final class StreamResolver: NSObject, WKScriptMessageHandler, WKNavigationDelega
     private static func origin(of urlString: String) -> String? {
         guard let url = URL(string: urlString), let host = url.host else { return nil }
         return "\(url.scheme ?? "https")://\(host)/"
+    }
+
+    /// Doğrudan oynatılabilir medya adresi mi (.m3u8/.mp4)?
+    private static func isDirectMedia(_ url: URL) -> Bool {
+        switch url.pathExtension.lowercased() {
+        case "m3u8", "mp4": return true
+        default: return false
+        }
     }
 
     // MARK: - Sniffer path (fallback)

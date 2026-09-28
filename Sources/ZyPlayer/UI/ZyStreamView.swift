@@ -18,6 +18,10 @@ struct ZyStreamView: View {
             // No `id:` — the view is rebuilt when the sidebar re-enters ZyStream,
             // so this re-runs and the shelves come back fresh each visit.
             .task {
+                // Rafları yüklemeden önce adresler denetlenir: site taşındıysa
+                // eski adrese yapılacak istekler boş dönerdi ve ekran sebebini
+                // söylemeden boş kalırdı.
+                await StreamDomainTracker.refreshAll(settings: settings)
                 await store.loadDiscover(providers: settings.enabledStreamProviders)
             }
     }

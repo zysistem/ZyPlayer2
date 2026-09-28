@@ -961,21 +961,70 @@ struct PlayerControls: View {
         }
     }
 
+    /// Menülerdeki seçim ✓'ini sistem basar: SwiftUI `Menu`'deki `Button`
+    /// etiketleri native NSMenuItem'e çevrilirken özel icon view'ları düşürülür
+    /// (`Label(_, systemImage: "checkmark")` dahil güvenilmez). `Picker(.inline)`
+    /// ise seçili öğeye kendi tikini basar — altyazı/ses/hız menüleri bu yüzden
+    /// Picker'a bağlı.
+    private var subtitleSelection: Binding<Int> {
+        Binding(
+            get: { model.selectedSubtitleID ?? -1 },
+            set: { id in
+                if id < 0 {
+                    model.selectSubtitle(nil)
+                } else if let track = model.subtitleTracks.first(where: { $0.id == id }) {
+                    model.selectSubtitle(track)
+                }
+            }
+        )
+    }
+
+    private var audioSelection: Binding<Int> {
+        Binding(
+            get: { model.selectedAudioID ?? -1 },
+            set: { id in
+                if id < 0 {
+                    model.selectAudio(nil)
+                } else if let track = model.audioTracks.first(where: { $0.id == id }) {
+                    model.selectAudio(track)
+                }
+            }
+        )
+    }
+
+    private var speedSelection: Binding<Double> {
+        Binding(get: { model.speed }, set: { model.setSpeed($0) })
+    }
+
+    /// Motor seçimi hem tercihi kaydeder hem çeviriyi başlatır (eski Button
+    /// davranışı).
+    private var translationEngineSelection: Binding<TranslationEngine> {
+        Binding(
+            get: { settings.translationEngine },
+            set: { engine in
+                settings.translationEngine = engine
+                model.startTranslation(
+                    engine: engine,
+                    zaiApiKey: settings.zaiApiKey, zaiModel: settings.zaiModel,
+                    nvidiaApiKey: settings.nvidiaApiKey, nvidiaModel: settings.nvidiaModel,
+                    openRouterApiKey: settings.openRouterApiKey,
+                    openRouterModel: settings.openRouterModel
+                )
+            }
+        )
+    }
+
     private var audioMenu: some View {
         Menu {
             if model.audioTracks.isEmpty {
                 Text("Ses parçası yok")
             }
-            ForEach(model.audioTracks) { track in
-                Button {
-                    model.selectAudio(track)
-                } label: {
-                    Label(
-                        track.displayName,
-                        systemImage: model.selectedAudioID == track.id ? "checkmark" : ""
-                    )
+            Picker(selection: audioSelection) {
+                ForEach(model.audioTracks) { track in
+                    Text(track.displayName).tag(track.id)
                 }
-            }
+            } label: { EmptyView() }
+            .pickerStyle(.inline)
         } label: {
             Image(systemName: "waveform")
         }
@@ -985,44 +1034,24 @@ struct PlayerControls: View {
 
     private var subtitleMenu: some View {
         Menu {
-            Button {
-                model.selectSubtitle(nil)
-            } label: {
-                Label("Kapalı", systemImage: model.selectedSubtitleID == nil ? "checkmark" : "")
-            }
-
-            if !model.subtitleTracks.isEmpty { Divider() }
-            ForEach(model.subtitleTracks) { track in
-                Button {
-                    model.selectSubtitle(track)
-                } label: {
-                    Label(
-                        track.displayName,
-                        systemImage: model.selectedSubtitleID == track.id ? "checkmark" : ""
-                    )
+            Picker(selection: subtitleSelection) {
+                Text("Kapalı").tag(-1)
+                ForEach(model.subtitleTracks) { track in
+                    Text(track.displayName).tag(track.id)
                 }
-            }
+            } label: { EmptyView() }
+            .pickerStyle(.inline)
 
             if let selectedID = model.selectedSubtitleID,
                let _ = model.subtitleTracks.first(where: { $0.id == selectedID }) {
                 Divider()
                 Menu {
-                    ForEach(TranslationEngine.allCases) { engine in
-                        Button {
-                            model.startTranslation(
-                                engine: engine,
-                                zaiApiKey: settings.zaiApiKey, zaiModel: settings.zaiModel,
-                                nvidiaApiKey: settings.nvidiaApiKey, nvidiaModel: settings.nvidiaModel,
-                                openRouterApiKey: settings.openRouterApiKey,
-                                openRouterModel: settings.openRouterModel
-                            )
-                        } label: {
-                            Label(
-                                engine.title,
-                                systemImage: settings.translationEngine == engine ? "checkmark" : ""
-                            )
+                    Picker(selection: translationEngineSelection) {
+                        ForEach(TranslationEngine.allCases) { engine in
+                            Text(engine.title).tag(engine)
                         }
-                    }
+                    } label: { EmptyView() }
+                    .pickerStyle(.inline)
                 } label: {
                     Label("Seçili Altyazıyı Türkçeye Çevir", systemImage: "character.book.closed")
                 }
@@ -1034,13 +1063,13 @@ struct PlayerControls: View {
             Button {
                 withAnimation(.easeOut(duration: 0.15)) { showSubtitleSync.toggle() }
             } label: {
-                Label(
+                Text(
                     model.subtitleDelay == 0
                         ? "Senkron Ayarı…"
-                        : "Senkron Ayarı… (\(model.subtitleDelay.asSubtitleOffset))",
-                    systemImage: showSubtitleSync ? "checkmark" : ""
+                        : "Senkron Ayarı… (\(model.subtitleDelay.asSubtitleOffset))"
                 )
             }
+            .accessibilityHint(showSubtitleSync ? "Açık" : "Kapalı")
             Button("Senkronu Geri Al") { model.resetSubtitleDelay() }
                 .disabled(model.subtitleDelay == 0)
 
@@ -1056,16 +1085,12 @@ struct PlayerControls: View {
 
     private var speedMenu: some View {
         Menu {
-            ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0], id: \.self) { rate in
-                Button {
-                    model.setSpeed(rate)
-                } label: {
-                    Label(
-                        rate == 1.0 ? "Normal" : "\(rate.formatted())x",
-                        systemImage: abs(model.speed - rate) < 0.01 ? "checkmark" : ""
-                    )
+            Picker(selection: speedSelection) {
+                ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0], id: \.self) { rate in
+                    Text(rate == 1.0 ? "Normal" : "\(rate.formatted())x").tag(rate)
                 }
-            }
+            } label: { EmptyView() }
+            .pickerStyle(.inline)
         } label: {
             Image(systemName: "speedometer")
         }
