@@ -32,6 +32,13 @@ final class MPVCore {
     private(set) var volume: Double = 100
     private(set) var speed: Double = 1.0
 
+    /// `track-list`/`chapter-list` olaylarından, olay iş parçacığında çözülen
+    /// aynalar. Bunları ana iş parçacığından `mpv_get_property` ile senkron
+    /// okumak libmpv'de kilitlenmeye yol açıyor (bkz. `start()`), bu yüzden
+    /// tek güvenli okuma biçimi bu aynalar.
+    private(set) var tracks: [MediaTrack] = []
+    private(set) var chapters: [(title: String, time: Double)] = []
+
     // MARK: - Lifecycle
 
     init() {
@@ -91,6 +98,16 @@ final class MPVCore {
         mpv_observe_property(handle, 0, "pause", MPV_FORMAT_FLAG)
         mpv_observe_property(handle, 0, "eof-reached", MPV_FORMAT_FLAG)
 
+        // Listeler JSON dizisi olarak olayla gelir. Ana iş parçacığından
+        // `mpv_get_property` ile senkron okumak canlı yayında kilitlenme
+        // yapıyordu: ana iş parçacığı render bağlamını da o sürüyor; o,
+        // mpv'nin dispatch kilidinde beklerken decoder'ın direct-rendering
+        // buffer callback'i işlemek için yine aynı iş parçacığını bekliyor —
+        // döngüsel bekleme, uygulama kalıcı donuyor (donma raporu:
+        // restoreCachedTranslation → refreshTracks → mp_dispatch_lock).
+        mpv_observe_property(handle, 0, "track-list", MPV_FORMAT_STRING)
+        mpv_observe_property(handle, 0, "chapter-list", MPV_FORMAT_STRING)
+
         startEventLoop()
     }
 
@@ -139,17 +156,11 @@ final class MPVCore {
         }
     }
 
-    func doubleProperty(_ name: String) -> Double? {
-        guard let handle else { return nil }
-        var v: Double = 0
-        return mpv_get_property(handle, name, MPV_FORMAT_DOUBLE, &v) >= 0 ? v : nil
-    }
-
-    func stringProperty(_ name: String) -> String? {
-        guard let handle, let raw = mpv_get_property_string(handle, name) else { return nil }
-        defer { mpv_free(raw) }
-        return String(cString: raw)
-    }
+    /// Ana iş parçacığından çağrılması yasak: `mpv_get_property`, mpv'nin
+    /// dispatch kilidinde karşılıklı kilitlenmeye kadar bloklayabiliyor
+    /// (yukarıdaki `start()` açıklamasına bak). Tüm durum okumaları olay
+    /// aynaları üzerinden yapılır; mpv'ye komut/özellik yazmak ise her zaman
+    /// `mpvQueue` üzerinden asenkrondur.
 
     // MARK: - Commands
 
@@ -237,30 +248,13 @@ final class MPVCore {
 
     // MARK: - Tracks
 
-    /// mpv renders `track-list` as JSON when read as a string.
-    func trackList() -> [MediaTrack] {
-        guard let json = stringProperty("track-list"),
-              let data = json.data(using: .utf8),
-              let raw = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-            return []
-        }
-        return raw.compactMap(MediaTrack.init(mpvEntry:))
-    }
+    /// Parça listesi aynası — `track-list` olaylarından beslenir. mpv
+    /// `track-list`'i JSON olarak verir; çözümleme olay iş parçacığında
+    /// yapılır, arayüz buradan okur.
+    func trackList() -> [MediaTrack] { tracks }
 
-    /// mpv `chapter-list`'i JSON olarak verir; her öğede `title` ve `time` var.
-    /// Gömülü bölüm işareti olan dosyalarda intro/jenerik sınırlarını buradan
-    /// okuyoruz — dosyada yazan kesin saniye.
-    func chapterList() -> [(title: String, time: Double)] {
-        guard let json = stringProperty("chapter-list"),
-              let data = json.data(using: .utf8),
-              let raw = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-            return []
-        }
-        return raw.compactMap { entry in
-            guard let time = entry["time"] as? Double else { return nil }
-            return (title: (entry["title"] as? String) ?? "", time: time)
-        }
-    }
+    /// Bölüm listesi aynası — `chapter-list` olaylarından beslenir.
+    func chapterList() -> [(title: String, time: Double)] { chapters }
 
     func selectAudioTrack(id: Int?) {
         setProperty("aid", id.map(String.init) ?? "no")
@@ -320,7 +314,6 @@ final class MPVCore {
                     self.emit(.shutdown)
                     return
                 case MPV_EVENT_FILE_LOADED:
-                    self.refreshMirroredProperties()
                     self.emit(.fileLoaded)
                 case MPV_EVENT_END_FILE:
                     if let endFile = UnsafeMutablePointer<mpv_event_end_file>(
@@ -355,16 +348,55 @@ final class MPVCore {
             if let v = property.data?.assumingMemoryBound(to: Double.self).pointee { speed = v }
         case ("pause", MPV_FORMAT_FLAG):
             if let v = property.data?.assumingMemoryBound(to: Int32.self).pointee { isPaused = v != 0 }
+        case ("track-list", MPV_FORMAT_STRING):
+            // NULL veri (özelliğin hiç yok olması) aynayı temizler; boş liste
+            // "[]" olarak gelir ve boş diziyi çözerek yine temizler.
+            if let json = Self.stringPayload(property) {
+                tracks = Self.parseTracks(json)
+            } else {
+                tracks = []
+            }
+        case ("chapter-list", MPV_FORMAT_STRING):
+            if let json = Self.stringPayload(property) {
+                chapters = Self.parseChapters(json)
+            } else {
+                chapters = []
+            }
         default:
             break
         }
     }
 
-    private func refreshMirroredProperties() {
-        duration = doubleProperty("duration") ?? duration
-        position = doubleProperty("time-pos") ?? 0
-        volume = doubleProperty("volume") ?? volume
-        speed = doubleProperty("speed") ?? speed
+    /// `MPV_FORMAT_STRING` olay yükü `char*`'dır.
+    private static func stringPayload(_ property: mpv_event_property) -> String? {
+        guard let cString = property.data?
+            .assumingMemoryBound(to: UnsafeMutablePointer<CChar>?.self).pointee else {
+            return nil
+        }
+        return String(cString: cString)
+    }
+
+    /// mpv `track-list`'i JSON olarak verir; her öğe bir ses/görüntü/altyazı izi.
+    private static func parseTracks(_ json: String) -> [MediaTrack] {
+        guard let data = json.data(using: .utf8),
+              let raw = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            return []
+        }
+        return raw.compactMap(MediaTrack.init(mpvEntry:))
+    }
+
+    /// mpv `chapter-list`'i JSON olarak verir; her öğede `title` ve `time` var.
+    /// Gömülü bölüm işareti olan dosyalarda intro/jenerik sınırlarını buradan
+    /// okuyoruz — dosyada yazan kesin saniye.
+    private static func parseChapters(_ json: String) -> [(title: String, time: Double)] {
+        guard let data = json.data(using: .utf8),
+              let raw = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            return []
+        }
+        return raw.compactMap { entry in
+            guard let time = entry["time"] as? Double else { return nil }
+            return (title: (entry["title"] as? String) ?? "", time: time)
+        }
     }
 
     private func emit(_ event: Event) {

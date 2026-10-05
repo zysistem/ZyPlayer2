@@ -163,8 +163,17 @@ final class PlayerModel {
                           "yt-dlp güncel olmayabilir."
                         : "Oynatma başarısız: \(message)"
                 }
-            case .propertyChanged:
+            case .propertyChanged(let name):
                 self.syncFromCore()
+                // Parça listesi, mpv izleri keşfettikçe ve dış altyazılar geç
+                // eklendikçe defalarca değişir; her değişimde arayüz tazelenir.
+                // `refreshTracks` yalnızca Swift aynasını okur — mpv'ye ana
+                // iş parçacığından senkron soru sorulmaz (kilitlenmenin nedeni
+                // buydu; bkz. MPVCore.start).
+                if name == "track-list" {
+                    self.refreshTracks()
+                    self.applyPreferredSubtitle()
+                }
             case .endFile, .shutdown:
                 break
             }
@@ -221,6 +230,8 @@ final class PlayerModel {
 
     // MARK: - Tracks
 
+    /// Parça listesini mpv'nin olay aynasından alır — ana iş parçacığında
+    /// güvenle çağrılabilir, mpv'yi bloklayan hiçbir çağrı yapmaz.
     func refreshTracks() {
         let all = core.trackList()
         audioTracks = all.filter { $0.kind == .audio }
