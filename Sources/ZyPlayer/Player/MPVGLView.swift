@@ -119,7 +119,7 @@ final class MPVGLView: NSOpenGLView {
     /// mpv calls this off the main thread; hop before touching AppKit.
     func scheduleRender() {
         DispatchQueue.main.async { [weak self] in
-            self?.drawFrame()
+            self?.drawFrame(onlyIfNewFrame: true)
         }
     }
 
@@ -134,7 +134,14 @@ final class MPVGLView: NSOpenGLView {
         drawFrame()
     }
 
-    private func drawFrame() {
+    /// `ADVANCED_CONTROL` kipinde mpv, güncelleme geri çağrısının ardından
+    /// `mpv_render_context_update`'in çağrılmasını şart koşar: çözücünün
+    /// render iş parçacığına gönderdiği işler (yazılım çözmede direct-rendering
+    /// görüntü tamponu ayırma) yalnızca bu çağrıda işlenir. Çağrılmazsa yazılım
+    /// çözücü ilk tamponda sonsuza dek bekler — IPTV "devam et"te VideoToolbox
+    /// atlama sonrası hata verip yazılıma düşünce oynatıcı zamanı gösterip hiç
+    /// kare çizmiyordu.
+    private func drawFrame(onlyIfNewFrame: Bool = false) {
         guard let context = openGLContext else { return }
         context.makeCurrentContext()
         CGLLockContext(context.cglContextObj!)
@@ -146,6 +153,11 @@ final class MPVGLView: NSOpenGLView {
             glClearColor(0, 0, 0, 1)
             glClear(UInt32(GL_COLOR_BUFFER_BIT))
             context.flushBuffer()
+            return
+        }
+
+        let flags = mpv_render_context_update(renderContext)
+        if onlyIfNewFrame && flags & UInt64(MPV_RENDER_UPDATE_FRAME.rawValue) == 0 {
             return
         }
 

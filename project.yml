@@ -1,3 +1,36 @@
+# ─── DERLEME: Xcode OLMADAN (yalnızca Command Line Tools) ─────────────────────
+# Bu makinede Xcode yok; xcodebuild çalışmaz. Derleme swiftc ile yapılır:
+#
+#   1. Aşağıdaki MARKETING_VERSION'ı +0.0.1 artır.
+#   2. xcodegen generate          (.xcodeproj güncel kalsın)
+#   3. zsh build/build.sh         (derler, build/ZyPlayer.app'i günceller,
+#                                  imzalar ve açar)
+#
+# build/ .gitignore'da. build.sh ve StateShim.swift kaybolursa yöntem şu:
+#  • macOS 27 SDK'sında @State, Xcode'a özel SwiftUIMacros.StateMacro
+#    eklentisini istiyor; swiftc bulamıyor. Çözüm: Sources/ZyPlayer'ın GEÇİCİ
+#    bir kopyasında `@State` → `@LocalState` ve `State(initialValue:` →
+#    `LocalState(initialValue:` yap. LocalState (build/StateShim.swift),
+#    `import SwiftUI` ile gerçek SwiftUI.State'e delege eden bir
+#    @propertyWrapper DynamicProperty'dir. Asıl kaynaklara dokunulmaz.
+#  • swiftc -swift-version 5 -Onone -g -target arm64-apple-macos14.0
+#      -module-name ZyPlayer -parse-as-library
+#      -I Sources/Cmpv -Xcc -I/opt/homebrew/include -Xcc -DGL_SILENCE_DEPRECATION=1
+#      -L/opt/homebrew/lib -lmpv
+#      -Xlinker -rpath -Xlinker /opt/homebrew/lib
+#      -Xlinker -rpath -Xlinker @executable_path/../Frameworks
+#      -o <çıktı> <kopyadaki tüm .swift dosyaları>
+#  • Paket: çıktıyı Contents/MacOS/ZyPlayer'a koy; Info.plist'teki $(...)
+#    değişkenlerini sed ile doldur (sürüm buradaki MARKETING_VERSION);
+#    Resources/AppIcon.icns ve Vendor/TorrentStream'i (rsync) kopyala;
+#    `codesign --force --deep -s -` ile imzala.
+#  • Assets.car actool ister (Xcode); üretilemez, paketteki eski kopya
+#    korunur. Assets.xcassets değişiklikleri bu yolla yansımaz.
+#
+# Xcode geri gelirse: xcodegen generate && xcodebuild -project
+# ZyPlayer.xcodeproj -scheme ZyPlayer -configuration Debug build
+# ──────────────────────────────────────────────────────────────────────────────
+
 name: ZyPlayer
 
 options:
@@ -13,7 +46,7 @@ settings:
     SWIFT_VERSION: "5.0"
     SWIFT_STRICT_CONCURRENCY: minimal
     GCC_PREPROCESSOR_DEFINITIONS: "$(inherited) GL_SILENCE_DEPRECATION=1"
-    MARKETING_VERSION: "1.7.24"
+    MARKETING_VERSION: "1.7.26"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGNING_REQUIRED: "YES"
