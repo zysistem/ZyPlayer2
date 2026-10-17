@@ -1,5 +1,7 @@
 # macOS
 .DS_Store
+# exFAT/harici disklerde macOS'un bıraktığı AppleDouble yan dosyaları
+._*
 
 # Xcode
 DerivedData/
