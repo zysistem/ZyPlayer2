@@ -79,12 +79,29 @@ final class ZyMovieStore {
     }
     
     private var matchCache: [String: RemoteTitle] = [:]
+
+    /// Favoriler UserDefaults'ta; Drive senkronuna bu kaynak üzerinden katılır.
+    @ObservationIgnored private var syncSource: ClosureSyncSource?
     
     init() {
         if let data = UserDefaults.standard.data(forKey: "zyMovieFavorites"),
            let favs = try? JSONDecoder().decode([ZyMovieHit].self, from: data) {
             favorites = favs
         }
+        let source = ClosureSyncSource(
+            name: "defaults:zyMovieFavorites",
+            export: { UserDefaults.standard.data(forKey: "zyMovieFavorites") },
+            apply: { [weak self] data in
+                guard let favs = try? JSONDecoder().decode([ZyMovieHit].self, from: data) else {
+                    return false
+                }
+                UserDefaults.standard.set(data, forKey: "zyMovieFavorites")
+                self?.favorites = favs
+                return true
+            }
+        )
+        syncSource = source
+        CloudSyncRegistry.register(source)
         if let cacheData = UserDefaults.standard.data(forKey: "zyMovieTMDBMatchCache"),
            let cache = try? JSONDecoder().decode([String: RemoteTitle].self, from: cacheData) {
             matchCache = cache
@@ -246,6 +263,7 @@ final class ZyMovieStore {
     private func saveFavorites() {
         if let data = try? JSONEncoder().encode(favorites) {
             UserDefaults.standard.set(data, forKey: "zyMovieFavorites")
+            CloudSyncRegistry.markDirty("defaults:zyMovieFavorites")
         }
     }
 

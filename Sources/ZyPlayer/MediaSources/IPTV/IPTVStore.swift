@@ -34,6 +34,7 @@ final class IPTVStore {
         self.settings = settings
         catalog = file.value
         favorites = favoritesFile.value.items
+        favoritesFile.onExternalChange = { [weak self] in self?.favorites = $0.items }
         rebuildIndex()
     }
 

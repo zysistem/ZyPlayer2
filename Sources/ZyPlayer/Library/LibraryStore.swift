@@ -44,6 +44,12 @@ final class LibraryStore {
         remoteFavorites = remoteFavoritesFile.value.titles
         streamFavorites = streamFavoritesFile.value.hits
         resolveBookmarks()
+
+        // Drive senkronu bu dosyalara birleşik hali yazdığında bellek kopyaları
+        // da tazelenir (ana iş parçacığında çağrılır).
+        watchFile.onExternalChange = { [weak self] in self?.watchStates = $0.states }
+        remoteFavoritesFile.onExternalChange = { [weak self] in self?.remoteFavorites = $0.titles }
+        streamFavoritesFile.onExternalChange = { [weak self] in self?.streamFavorites = $0.hits }
     }
 
     func meta(forSeriesKey key: String?) -> SeriesMeta? {

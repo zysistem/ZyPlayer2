@@ -402,13 +402,57 @@ final class AppSettings {
         youtubeSearchEnabled = value.youtubeSearchEnabled
         iptvCredentials = value.iptvCredentials
         iptvOnlyTurkish = value.iptvOnlyTurkish
+        store.onExternalChange = { [weak self] in self?.applyExternal($0) }
     }
+
+    /// Drive senkronu `settings.json`'a birleşik hali yazdığında özellikleri
+    /// tazeler. Değer zaten diskte; her `didSet`'in yeniden yazmasını önlemek
+    /// için `persist()` bu sırada susturulur. Cihaza özgü ayarlar (indirme
+    /// klasörü, Google istemci bilgileri) senkronda yerel haliyle geri
+    /// konduğundan burada da değişmez.
+    private func applyExternal(_ value: SettingsData) {
+        isApplyingExternal = true
+        defer { isApplyingExternal = false }
+        tmdbToken = value.tmdbToken
+        metadataLanguage = value.metadataLanguage
+        fetchMetadataAutomatically = value.fetchMetadataAutomatically
+        downloadDirectory = value.downloadDirectory.isEmpty
+            ? FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first?.path ?? ""
+            : value.downloadDirectory
+        googleClientID = value.googleClientID
+        googleClientSecret = value.googleClientSecret
+        driveFolderID = value.driveFolderID
+        driveFolderName = value.driveFolderName
+        appearance = value.appearance
+        subtitleStyle = value.subtitleStyle
+        openSubtitlesKey = value.openSubtitlesKey
+        openSubtitlesLanguages = value.openSubtitlesLanguages
+        subtitleAddons = value.subtitleAddons
+        streamSources = value.streamSources
+        playerControlsOffset = CGSize(width: value.playerControlsOffsetX,
+                                      height: value.playerControlsOffsetY)
+        torrentAPIBase = value.torrentAPIBase
+        autoplayTrailers = value.autoplayTrailers
+        translationEngine = value.translationEngine
+        zaiApiKey = value.zaiApiKey
+        zaiModel = value.zaiModel
+        nvidiaApiKey = value.nvidiaApiKey
+        nvidiaModel = value.nvidiaModel
+        openRouterApiKey = value.openRouterApiKey
+        openRouterModel = value.openRouterModel
+        youtubeSearchEnabled = value.youtubeSearchEnabled
+        iptvCredentials = value.iptvCredentials
+        iptvOnlyTurkish = value.iptvOnlyTurkish
+    }
+
+    @ObservationIgnored private var isApplyingExternal = false
 
     var hasTMDBToken: Bool {
         !tmdbToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func persist() {
+        guard !isApplyingExternal else { return }
         store.replace(with: SettingsData(
             tmdbToken: tmdbToken,
             metadataLanguage: metadataLanguage,

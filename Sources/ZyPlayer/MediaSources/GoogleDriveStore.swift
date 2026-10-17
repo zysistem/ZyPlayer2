@@ -119,6 +119,19 @@ final class GoogleDriveStore {
         return try await GoogleDriveClient(accessToken: token).listFolders(in: parentID)
     }
 
+    /// Bulut senkronu için jeton. Bağlantı yoksa açıklayıcı bir hata atar.
+    func syncAccessToken() async throws -> String {
+        guard await auth.hasStoredCredentials else {
+            throw NSError(domain: "GoogleDrive", code: 0, userInfo: [
+                NSLocalizedDescriptionKey: "Google Drive bağlı değil."
+            ])
+        }
+        return try await auth.validAccessToken(
+            clientID: settings.googleClientID,
+            clientSecret: settings.googleClientSecret
+        )
+    }
+
     /// Fresh bearer token for mpv's HTTP headers.
     func currentAccessToken() async -> String? {
         try? await auth.validAccessToken(

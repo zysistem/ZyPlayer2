@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 /// The settings panes, in the order they are listed.
 enum SettingsSection: String, CaseIterable, Identifiable {
@@ -171,6 +172,8 @@ struct SettingsView: View {
     @State private var iptvInput = ""
     @State private var iptvNote: String?
     @State private var currentImageCacheSize: String = ImageCacheManager.formattedCacheSize
+    @State private var dataTransferNote: String?
+    @Environment(CloudSyncStore.self) private var cloudSync
 
     /// Hem çevirileri hem hatırlanan altyazı seçimlerini tek cümlede özetler.
     private var subtitleMemorySummary: String {
@@ -396,7 +399,12 @@ struct SettingsView: View {
                         .disabled(drive.isBusy || settings.driveFolderID.isEmpty)
                     Button("Çıkış") { Task { await drive.disconnect(library: library) } }
                 } else {
-                    Button("Bağlan") { Task { await drive.connect(library: library) } }
+                    Button("Bağlan") {
+                        Task {
+                            await drive.connect(library: library)
+                            await cloudSync.syncNow()
+                        }
+                    }
                         .disabled(settings.googleClientID.isEmpty || drive.isBusy)
                 }
             }
@@ -429,7 +437,8 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                     SecureField("Client Secret", text: $settings.googleClientSecret)
                         .textFieldStyle(.roundedBorder)
-                    Text("Yalnızca okuma izni istenir. Yenileme jetonu Anahtar Zinciri'nde saklanır.")
+                    Text("Videolar için okuma izni, verileriniz için yalnızca ZyPlayer'ın kendi "
+                         + "dosyasına yazma izni istenir. Yenileme jetonu cihazda saklanır.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -440,6 +449,114 @@ struct SettingsView: View {
             if !drive.statusMessage.isEmpty {
                 Text(drive.statusMessage).font(.caption).foregroundStyle(.secondary)
             }
+
+            cloudSyncContent
+            userDataContent
+        }
+    }
+
+    private var cloudSyncStatus: String {
+        if !cloudSync.isEnabled { return "Senkron kapalı." }
+        if !drive.isConnected { return "Senkron için Google Drive'a bağlanın." }
+        var text = cloudSync.statusMessage
+        if let last = cloudSync.lastSyncAt, !cloudSync.isSyncing {
+            text += " · son: " + last.formatted(date: .omitted, time: .shortened)
+        }
+        return text
+    }
+
+    /// Devam noktaları, favoriler, izleme durumu ve ayarlar Drive'daki
+    /// `ZyPlayerData.json` ile senkron tutulur.
+    private var cloudSyncContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SettingsGroupLabel(text: "Veri Senkronu")
+            Toggle("Devam noktalarını, favorileri, izleme durumunu ve ayarları Drive ile senkronla",
+                   isOn: Binding(get: { cloudSync.isEnabled }, set: { cloudSync.isEnabled = $0 }))
+                .font(.system(size: 12))
+            HStack(spacing: 8) {
+                Text(cloudSyncStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                if cloudSync.isSyncing { ProgressView().controlSize(.small) }
+                Button("Şimdi Senkronla") { Task { await cloudSync.syncNow() } }
+                    .controlSize(.small)
+                    .disabled(!drive.isConnected || !cloudSync.isEnabled || cloudSync.isSyncing)
+            }
+            if cloudSync.needsReconnect && drive.isConnected {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    Text("Senkron için Google Drive bağlantısını yenileyin. İstenen yeni izin "
+                         + "yalnızca ZyPlayer'ın kendi dosyasına yazmayı kapsar.")
+                        .font(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 8)
+                    Button("Yeniden Bağlan") {
+                        Task {
+                            await drive.connect(library: library)
+                            await cloudSync.syncNow()
+                        }
+                    }
+                    .controlSize(.small)
+                    .disabled(drive.isBusy)
+                }
+            }
+            Text("Veriler \"Drive'ım\" kökündeki \(DriveSyncFile.fileName) dosyasında tutulur. "
+                 + "Yerel veriler silinmez; ilk senkrondan önce Yedekler klasörüne bir kopyası alınır.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// Drive'dan bağımsız elle yedekleme/taşıma.
+    private var userDataContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SettingsGroupLabel(text: "Kullanıcı Verileri")
+            HStack(spacing: 8) {
+                Text("Devam noktaları, favoriler, izleme durumu ve ayarlar tek bir JSON dosyasına.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                Button("Dışa Aktar…") { exportUserData() }
+                Button("İçe Aktar…") { importUserData() }
+            }
+            .controlSize(.small)
+            Text("İçe aktarma mevcut verileri silmez; dosyadakilerle birleştirir, aynı kaydın "
+                 + "daha yeni hali alınır.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            if let dataTransferNote {
+                Text(dataTransferNote).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func exportUserData() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = DriveSyncFile.fileName
+        panel.allowedContentTypes = [.json]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try cloudSync.exportData(to: url)
+            dataTransferNote = "Dışa aktarıldı: \(url.lastPathComponent)"
+        } catch {
+            dataTransferNote = "Dışa aktarılamadı: \(error.localizedDescription)"
+        }
+    }
+
+    private func importUserData() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let changed = try cloudSync.importData(from: url)
+            dataTransferNote = changed > 0
+                ? "İçe aktarıldı: \(changed) veri kümesi güncellendi."
+                : "İçe aktarıldı: yeni bir şey yoktu, veriler zaten güncel."
+        } catch {
+            dataTransferNote = "İçe aktarılamadı: \(error.localizedDescription)"
         }
     }
 

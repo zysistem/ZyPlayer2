@@ -26,6 +26,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///
     /// `aria2c` de burada kapatılır: ayrı bir süreç olduğundan uygulama
     /// kapandığında kendiliğinden ölmez, arkada indirmeye devam eder.
+    /// Drive'a gönderilmemiş değişiklik (ör. son devam noktası) varsa kapanış
+    /// en fazla birkaç saniye bekletilir ve önce senkron yapılır.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let sync = CloudSyncStore.shared, sync.hasPendingChanges else { return .terminateNow }
+        Task { @MainActor in
+            await sync.flush(timeout: 6)
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         Self.streamer?.stopAndWait()
         TorrentStreamer.clearCache()
@@ -49,12 +60,15 @@ struct ZyPlayerApp: App {
     @State private var providers = StreamingProviderStore()
     @State private var streamer = TorrentStreamer()
     @State private var iptv: IPTVStore
+    @State private var cloudSync: CloudSyncStore
 
     init() {
         ImageCacheManager.configure()
         let settings = AppSettings()
         _settings = State(initialValue: settings)
-        _drive = State(initialValue: GoogleDriveStore(settings: settings))
+        let drive = GoogleDriveStore(settings: settings)
+        _drive = State(initialValue: drive)
+        _cloudSync = State(initialValue: CloudSyncStore(drive: drive))
         _torrents = State(initialValue: TorrentStore(settings: settings))
         _streamDownloads = State(initialValue: StreamDownloadStore(settings: settings))
         _iptv = State(initialValue: IPTVStore(settings: settings))
@@ -75,7 +89,11 @@ struct ZyPlayerApp: App {
                 // görünümüne göre gidiyordu; ikisi çakışınca (ör. sistem koyu, uygulama
                 // açık) açık modda beyaz-üstüne-beyaz "bozuk" görüntü çıkıyordu.
                 .preferredColorScheme(settings.colorScheme)
+                .environment(cloudSync)
                 .onAppear {
+                    // Devam noktaları, favoriler ve ayarlar Drive'daki
+                    // ZyPlayerData.json ile birleşir.
+                    cloudSync.start()
                     AppDelegate.player = player
                     AppDelegate.streamer = streamer
                     // Anything a crash left behind is dead weight.

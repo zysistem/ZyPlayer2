@@ -123,6 +123,17 @@ final class PlaybackResumeStore {
         }
         points = shared + torrents
         if !stranded.isEmpty { persist() }
+
+        // Drive senkronu dosyalara birleşik hali yazdığında liste de tazelenir.
+        let reload: (ResumeData) -> Void = { [weak self] _ in
+            MainActor.assumeIsolated { self?.reloadFromFiles() }
+        }
+        file.onExternalChange = reload
+        torrentFile.onExternalChange = reload
+    }
+
+    private func reloadFromFiles() {
+        points = file.value.points.filter { $0.kind != .torrent } + torrentFile.value.points
     }
 
     func point(forKey id: String) -> ResumePoint? { points.first { $0.id == id } }

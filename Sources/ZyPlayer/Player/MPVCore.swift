@@ -54,6 +54,20 @@ final class MPVCore {
         // of creating a window of its own.
         setOption("vo", "libmpv")
         setOption("hwdec", "videotoolbox")
+        // Ses çıkışı: önce AVFoundation, yalnızca o açılamazsa CoreAudio.
+        //
+        // mpv'nin `coreaudio` çıkışı (0.41) her dosya açılışında sistem ses
+        // nesnesine bir HAL dinleyicisi kaydediyor; geri çağrı bağlamı o anki
+        // `ao` yapısı. CoreAudio bu geri çağrıları kendi kuyruğunda eşzamansız
+        // çalıştırıyor ve dinleyiciyi kaldırmak kuyruğa düşmüş çağrıyı iptal
+        // etmiyor; `init` yarıda başarısız olursa dinleyici hiç kaldırılmıyor
+        // bile. Sonuç: ses aygıtı değiştiğinde (AirPods/Bluetooth bağlanması,
+        // uykudan uyanma, Handoff) geri çağrı serbest bırakılmış `ao` ile
+        // çalışıyor ve uygulama `hotplug_cb → mp_msg` içinde NULL okuyup
+        // çöküyordu (EXC_BAD_ACCESS, "HALC_ProxyNotification" kuyruğu).
+        // `avfoundation` çıkışı HAL dinleyicisi kaydetmiyor; aygıt değişimini
+        // AVSampleBufferAudioRenderer'ın kendi bildirimleriyle izliyor.
+        setOption("ao", "avfoundation,coreaudio")
         setOption("keep-open", "yes")
         setOption("osc", "no")
         setOption("osd-level", "0")

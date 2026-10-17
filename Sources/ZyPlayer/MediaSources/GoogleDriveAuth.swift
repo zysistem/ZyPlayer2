@@ -35,7 +35,24 @@ actor GoogleDriveAuth {
         }
     }
 
-    private static let scope = "https://www.googleapis.com/auth/drive.readonly"
+    /// `drive.readonly`: kütüphane için videoları listeleyip akıtmak.
+    /// `drive.file`: yalnızca uygulamanın kendi oluşturduğu dosyalara yazma —
+    /// verilerin senkronlandığı `ZyPlayerData.json` için. Drive'daki diğer
+    /// dosyalara yazma izni istenmez.
+    private static let scope = "https://www.googleapis.com/auth/drive.readonly "
+        + "https://www.googleapis.com/auth/drive.file"
+    private static let grantedScopesKey = "com.zyplayer.googleDriveGrantedScopes"
+
+    /// Google'ın son jeton yanıtında bildirdiği izinler; hiç kaydedilmemişse nil.
+    static var grantedScopes: String? {
+        UserDefaults.standard.string(forKey: grantedScopesKey)
+    }
+
+    /// Eski sürümlerle kurulan bağlantılar yalnızca okuma izni taşır.
+    static func canWrite(scopes: String) -> Bool {
+        scopes.contains("auth/drive.file") || scopes.split(separator: " ")
+            .contains { $0.hasSuffix("auth/drive") }
+    }
     private static let authEndpoint = "https://accounts.google.com/o/oauth2/v2/auth"
     private static let tokenEndpoint = "https://oauth2.googleapis.com/token"
     private static let keychainAccount = "google-drive-refresh-token"
@@ -83,6 +100,7 @@ actor GoogleDriveAuth {
     func signOut() {
         tokens = nil
         Keychain.remove(account: Self.keychainAccount)
+        UserDefaults.standard.removeObject(forKey: Self.grantedScopesKey)
     }
 
     var hasStoredCredentials: Bool {
@@ -152,8 +170,12 @@ actor GoogleDriveAuth {
             var access_token: String
             var refresh_token: String?
             var expires_in: Double?
+            var scope: String?
         }
         let decoded = try JSONDecoder().decode(TokenResponse.self, from: data)
+        if let scope = decoded.scope {
+            UserDefaults.standard.set(scope, forKey: Self.grantedScopesKey)
+        }
         return Tokens(
             accessToken: decoded.access_token,
             // A refresh grant does not return a new refresh token.

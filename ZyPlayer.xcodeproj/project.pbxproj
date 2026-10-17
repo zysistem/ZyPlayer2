@@ -80,6 +80,7 @@
 		A42ADA1D16C3267165489774 /* TorrentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C04B1F9FD823384918B91C0 /* TorrentStore.swift */; };
 		A43F2B59711FD61A4C830E17 /* ZyStreamStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1229717F84943F6857B48D68 /* ZyStreamStore.swift */; };
 		A5F697D09EB64895D43603EE /* ImageCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CC84E156BB6320A07CDADA5 /* ImageCacheManager.swift */; };
+		A6C6BD9FB52578CF34F2B70A /* CloudSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = F01F7B175FD5F20EB4443CB8 /* CloudSync.swift */; };
 		A7AD6ADD2393003DECE11CFB /* ZyStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033B091E03A51B441F007F30 /* ZyStreamView.swift */; };
 		AA913B72F0845E5EB2977A6A /* YouTubeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77E8C8F6B0223C9A4D59DC86 /* YouTubeCard.swift */; };
 		AB9F8172F3F8892B2B356EF7 /* IPTVModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12C6A5B219425DB42D8C9E05 /* IPTVModels.swift */; };
@@ -225,6 +226,7 @@
 		E6D5301410FE25E896ECE2E4 /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
 		EA5A0711AE976ED842AF7E91 /* IMDbID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMDbID.swift; sourceTree = "<group>"; };
 		ED78B38A12A01F8A80A8EF16 /* StreamModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamModels.swift; sourceTree = "<group>"; };
+		F01F7B175FD5F20EB4443CB8 /* CloudSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSync.swift; sourceTree = "<group>"; };
 		F0C513E989F046CF8221AC2D /* SubtitleAddon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleAddon.swift; sourceTree = "<group>"; };
 		F15F448972CECECE120651E4 /* CachedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedAsyncImage.swift; sourceTree = "<group>"; };
 		F175BB903E3C4EDBC5576688 /* SMBShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMBShare.swift; sourceTree = "<group>"; };
@@ -298,6 +300,7 @@
 			children = (
 				0FD3E2DFFE68414148F4E381 /* AppSettings.swift */,
 				F15F448972CECECE120651E4 /* CachedAsyncImage.swift */,
+				F01F7B175FD5F20EB4443CB8 /* CloudSync.swift */,
 				9CC84E156BB6320A07CDADA5 /* ImageCacheManager.swift */,
 				48BFE0615A9D78F52D610A8C /* KeyboardContext.swift */,
 				FFDE9F11281381575C40527D /* Keychain.swift */,
@@ -570,6 +573,7 @@
 				75DA5204FA721500349E74DA /* ChatAssistant.swift in Sources */,
 				6C1C2C6FB0A0762C2C1F6EE0 /* ChatAssistantView.swift in Sources */,
 				B4AF564E43F76FB953C09C92 /* CinemaStore.swift in Sources */,
+				A6C6BD9FB52578CF34F2B70A /* CloudSync.swift in Sources */,
 				C3F6480B5C747E186127E310 /* CurrencyHUDView.swift in Sources */,
 				3D2205266208694D47EE59D0 /* DetailView.swift in Sources */,
 				99A7F99CEDE021EC957CA1E2 /* DizipalProvider.swift in Sources */,
@@ -743,7 +747,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.7.26;
+				MARKETING_VERSION = 1.7.28;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -829,7 +833,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.7.26;
+				MARKETING_VERSION = 1.7.28;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

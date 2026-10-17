@@ -36,6 +36,7 @@ final class WatchFlagsStore {
 
     private init() {
         entries = file.value
+        file.onExternalChange = { [weak self] in self?.entries = $0 }
     }
 
     func isFinished(_ key: String) -> Bool { entries[key]?.isFinished ?? false }
