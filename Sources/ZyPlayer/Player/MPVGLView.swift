@@ -26,11 +26,33 @@ private func mpvRenderUpdate(_ ctx: UnsafeMutableRawPointer?) {
 /// The context is created eagerly at init rather than on first draw: mpv reports
 /// "No render context set" and drops the video track if playback starts before
 /// the render context exists.
+///
+/// Kareler ana iş parçacığında değil, kendi çizim kuyruğunda çizilir.
+/// `mpv_render_context_render` karenin gösterim zamanına kadar bekliyor
+/// (BLOCK_FOR_TARGET_TIME) ve GPU çizimi (ölçekleme, altyazı katmanı) her
+/// karede birkaç ms sürüyor; ana iş parçacığında bunlar zamanın ~%90'ını
+/// yiyordu ve arayüzün en küçük işi bile kareyi geciktirip oynatmada ara ara
+/// takılma yapıyordu. GL bağlamı `CGLLockContext` ile korunur: AppKit boyut
+/// değişiminde bağlamı ana iş parçacığında günceller (`update()`).
 final class MPVGLView: NSOpenGLView {
 
     private weak var core: MPVCore?
     private var renderContext: OpaquePointer?
     private var isRenderContextReady = false
+    /// Çizim kuyruğu bağlama AppKit özelliği üzerinden değil, buradan erişir.
+    private var glContext: NSOpenGLContext!
+
+    private let renderQueue = DispatchQueue(label: "com.zyplayer.mpv.render",
+                                            qos: .userInteractive)
+    /// Aşağıdaki üç değeri korur (ana iş parçacığı, mpv ve çizim kuyruğu).
+    private let stateLock = NSLock()
+    /// Kuyrukta bekleyen bir çizim var; mpv'nin peş peşe geri çağrıları
+    /// tek çizimde birleşir.
+    private var renderPending = false
+    /// Yeni kare olmasa da çizilsin (boyut değişti, AppKit yeniden çizim istedi).
+    private var forcePending = false
+    /// Çizim boyutu (piksel); ana iş parçacığında hesaplanır.
+    private var drawableSize = CGSize(width: 1, height: 1)
 
     /// Fires once the render context exists, so queued files can start playing.
     var onReady: (() -> Void)?
@@ -51,7 +73,8 @@ final class MPVGLView: NSOpenGLView {
         super.init(frame: .zero, pixelFormat: format)!
 
         wantsBestResolutionOpenGLSurface = true
-        self.openGLContext?.makeCurrentContext()
+        glContext = openGLContext
+        glContext.makeCurrentContext()
         createRenderContext()
     }
 
@@ -60,9 +83,16 @@ final class MPVGLView: NSOpenGLView {
     }
 
     deinit {
-        if let renderContext {
-            mpv_render_context_set_update_callback(renderContext, nil, nil)
+        guard let renderContext else { return }
+        mpv_render_context_set_update_callback(renderContext, nil, nil)
+        // Sürmekte olan bir çizim bitmeden bağlam serbest bırakılmaz.
+        let context = glContext!
+        renderQueue.sync {
+            let cgl = context.cglContextObj!
+            CGLLockContext(cgl)
+            context.makeCurrentContext()
             mpv_render_context_free(renderContext)
+            CGLUnlockContext(cgl)
         }
     }
 
@@ -116,22 +146,75 @@ final class MPVGLView: NSOpenGLView {
 
     var isReady: Bool { isRenderContextReady }
 
-    /// mpv calls this off the main thread; hop before touching AppKit.
+    /// mpv calls this off the main thread; the frame is drawn on the render queue.
     func scheduleRender() {
-        DispatchQueue.main.async { [weak self] in
-            self?.drawFrame(onlyIfNewFrame: true)
+        enqueueRender(force: false)
+    }
+
+    private func enqueueRender(force: Bool) {
+        stateLock.lock()
+        if force { forcePending = true }
+        let alreadyQueued = renderPending
+        renderPending = true
+        stateLock.unlock()
+        guard !alreadyQueued else { return }
+        renderQueue.async { [weak self] in
+            self?.renderFromQueue()
         }
     }
 
-    // MARK: - Drawing
+    // MARK: - Ana iş parçacığı: boyut ve yeniden çizim istekleri
 
     override func draw(_ dirtyRect: NSRect) {
-        drawFrame()
+        enqueueRender(force: true)
     }
 
     override func reshape() {
         super.reshape()
-        drawFrame()
+        updateDrawableSize()
+        enqueueRender(force: true)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        updateDrawableSize()
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        updateDrawableSize()
+        enqueueRender(force: true)
+    }
+
+    /// AppKit bağlamı boyut değişiminde ana iş parçacığında günceller; çizim
+    /// kuyruğu o sırada bağlamı kullanmasın.
+    override func update() {
+        guard let cgl = glContext?.cglContextObj else {
+            super.update()
+            return
+        }
+        CGLLockContext(cgl)
+        super.update()
+        CGLUnlockContext(cgl)
+    }
+
+    private func updateDrawableSize() {
+        let size = convertToBacking(bounds).size
+        stateLock.lock()
+        drawableSize = CGSize(width: max(size.width, 1), height: max(size.height, 1))
+        stateLock.unlock()
+    }
+
+    // MARK: - Çizim kuyruğu
+
+    private func renderFromQueue() {
+        stateLock.lock()
+        let force = forcePending
+        forcePending = false
+        renderPending = false
+        let size = drawableSize
+        stateLock.unlock()
+        drawFrame(force: force, size: size)
     }
 
     /// `ADVANCED_CONTROL` kipinde mpv, güncelleme geri çağrısının ardından
@@ -141,13 +224,12 @@ final class MPVGLView: NSOpenGLView {
     /// çözücü ilk tamponda sonsuza dek bekler — IPTV "devam et"te VideoToolbox
     /// atlama sonrası hata verip yazılıma düşünce oynatıcı zamanı gösterip hiç
     /// kare çizmiyordu.
-    private func drawFrame(onlyIfNewFrame: Bool = false) {
-        guard let context = openGLContext else { return }
+    private func drawFrame(force: Bool, size: CGSize) {
+        let context = glContext!
+        guard let cgl = context.cglContextObj else { return }
+        CGLLockContext(cgl)
+        defer { CGLUnlockContext(cgl) }
         context.makeCurrentContext()
-        CGLLockContext(context.cglContextObj!)
-        defer {
-            CGLUnlockContext(context.cglContextObj!)
-        }
 
         guard let renderContext else {
             glClearColor(0, 0, 0, 1)
@@ -157,15 +239,12 @@ final class MPVGLView: NSOpenGLView {
         }
 
         let flags = mpv_render_context_update(renderContext)
-        if onlyIfNewFrame && flags & UInt64(MPV_RENDER_UPDATE_FRAME.rawValue) == 0 {
+        if !force && flags & UInt64(MPV_RENDER_UPDATE_FRAME.rawValue) == 0 {
             return
         }
 
-        let scale = window?.backingScaleFactor ?? 2.0
-        let width = Int32(max(bounds.width * scale, 1))
-        let height = Int32(max(bounds.height * scale, 1))
-
-        var fbo = mpv_opengl_fbo(fbo: 0, w: width, h: height, internal_format: 0)
+        var fbo = mpv_opengl_fbo(fbo: 0, w: Int32(size.width), h: Int32(size.height),
+                                 internal_format: 0)
         // NSOpenGLView's origin is bottom-left; mpv renders top-left by default.
         var flipY: CInt = 1
 
