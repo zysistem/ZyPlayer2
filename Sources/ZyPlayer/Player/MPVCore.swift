@@ -121,6 +121,10 @@ final class MPVCore {
         // restoreCachedTranslation → refreshTracks → mp_dispatch_lock).
         mpv_observe_property(handle, 0, "track-list", MPV_FORMAT_STRING)
         mpv_observe_property(handle, 0, "chapter-list", MPV_FORMAT_STRING)
+        // Teşhis: kare sayaçları arttıkça playback-diag.log'a yazılır.
+        for name in Self.frameCounters {
+            mpv_observe_property(handle, 0, name, MPV_FORMAT_INT64)
+        }
 
         startEventLoop()
     }
@@ -340,6 +344,10 @@ final class MPVCore {
                 case MPV_EVENT_PROPERTY_CHANGE:
                     if let prop = UnsafeMutablePointer<mpv_event_property>(OpaquePointer(event.data)) {
                         let name = String(cString: prop.pointee.name)
+                        if Self.frameCounters.contains(name) {
+                            self.noteFrameCounter(name: name, property: prop.pointee)
+                            continue
+                        }
                         self.apply(name: name, property: prop.pointee)
                         self.emit(.propertyChanged(name: name))
                     }
@@ -347,6 +355,29 @@ final class MPVCore {
                     break
                 }
             }
+        }
+    }
+
+    /// mpv'nin kare sayaçları: düşen, çözücüde atlanan, geciken ve zamanlaması
+    /// kaçan kareler. Yalnızca olay kuyruğunda okunur/yazılır.
+    private static let frameCounters = [
+        "frame-drop-count", "decoder-frame-drop-count",
+        "vo-delayed-frame-count", "mistimed-frame-count"
+    ]
+    private var frameCounterValues: [String: Int64] = [:]
+
+    private func noteFrameCounter(name: String, property: mpv_event_property) {
+        guard property.format == MPV_FORMAT_INT64,
+              let value = property.data?.assumingMemoryBound(to: Int64.self).pointee else {
+            frameCounterValues[name] = nil
+            return
+        }
+        let previous = frameCounterValues[name] ?? 0
+        frameCounterValues[name] = value
+        // Yeni dosyada sayaçlar sıfırdan başlar; yalnızca artışlar yazılır.
+        if value > previous {
+            PlaybackDiagnostics.log(String(format: "mpv %@ +%lld (toplam %lld) konum %.1f",
+                                           name, value - previous, value, position))
         }
     }
 

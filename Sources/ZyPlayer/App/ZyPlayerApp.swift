@@ -94,6 +94,8 @@ struct ZyPlayerApp: App {
                     // Devam noktaları, favoriler ve ayarlar Drive'daki
                     // ZyPlayerData.json ile birleşir.
                     cloudSync.start()
+                    // Oynatma takılmalarının sessiz teşhis kaydı (playback-diag.log).
+                    PlaybackDiagnostics.start()
                     AppDelegate.player = player
                     AppDelegate.streamer = streamer
                     // Anything a crash left behind is dead weight.

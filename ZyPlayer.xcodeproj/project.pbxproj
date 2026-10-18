@@ -114,6 +114,7 @@
 		E7F1B5E976A7368A56A8EA7A /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AB4F5DCA3BA5BB95B3652BC /* AboutView.swift */; };
 		E81FA3BEAB92482779EB199C /* ZyPlayerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A24D62661513397EB0F86F6 /* ZyPlayerApp.swift */; };
 		EA1321AD219E7C879AE62F58 /* IntroSkipDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93A1271AAF81282DC1E637AA /* IntroSkipDetector.swift */; };
+		EB82D6FFDE488C60715D444F /* PlaybackDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E554421233DFB0C772EEA88B /* PlaybackDiagnostics.swift */; };
 		EDF326B6D61918159147A5B3 /* LogoLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DC24462346794F7A03111F1 /* LogoLoader.swift */; };
 		F604AE5538E05E50BD6C72AC /* ZyMovieDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B2D4342C52D4F054E4D021E /* ZyMovieDetailView.swift */; };
 		F65732BE112A38A2C5BDF065 /* RecommendationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ADEE6650B1BB958D8474696 /* RecommendationEngine.swift */; };
@@ -223,6 +224,7 @@
 		E09491C644E4453F7207441B /* MPVGLView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MPVGLView.swift; sourceTree = "<group>"; };
 		E115145FB7577588A3EAFE07 /* SMBMounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMBMounter.swift; sourceTree = "<group>"; };
 		E2F309A9A16613B3F2BE8A26 /* BencodeParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BencodeParser.swift; sourceTree = "<group>"; };
+		E554421233DFB0C772EEA88B /* PlaybackDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackDiagnostics.swift; sourceTree = "<group>"; };
 		E6D5301410FE25E896ECE2E4 /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
 		EA5A0711AE976ED842AF7E91 /* IMDbID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IMDbID.swift; sourceTree = "<group>"; };
 		ED78B38A12A01F8A80A8EF16 /* StreamModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamModels.swift; sourceTree = "<group>"; };
@@ -306,6 +308,7 @@
 				FFDE9F11281381575C40527D /* Keychain.swift */,
 				7461948CFBAE0244D14B9B39 /* LocalStore.swift */,
 				12921A4926595DE0D95E846F /* OpenSubtitlesHash.swift */,
+				E554421233DFB0C772EEA88B /* PlaybackDiagnostics.swift */,
 				19071F1C106F47B7C69E03F3 /* PlaybackResumeStore.swift */,
 				BF6A93C296FC019D7D80D4A6 /* PowerAssertion.swift */,
 				B664461AD6DFB7156F91D1C4 /* RecommendationStore.swift */,
@@ -614,6 +617,7 @@
 				33B3D2BBF6943AEFB3360544 /* OpenSubtitlesHash.swift in Sources */,
 				FB406A88A177B7B0C0BBA59A /* People.swift in Sources */,
 				ACE551F4576213EE0754137A /* PeopleViews.swift in Sources */,
+				EB82D6FFDE488C60715D444F /* PlaybackDiagnostics.swift in Sources */,
 				8C15D6892D3F8BB4B164C1BB /* PlaybackResumeStore.swift in Sources */,
 				A3329B14F83BD2075C124AEB /* PlayerModel.swift in Sources */,
 				3FAE35E8B7CCA2EE2DA01276 /* PlayerView.swift in Sources */,
@@ -747,7 +751,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.7.30;
+				MARKETING_VERSION = 1.7.31;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -833,7 +837,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.7.30;
+				MARKETING_VERSION = 1.7.31;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

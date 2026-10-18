@@ -243,6 +243,7 @@ final class MPVGLView: NSOpenGLView {
             return
         }
 
+        let started = DispatchTime.now()
         var fbo = mpv_opengl_fbo(fbo: 0, w: Int32(size.width), h: Int32(size.height),
                                  internal_format: 0)
         // NSOpenGLView's origin is bottom-left; mpv renders top-left by default.
@@ -261,5 +262,12 @@ final class MPVGLView: NSOpenGLView {
 
         context.flushBuffer()
         mpv_render_context_report_swap(renderContext)
+
+        // Kare zamanını bekleme (en fazla bir kare süresi) dahil; 100 ms'yi
+        // aşan çizim gerçek bir gecikmedir.
+        let elapsed = PlaybackDiagnostics.milliseconds(since: started)
+        if elapsed > 100 {
+            PlaybackDiagnostics.log("çizim \(elapsed) ms sürdü")
+        }
     }
 }

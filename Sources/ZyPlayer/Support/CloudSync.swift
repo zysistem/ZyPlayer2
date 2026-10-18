@@ -654,6 +654,11 @@ final class CloudSyncStore {
             needsReconnect = true
         }
         statusMessage = "Senkronlanıyor…"
+        let syncStarted = DispatchTime.now()
+        PlaybackDiagnostics.log("Drive senkronu başladı (oynatma: \(CloudSyncRegistry.isPlaybackActive ? "evet" : "hayır"))")
+        defer {
+            PlaybackDiagnostics.log("Drive senkronu bitti, \(PlaybackDiagnostics.milliseconds(since: syncStarted)) ms: \(statusMessage)")
+        }
 
         do {
             let token = try await drive.syncAccessToken()

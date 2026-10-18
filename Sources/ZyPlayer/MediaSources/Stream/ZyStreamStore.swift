@@ -326,7 +326,14 @@ final class ZyStreamStore {
                                 title: String, resolvingID: String, posterURL: URL?) async {
         do {
             // İlk sunucu 15 sn'de çözülmezse sıradakine (ör. Rapidrame) geçilir.
-            let resolved = try await resolver.resolveFirstWorking(embeds)
+            var resolved = try await resolver.resolveFirstWorking(embeds)
+            // HLS ise parçalar yerel vekilden okunsun (bkz. HLSSegmentProxy):
+            // uzak sunucunun yarıda kestiği parçalar oynatmada takılma yapıyordu.
+            // Liste değilse ya da kurulamazsa özgün adresle oynatılır.
+            if resolved.url.host != "127.0.0.1",
+               let local = await HLSPlaylistLocalizer.localize(resolved.url, headers: resolved.headers) {
+                resolved.url = local
+            }
             resume?.begin(ResumePoint(
                 id: pageURL, kind: .stream, title: title,
                 posterURLString: posterURL?.absoluteString,
