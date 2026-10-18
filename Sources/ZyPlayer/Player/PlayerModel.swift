@@ -210,6 +210,8 @@ final class PlayerModel {
         if speed != core.speed { speed = core.speed }
         // Hold the display awake only while something is actually playing.
         powerAssertion.setActive(currentURL != nil && !isPaused)
+        // Video oynarken Drive senkronu seyrekleşir (bkz. CloudSyncStore).
+        CloudSyncRegistry.isPlaybackActive = currentURL != nil && !isPaused
         reportProgressIfNeeded()
     }
 
@@ -1160,6 +1162,7 @@ final class PlayerModel {
         lastReportedPosition = 0
         isTrailer = false
         powerAssertion.setActive(false)
+        CloudSyncRegistry.isPlaybackActive = false
         audioTracks = []
         subtitleTracks = []
         selectedAudioID = nil

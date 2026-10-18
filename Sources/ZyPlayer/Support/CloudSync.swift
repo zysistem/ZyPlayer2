@@ -13,6 +13,23 @@ protocol CloudSyncSource: AnyObject {
     /// Birleşik JSON'u yerele uygular; çözülemezse false döner ve hiçbir şeye
     /// dokunmaz.
     func importFromSync(_ data: Data) -> Bool
+    /// Ana iş parçacığında alınan, JSON'u herhangi bir iş parçacığında
+    /// üretebilen anlık görüntü. Senkron, pahalı kodlama ve birleştirme işini
+    /// arka planda yapabilsin diye: video kareleri ana iş parçacığında
+    /// çiziliyor ve oradaki her uzun iş oynatmada takılma olarak görünüyor.
+    func syncSnapshot() -> CloudSyncSnapshot
+}
+
+extension CloudSyncSource {
+    /// Varsayılan: dışa aktarma zaten iş parçacığı güvenli (UserDefaults, disk).
+    func syncSnapshot() -> CloudSyncSnapshot {
+        CloudSyncSnapshot { [self] in exportForSync() }
+    }
+}
+
+/// Bir kaynağın o anki halinden JSON üretir; arka planda çağrılabilir.
+struct CloudSyncSnapshot: @unchecked Sendable {
+    let makeData: () -> Data?
 }
 
 /// LocalStore dışındaki kaynaklar için (ör. ZyMovie favorileri UserDefaults'ta).
@@ -58,9 +75,23 @@ enum CloudSyncRegistry {
 
     private static let lock = NSLock()
     private static var sources: [String: WeakSource] = [:]
+    /// Her dosyanın yerel değişiklik sayacı. Senkron arka planda birleştirirken
+    /// dosya değişirse, birleşim o dosyaya yazılmaz (yeni değişiklik ezilmesin).
+    private static var generations: [String: Int] = [:]
 
     /// Yerel bir değişiklikte ana iş parçacığında çağrılır (CloudSyncStore).
     static var onLocalChange: (() -> Void)?
+
+    /// Video oynarken true (PlayerModel yazar, ana iş parçacığında). Oynatma
+    /// sırasında devam noktası 5 saniyede bir yazılıyor; senkron bu sürede
+    /// seyrekleşir.
+    static var isPlaybackActive = false
+
+    static func generation(of name: String) -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return generations[name, default: 0]
+    }
 
     /// Aynı ada ikinci kayıt öncekinin yerini alır — `AppSettings` açılışta
     /// iki kez kuruluyor, sonraki asıl kullanılan örnek.
@@ -82,6 +113,9 @@ enum CloudSyncRegistry {
 
     static func markDirty(_ name: String) {
         guard syncedNames.contains(name) else { return }
+        lock.lock()
+        generations[name, default: 0] += 1
+        lock.unlock()
         DispatchQueue.main.async { onLocalChange?() }
     }
 
@@ -312,6 +346,79 @@ enum SyncShape {
     }
 }
 
+// MARK: - Arka plan birleştirme planı
+
+/// Bir kaynağın senkron girdisi: ana iş parçacığında alınmış anlık görüntü ve
+/// o andaki değişiklik sayacı.
+struct SyncInput: @unchecked Sendable {
+    let name: String
+    let snapshot: CloudSyncSnapshot
+    let generation: Int
+}
+
+/// `[String: Any]` gibi Sendable olmayan JSON değerlerini arka plan işine
+/// taşımak için. Değerler yalnızca okunur.
+struct SyncBox<Value>: @unchecked Sendable {
+    let value: Value
+    init(_ value: Value) { self.value = value }
+}
+
+/// Senkronun pahalı kısmı: yerel JSON'ların üretilmesi, ortak hal ile üç
+/// yönlü birleştirme ve karşılaştırmalar. Hiçbir uygulama durumuna dokunmaz;
+/// arka planda çalışır, sonucu ana iş parçacığı uygular.
+struct SyncPlan: @unchecked Sendable {
+    struct Apply {
+        let name: String
+        let data: Data
+        let generation: Int
+    }
+
+    /// Drive'a gidecek dosyalar ve yeni ortak hal.
+    var uploadFiles: [String: Any]
+    var newBase: [String: Any]
+    /// Birleşimi yerelden farklı çıkan, yerele uygulanması gereken dosyalar.
+    var applies: [Apply] = []
+    /// Ortak hal diskten okunduğu haliyle; geri almalar için.
+    let baseFiles: [String: Any]?
+
+    static func make(inputs: [SyncInput], remoteFiles: [String: Any]?) -> SyncPlan {
+        let baseFiles = CloudSyncStore.loadBase()
+        // Drive'da bu sürümün tanımadığı veriler varsa korunur.
+        var plan = SyncPlan(uploadFiles: remoteFiles ?? [:], newBase: baseFiles ?? [:],
+                            baseFiles: baseFiles)
+
+        for input in inputs {
+            let name = input.name
+            let localRaw = input.snapshot.makeData().flatMap {
+                try? JSONSerialization.jsonObject(with: $0, options: [.fragmentsAllowed])
+            }
+            let local = localRaw.map { SyncShape.normalize(name, $0) }
+            guard let merged = JSONMerge.merge(base: baseFiles?[name], local: local,
+                                               remote: remoteFiles?[name]) else { continue }
+
+            if !JSONMerge.same(merged, local) {
+                let full = SyncShape.denormalize(name, merged, local: localRaw)
+                guard let data = try? JSONSerialization.data(withJSONObject: full,
+                                                             options: [.fragmentsAllowed]) else {
+                    NSLog("ZyPlayer senkron: %@ yerele uygulanamadı", name)
+                    continue
+                }
+                plan.applies.append(Apply(name: name, data: data, generation: input.generation))
+            }
+            plan.uploadFiles[name] = merged
+            plan.newBase[name] = merged
+        }
+        return plan
+    }
+
+    /// Yerele uygulanamayan dosya için ne Drive'daki hal ne de ortak hal
+    /// ilerletilir; ikisi de bu senkrondan önceki haline döner.
+    mutating func revert(_ name: String, remoteFiles: [String: Any]?) {
+        uploadFiles[name] = remoteFiles?[name]
+        newBase[name] = baseFiles?[name]
+    }
+}
+
 // MARK: - Drive dosyası
 
 /// Drive'daki tek senkron dosyası: "Drive'ım" kökünde `ZyPlayerData.json`.
@@ -457,7 +564,7 @@ final class CloudSyncStore {
 
     private static let enabledKey = "com.zyplayer.cloudSyncEnabled"
     private static let backupDoneKey = "com.zyplayer.cloudSyncBackupDone"
-    private static let baseURL = AppPaths.file("cloud-sync-base.json")
+    nonisolated static let baseURL = AppPaths.file("cloud-sync-base.json")
 
     init(drive: GoogleDriveStore) {
         self.drive = drive
@@ -494,10 +601,15 @@ final class CloudSyncStore {
 
     /// Yerel değişiklik: hemen değil, kısa bir süre sonra senkronlanır. Oynatma
     /// sırasında devam noktası birkaç saniyede bir yazılıyor; her yazmada Drive'a
-    /// gitmek yerine en fazla 20 saniyede bir gidilir.
+    /// gitmek yerine en fazla 20 saniyede bir gidilir — video oynarken 2
+    /// dakikada bir (kapanışta ve 5 dakikalık zamanlayıcıda yine gider).
     private func noteLocalChange() {
         isDirty = true
-        schedule(after: 20)
+        schedule(after: localChangeDelay)
+    }
+
+    private var localChangeDelay: Double {
+        CloudSyncRegistry.isPlaybackActive ? 120 : 20
     }
 
     private func schedule(after seconds: Double) {
@@ -534,7 +646,7 @@ final class CloudSyncStore {
             isSyncing = false
             if isDirty || rerunRequested {
                 rerunRequested = false
-                schedule(after: 20)
+                schedule(after: localChangeDelay)
             }
         }
 
@@ -550,42 +662,52 @@ final class CloudSyncStore {
             let remoteFiles = remote?.bundle["files"] as? [String: Any]
 
             backupLocalDataOnce()
-            let baseFiles = loadBase()
 
-            // Drive'da bu sürümün tanımadığı veriler varsa korunur.
-            var uploadFiles = remoteFiles ?? [:]
-            var newBase = baseFiles ?? [:]
+            // Ana iş parçacığında yalnızca değerlerin kopyası alınır. JSON
+            // kodlama, birleştirme ve karşılaştırma (onlarca–yüzlerce ms) arka
+            // planda yapılır: video kareleri ana iş parçacığında çiziliyor ve
+            // bu iş oynatma sırasında ~20 saniyede bir takılma yapıyordu.
+            let inputs = CloudSyncRegistry.syncedNames.map { name in
+                SyncInput(name: name,
+                          snapshot: CloudSyncRegistry.source(named: name).syncSnapshot(),
+                          generation: CloudSyncRegistry.generation(of: name))
+            }
+            let remoteBox = SyncBox(remoteFiles)
+            var plan = await Task.detached(priority: .utility) {
+                SyncPlan.make(inputs: inputs, remoteFiles: remoteBox.value)
+            }.value
             var appliedCount = 0
 
-            for name in CloudSyncRegistry.syncedNames {
-                let source = CloudSyncRegistry.source(named: name)
-                let localRaw = source.exportForSync().flatMap {
-                    try? JSONSerialization.jsonObject(with: $0, options: [.fragmentsAllowed])
-                }
-                let local = localRaw.map { SyncShape.normalize(name, $0) }
-                guard let merged = JSONMerge.merge(base: baseFiles?[name], local: local,
-                                                   remote: remoteFiles?[name]) else { continue }
-
-                if !JSONMerge.same(merged, local) {
-                    let full = SyncShape.denormalize(name, merged, local: localRaw)
-                    guard let data = try? JSONSerialization.data(withJSONObject: full,
-                                                                 options: [.fragmentsAllowed]),
-                          source.importFromSync(data) else {
-                        // Uygulanamadı: ne Drive'daki ne yereldeki hal ezilir, ortak
-                        // hal de ilerletilmez; bir sonraki senkron yeniden dener.
-                        NSLog("ZyPlayer senkron: %@ yerele uygulanamadı", name)
-                        continue
-                    }
+            // Drive'dan gelen değişiklikler yerele burada, ana iş parçacığında
+            // uygulanır (yalnızca başka cihazda değişiklik varsa iş çıkar).
+            for apply in plan.applies {
+                let unchanged = CloudSyncRegistry.generation(of: apply.name) == apply.generation
+                if unchanged, CloudSyncRegistry.source(named: apply.name).importFromSync(apply.data) {
                     appliedCount += 1
+                    continue
                 }
-                uploadFiles[name] = merged
-                newBase[name] = merged
+                if unchanged {
+                    // Uygulanamadı: ne Drive'daki ne yereldeki hal ezilir, ortak
+                    // hal de ilerletilmez; bir sonraki senkron yeniden dener.
+                    NSLog("ZyPlayer senkron: %@ yerele uygulanamadı", apply.name)
+                } else {
+                    // Birleştirirken yerel dosya değişti: yeni değişiklik
+                    // ezilmesin, bu dosya bir sonraki senkronda birleşir.
+                    isDirty = true
+                }
+                plan.revert(apply.name, remoteFiles: remoteFiles)
             }
 
-            if remote == nil || !JSONMerge.same(uploadFiles, remoteFiles) {
-                try await file.upload(makeBundle(uploadFiles), existingID: remote?.id)
+            let finalPlan = plan
+            let upload = await Task.detached(priority: .utility) { () -> Data? in
+                guard remoteBox.value == nil
+                        || !JSONMerge.same(finalPlan.uploadFiles, remoteBox.value) else { return nil }
+                return try? Self.makeBundle(finalPlan.uploadFiles)
+            }.value
+            if let upload {
+                try await file.upload(upload, existingID: remote?.id)
             }
-            saveBase(newBase)
+            await Task.detached(priority: .utility) { Self.saveBase(finalPlan.newBase) }.value
 
             needsReconnect = false
             lastSyncAt = .now
@@ -629,7 +751,7 @@ final class CloudSyncStore {
             else { continue }
             files[name] = SyncShape.normalize(name, json)
         }
-        try makeBundle(files).write(to: url, options: .atomic)
+        try Self.makeBundle(files).write(to: url, options: .atomic)
     }
 
     /// Dışa aktarılmış bir dosyayı (ya da Drive'dan indirilmiş
@@ -669,7 +791,7 @@ final class CloudSyncStore {
 
     // MARK: - Dosyalar
 
-    private func makeBundle(_ files: [String: Any]) throws -> Data {
+    nonisolated static func makeBundle(_ files: [String: Any]) throws -> Data {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
         let bundle: [String: Any] = [
             "format": 1,
@@ -683,7 +805,7 @@ final class CloudSyncStore {
 
     /// Son başarılı senkronun ortak hali. Yoksa (ilk senkron ya da dosya
     /// silinmiş) birleştirme hiçbir şeyi silmez, iki tarafın birleşimini alır.
-    private func loadBase() -> [String: Any]? {
+    nonisolated static func loadBase() -> [String: Any]? {
         guard let data = try? Data(contentsOf: Self.baseURL),
               let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             return nil
@@ -691,7 +813,7 @@ final class CloudSyncStore {
         return object["files"] as? [String: Any]
     }
 
-    private func saveBase(_ files: [String: Any]) {
+    nonisolated static func saveBase(_ files: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: ["files": files],
                                                      options: [.sortedKeys]) else { return }
         try? data.write(to: Self.baseURL, options: .atomic)

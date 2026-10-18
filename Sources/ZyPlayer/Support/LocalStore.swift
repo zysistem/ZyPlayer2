@@ -145,6 +145,13 @@ extension LocalStore: CloudSyncSource {
         return try? Self.encoder().encode(value)
     }
 
+    /// Yalnızca değerin kopyası alınır; kodlama, senkronun arka plan işinde.
+    func syncSnapshot() -> CloudSyncSnapshot {
+        guard hasLocalData else { return CloudSyncSnapshot { nil } }
+        let snapshot = value
+        return CloudSyncSnapshot { try? Self.encoder().encode(snapshot) }
+    }
+
     /// Drive'dan gelen birleşik değeri uygular. Yazma eşzamanlı yapılır (önce
     /// kuyruktaki bekleyen yazmalar biter), senkronu yeniden tetiklemez.
     func importFromSync(_ data: Data) -> Bool {
